@@ -8,12 +8,20 @@ use ash::vk::{
 	MemoryPropertyFlags,
 	QueueFamilyProperties,
 	QueueFlags,
+	PhysicalDeviceType,
+};
+
+use ash::vk::{
+	version_major,
+	version_minor,
+	version_patch,
 };
 
 use crate::instance::LibHandler;
 use crate::unwrap_result_or_none;
 
 use std::ffi::CStr;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct HWDevice {
@@ -25,12 +33,6 @@ impl HWDevice {
 		HWDevice {
 			hw: device,
 		}
-	}
-
-	pub fn list(lib: &LibHandler) -> Option<Vec<HWDevice>> {
-		let hw:Vec<PhysicalDevice> = unwrap_result_or_none!(unsafe { lib.instance.enumerate_physical_devices() });
-
-		Some(hw.into_iter().map(|x| HWDevice::new(x)).collect())
 	}
 }
 
@@ -56,6 +58,21 @@ impl QueueFamilyDescription {
 
 	fn from_vec(properties: Vec<QueueFamilyProperties>) -> Vec<QueueFamilyDescription> {
 		properties.iter().map(|x| QueueFamilyDescription::new(x)).collect()
+	}
+}
+
+impl fmt::Display for QueueFamilyDescription {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f,  "Number of queues:       {}\n\
+					Support graphics:       {}\n\
+					Support compute:        {}\n\
+					Support transfer:       {}\n\
+					Support sparce binding: {}\n", 
+					self.count,
+					if self.support_graphics { "yes" } else { "no" },
+					if self.support_compute { "yes" } else { "no" },
+					if self.support_transfer { "yes" } else { "no" },
+					if self.support_sparce_binding { "yes" } else { "no" })
 	}
 }
 
@@ -97,26 +114,95 @@ impl MemoryDescription {
 	}
 }
 
+impl fmt::Display for MemoryDescription {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f,  "Heap size, bytes:        {}, in kb: {}, in mb: {}\n\
+					Heap index:              {}\n\
+					Memory local:            {}\n\
+					Memory host visible:     {}\n\
+					Memory host coherent:    {}\n\
+					Memory host cached:      {}\n\
+					Memory lazily allocated: {}\n",
+					self.heap_size, self.heap_size / 1024, self.heap_size / (1024*1024),
+					self.heap_index,
+					if self.local { "yes" } else { "no" },
+					if self.host_visible { "yes" } else { "no" },
+					if self.host_coherent { "yes" } else { "no" },
+					if self.host_cached { "yes" } else { "no" },
+					if self.lazily_allocated { "yes" } else { "no" })
+	}
+}
+
+#[derive(Debug)]
+pub enum HWType {
+	Unknown,
+	Integrated,
+	Discrete,
+	Virtualized,
+	CPU,
+}
+
+impl HWType {
+	fn new(t: PhysicalDeviceType) -> HWType {
+		match t {
+			PhysicalDeviceType::INTEGRATED_GPU => HWType::Integrated,
+			PhysicalDeviceType::DISCRETE_GPU   => HWType::Discrete,
+			PhysicalDeviceType::VIRTUAL_GPU    => HWType::Virtualized,
+			PhysicalDeviceType::CPU            => HWType::CPU,
+			_                                  => HWType::Unknown,
+		}
+	}
+}
+
+impl fmt::Display for HWType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "{}",
+				match self {
+					HWType::Unknown     => "Unknown",
+					HWType::Integrated  => "Integrated GPU",
+					HWType::Discrete    => "Discrete GPU",
+					HWType::Virtualized => "Virtual GPU",
+					HWType::CPU         => "CPU",
+				} )
+    }
+}
+
 #[derive(Debug)]
 pub struct HWDescription {
 	pub device: HWDevice,
+	pub hw_type: HWType,
+	pub hw_id: u32,
+	pub version_major: u32,
+	pub version_minor: u32,
+	pub version_patch: u32,
 	pub vendor_id: u32,
 	pub name: String,
 	pub queues: Vec<QueueFamilyDescription>,
 	pub memory_info: Vec<MemoryDescription>
 }
 
+// khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPhysicalDeviceProperties.html
 impl HWDescription {
 	fn new(lib: &LibHandler, hw: PhysicalDevice) -> HWDescription {
 		let properties:PhysicalDeviceProperties = unsafe { lib.instance.get_physical_device_properties(hw) };
-		let queue_properties:Vec<QueueFamilyProperties> = unsafe { lib.instance.get_physical_device_queue_family_properties(hw) };
+		let queue_properties:Vec<QueueFamilyProperties> = unsafe { 
+			lib.instance.get_physical_device_queue_family_properties(hw) 
+		};
+		let memory_desc:Vec<MemoryDescription> = unsafe { 
+			MemoryDescription::from_properties(&lib.instance.get_physical_device_memory_properties(hw)) 
+		};
 
 		HWDescription {
 			device: HWDevice::new(hw),
+			hw_type: HWType::new(properties.device_type),
+			hw_id: properties.device_id,
+			version_major: version_major(properties.api_version),
+			version_minor: version_minor(properties.api_version),
+			version_patch: version_patch(properties.api_version),
 			vendor_id: properties.vendor_id,
 			name: unsafe { CStr::from_ptr(&properties.device_name[0]).to_str().unwrap().to_owned() },
 			queues: QueueFamilyDescription::from_vec(queue_properties),
-			memory_info: unsafe { MemoryDescription::from_properties(&lib.instance.get_physical_device_memory_properties(hw)) },
+			memory_info: memory_desc,
 		}
 	}
 
@@ -125,4 +211,47 @@ impl HWDescription {
 
 		Some(hw.into_iter().map(|x| HWDescription::new(lib, x)).collect())
 	}
+}
+
+// Call unwrap to supress warnings
+impl fmt::Display for HWDescription {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f,  "Device:      {}\n\
+					Device type: {}\n\
+					Device id:   {}\n\
+					Vendor id:   {}\n\n\
+					Supported API information:\n\
+					Version major: {}\n\
+					Version minor: {}\n\
+					Version patch: {}\n\
+					Queue family information:\n\
+					*****************************\n", 
+					self.name,
+					self.hw_type,
+					self.hw_id,
+					self.vendor_id,
+					self.version_major,
+					self.version_minor,
+					self.version_patch).unwrap();
+
+		for (i, queue) in self.queues.iter().enumerate() {
+			write!(f,  "Queue family number {}\n\
+						-----------------------------\n\
+						{}\
+						-----------------------------\n", i, queue).unwrap();
+		}
+
+		write!(f, "Memory information\n*****************************\n").unwrap();
+
+ 		for (i, info) in self.memory_info.iter().enumerate() {
+			write!(f,  "Memory type {}\n\
+						-----------------------------\n\
+						{}\
+						-----------------------------\n", i, info).unwrap();
+		}
+
+		write!(f, "#############################\n").unwrap();
+
+		Ok(())
+    }
 }
