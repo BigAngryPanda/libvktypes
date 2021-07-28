@@ -24,19 +24,6 @@ use std::ffi::CStr;
 use std::fmt;
 
 #[derive(Debug)]
-pub struct HWDevice {
-	pub hw: PhysicalDevice,
-}
-
-impl HWDevice {
-	fn new(device: PhysicalDevice) -> HWDevice {
-		HWDevice {
-			hw: device,
-		}
-	}
-}
-
-#[derive(Debug)]
 pub struct QueueFamilyDescription {
 	pub count: u32,
 	pub support_graphics: bool,
@@ -76,6 +63,7 @@ impl fmt::Display for QueueFamilyDescription {
 	}
 }
 
+// https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPhysicalDeviceMemoryProperties.html
 #[derive(Debug)]
 pub struct MemoryDescription {
 	pub heap_size: u64,
@@ -133,6 +121,7 @@ impl fmt::Display for MemoryDescription {
 	}
 }
 
+// https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPhysicalDeviceType.html
 #[derive(Debug)]
 pub enum HWType {
 	Unknown,
@@ -169,7 +158,7 @@ impl fmt::Display for HWType {
 
 #[derive(Debug)]
 pub struct HWDescription {
-	pub device: HWDevice,
+	pub hw_device: PhysicalDevice,
 	pub hw_type: HWType,
 	pub hw_id: u32,
 	pub version_major: u32,
@@ -193,7 +182,7 @@ impl HWDescription {
 		};
 
 		HWDescription {
-			device: HWDevice::new(hw),
+			hw_device: hw,
 			hw_type: HWType::new(properties.device_type),
 			hw_id: properties.device_id,
 			version_major: version_major(properties.api_version),
