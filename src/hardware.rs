@@ -20,6 +20,8 @@ use ash::vk::{
 use crate::instance::LibHandler;
 use crate::unwrap_result_or_none;
 
+use std::iter::Enumerate;
+use std::slice::Iter;
 use std::ffi::CStr;
 use std::fmt;
 
@@ -167,7 +169,7 @@ pub struct HWDescription {
 	pub vendor_id: u32,
 	pub name: String,
 	pub queues: Vec<QueueFamilyDescription>,
-	pub memory_info: Vec<MemoryDescription>
+	pub memory_types: Vec<MemoryDescription>
 }
 
 // khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPhysicalDeviceProperties.html
@@ -191,7 +193,7 @@ impl HWDescription {
 			vendor_id: properties.vendor_id,
 			name: unsafe { CStr::from_ptr(&properties.device_name[0]).to_str().unwrap().to_owned() },
 			queues: QueueFamilyDescription::from_vec(queue_properties),
-			memory_info: memory_desc,
+			memory_types: memory_desc,
 		}
 	}
 
@@ -199,6 +201,46 @@ impl HWDescription {
 		let hw:Vec<PhysicalDevice> = unwrap_result_or_none!(unsafe { lib.instance.enumerate_physical_devices() });
 
 		Some(hw.into_iter().map(|x| HWDescription::new(lib, x)).collect())
+	}
+
+	/*
+		helper
+		s - selector, function which shoud return Enumerate iterator over queues or memory_types (see get_* methods)
+		p -predicate, should take QueueFamilyDescription or MemoryDescription and return bool
+	*/
+	pub fn find<'a, I, S, P, U>(descs: I, s: S, p: P) -> Option<(usize, usize)>
+	where
+		I: Iterator<Item = &'a HWDescription>,
+		S: Fn(&HWDescription) -> Enumerate<std::slice::Iter<'_, U>>,
+		P: Fn(&U) -> bool,
+	{
+		let wrapper = |(i, desc): (usize, &U)| -> Option<usize> {
+			if p(desc) {
+            	Some(i)
+	        }
+	        else {
+	            None
+	        }
+		};
+
+		let f = |(i, desc): (usize, &HWDescription)| -> Option<(usize, usize)> {
+			match s(desc).find_map(&wrapper) {
+				Some(val) => Some((i, val)),
+				None => None,
+			}
+		};
+
+		descs.enumerate().find_map(f)
+	}
+
+	// primarily for find
+	pub fn get_queues(&self) -> Enumerate<Iter<'_, QueueFamilyDescription>> {
+		self.queues.iter().enumerate()
+	}
+
+	// primarily for find
+	pub fn get_memory(&self) -> Enumerate<Iter<'_, MemoryDescription>> {
+		self.memory_types.iter().enumerate()
 	}
 }
 
@@ -232,7 +274,7 @@ impl fmt::Display for HWDescription {
 
 		write!(f, "Memory information\n*****************************\n").unwrap();
 
- 		for (i, info) in self.memory_info.iter().enumerate() {
+ 		for (i, info) in self.memory_types.iter().enumerate() {
 			write!(f,  "Memory type {}\n\
 						-----------------------------\n\
 						{}\

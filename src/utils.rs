@@ -39,3 +39,23 @@ pub mod macros {
         }
     }   
 }
+
+pub mod filters {
+    use crate::hardware::{
+        HWDescription,
+        QueueFamilyDescription,
+    };
+
+    use std::iter::Enumerate;
+
+    fn is_compute_family(desc: &QueueFamilyDescription) -> bool {
+        desc.support_compute && desc.support_transfer
+    }
+
+    pub fn find_compute_hw_device<'a, I>(descs: I) -> Option<(usize, usize)>
+    where
+        I: Iterator<Item = &'a HWDescription>,
+    {
+        HWDescription::find(descs, HWDescription::get_queues, is_compute_family)
+    }
+}
