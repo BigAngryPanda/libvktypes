@@ -119,7 +119,7 @@ impl LibHandler {
 		LibHandler::new(1, 0, 0, false)
 	}
 
-	/// the callback function used in Debug Utils.
+	// The callback function used in Debug Utils.
 	unsafe extern "system" fn vulkan_debug_utils_callback(
 	    message_severity: DebugUtilsMessageSeverityFlagsEXT,
 	    message_type: DebugUtilsMessageTypeFlagsEXT,

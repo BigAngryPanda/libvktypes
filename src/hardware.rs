@@ -20,8 +20,6 @@ use ash::vk::{
 use crate::instance::LibHandler;
 use crate::unwrap_result_or_none;
 
-use std::iter::Enumerate;
-use std::slice::Iter;
 use std::ffi::CStr;
 use std::fmt;
 
@@ -124,7 +122,7 @@ impl fmt::Display for MemoryDescription {
 }
 
 // https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPhysicalDeviceType.html
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum HWType {
 	Unknown,
 	Integrated,
@@ -201,46 +199,6 @@ impl HWDescription {
 		let hw:Vec<PhysicalDevice> = unwrap_result_or_none!(unsafe { lib.instance.enumerate_physical_devices() });
 
 		Some(hw.into_iter().map(|x| HWDescription::new(lib, x)).collect())
-	}
-
-	/*
-		helper
-		s - selector, function which shoud return Enumerate iterator over queues or memory_types (see get_* methods)
-		p -predicate, should take QueueFamilyDescription or MemoryDescription and return bool
-	*/
-	pub fn find<'a, I, S, P, U>(descs: I, s: S, p: P) -> Option<(usize, usize)>
-	where
-		I: Iterator<Item = &'a HWDescription>,
-		S: Fn(&HWDescription) -> Enumerate<std::slice::Iter<'_, U>>,
-		P: Fn(&U) -> bool,
-	{
-		let wrapper = |(i, desc): (usize, &U)| -> Option<usize> {
-			if p(desc) {
-            	Some(i)
-	        }
-	        else {
-	            None
-	        }
-		};
-
-		let f = |(i, desc): (usize, &HWDescription)| -> Option<(usize, usize)> {
-			match s(desc).find_map(&wrapper) {
-				Some(val) => Some((i, val)),
-				None => None,
-			}
-		};
-
-		descs.enumerate().find_map(f)
-	}
-
-	// primarily for find
-	pub fn get_queues(&self) -> Enumerate<Iter<'_, QueueFamilyDescription>> {
-		self.queues.iter().enumerate()
-	}
-
-	// primarily for find
-	pub fn get_memory(&self) -> Enumerate<Iter<'_, MemoryDescription>> {
-		self.memory_types.iter().enumerate()
 	}
 }
 

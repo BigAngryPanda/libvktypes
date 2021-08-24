@@ -2,6 +2,12 @@
 mod tests {
     use libvktypes::instance::*;
     use libvktypes::hardware::*;
+    use libvktypes::utils::filters::*;
+    use libvktypes::logical_device::*;
+
+    fn hw_selector(hw_desc: &HWDescription) -> bool {
+        hw_desc.hw_type != HWType::CPU && hw_desc.hw_type != HWType::Unknown
+    }
 
     #[test]
     fn default_instance_creation() {
@@ -26,5 +32,21 @@ mod tests {
             print!("\nDevice number {}\n", i);
             print!("{}", hw);
         }
+    }
+
+    #[test]
+    fn logical_device_creation() {
+        let instance = LibHandler::with_default().expect("Failed to create instance");
+        let hw_list = HWDescription::list(&instance).expect("No suitable devices");
+
+        let hw_info = select_hw(hw_list.iter(), hw_selector, is_compute_family, any_memory);
+
+        assert_eq!(hw_info.is_some(), true);
+
+        let hw_dev_ref = &hw_list[hw_info.unwrap().0];
+
+        let l_dev = LogicalDevice::new(&instance, hw_dev_ref, hw_info.unwrap().1);
+
+        assert_eq!(l_dev.is_some(), true);
     }
 }
