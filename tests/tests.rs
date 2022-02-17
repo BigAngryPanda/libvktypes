@@ -22,7 +22,7 @@ mod tests {
     #[test]
     fn hardware_inspection() {
         let instance = LibHandler::with_default().expect("Failed to create instance");
-        let hw_list = HWDescription::list(&instance);
+        let hw_list  = HWDescription::list(&instance);
 
         assert_eq!(hw_list.is_some(), true);
 
@@ -37,15 +37,15 @@ mod tests {
     #[test]
     fn logical_device_creation() {
         let instance = LibHandler::with_default().expect("Failed to create instance");
-        let hw_list = HWDescription::list(&instance).expect("No suitable devices");
+        let hw_list  = HWDescription::list(&instance).expect("No suitable devices");
 
         let hw_info = select_hw(hw_list.iter(), hw_selector, is_compute_family, any_memory);
 
         assert_eq!(hw_info.is_some(), true);
 
-        let hw_dev_ref = &hw_list[hw_info.unwrap().0];
+        let hw_dev_ref = &hw_list[hw_info.unwrap().device];
 
-        let l_dev = LogicalDevice::new(&instance, hw_dev_ref, hw_info.unwrap().1);
+        let l_dev = LogicalDevice::new(&instance, hw_dev_ref, hw_info.unwrap().queue);
 
         assert_eq!(l_dev.is_some(), true);
     }

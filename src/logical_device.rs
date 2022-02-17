@@ -1,5 +1,4 @@
-use ash::version::InstanceV1_0;
-use ash::version::DeviceV1_0;
+//! Logical device type
 
 use ash::Device;
 
@@ -14,17 +13,25 @@ use ash::vk::{
 
 use crate::instance::LibHandler;
 use crate::hardware::HWDescription;
-use crate::unwrap_result_or_none;
+use crate::on_error;
 
 use std::ptr;
+use std::marker::PhantomData;
 
-pub struct LogicalDevice {
-	device: Device,
-	queue: Queue,
+/// Handler to the single hardware device (or implementation)
+pub struct LogicalDevice<'a> {
+	#[doc(hidden)]
+	pub device: Device,
+	#[doc(hidden)]
+	pub queue: Queue,
+	_marker: PhantomData<&'a LibHandler>,
 }
 
-impl LogicalDevice {
-	pub fn new(lib: &LibHandler, desc: &HWDescription, q_family_index: usize) -> Option<LogicalDevice> {
+impl<'a> LogicalDevice<'a> {
+	/// As Vulkan API specification demands instance must outlive device (and any other object which created via instance)
+	///
+	/// Hence lifetime requirements
+	pub fn new(lib: &'a LibHandler, desc: &HWDescription, q_family_index: usize) -> Option<LogicalDevice<'a>> {
 		let priorities:[f32; 1] = [1.0_f32];
 
 		let dev_queue_info = DeviceQueueCreateInfo {
@@ -33,7 +40,7 @@ impl LogicalDevice {
 			flags: DeviceQueueCreateFlags::empty(),
 			queue_family_index: q_family_index as u32,
 			queue_count: 1,
-			p_queue_priorities: &priorities as *const f32,
+			p_queue_priorities: priorities.as_ptr(),
 		};
 
 		let create_info = DeviceCreateInfo {
@@ -49,20 +56,21 @@ impl LogicalDevice {
 			p_enabled_features: ptr::null(),
 		};
 
-		let dev:Device = unwrap_result_or_none!(unsafe { lib.instance.create_device(desc.hw_device, &create_info, None) });
+		let dev:Device = on_error!(unsafe { lib.instance.create_device(desc.hw_device, &create_info, None) }, return None);
 
 		let queue:Queue = unsafe { dev.get_device_queue(q_family_index as u32, 0) };
 
 		let result = LogicalDevice {
 			device: dev,
 			queue: queue,
+			_marker: PhantomData,
 		};
 
 		Some(result)
 	}
 }
 
-impl Drop for LogicalDevice {
+impl<'a> Drop for LogicalDevice<'a> {
 	fn drop(&mut self) {
 		unsafe { self.device.destroy_device(None) };
 	}

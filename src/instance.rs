@@ -1,11 +1,8 @@
+//! Provide entry point to other functions
+
 use ash::{
 	Entry,
 	Instance,
-};
-
-use ash::version::{
-	EntryV1_0,
-	InstanceV1_0,
 };
 
 use ash::vk::{
@@ -22,7 +19,7 @@ use ash::vk::{
 	Bool32,
 };
 
-use ash::vk::make_version;
+use ash::vk::make_api_version;
 
 use ash::vk::FALSE;
 
@@ -35,8 +32,11 @@ use std::ffi::{
 	c_void,
 };
 
-use crate::unwrap_result_or_error;
+use crate::on_error;
 
+/// Entry point for entire library with specified version
+///
+/// Typically it will be your first object to create
 pub struct LibHandler {
 	pub entry: Entry,
 	pub instance: Instance,
@@ -49,11 +49,17 @@ pub enum LibHandlerError {
 	LibraryLoad,
 	InstanceCreating,
 	DebugUtilsCreating,
+	Unknown
 }
 
 impl LibHandler {
+	/// Request version
+	///
+	/// Load library at compile time (runtime is not supported for now)
+	///
+	/// Debug layer print information in stdout
 	pub fn new(major: u32, minor: u32, patch: u32, enable_debug: bool) -> Result<LibHandler, LibHandlerError> {
-		let entry:Entry = unwrap_result_or_error!(unsafe { Entry::new() }, LibHandlerError::LibraryLoad);
+		let entry:Entry = Entry::linked();
 
 		let app_info = ApplicationInfo {
 			s_type: StructureType::APPLICATION_INFO,
@@ -62,7 +68,7 @@ impl LibHandler {
 			application_version: 0,
 			p_engine_name: ptr::null(),
 			engine_version: 0,
-			api_version: make_version(major, minor, patch),
+			api_version: make_api_version(0, major, minor, patch),
 		};
 
 		let layer_names = [CString::new("VK_LAYER_KHRONOS_validation").unwrap()];
@@ -96,12 +102,13 @@ impl LibHandler {
 	        enabled_extension_count: if enable_debug { extension_names_raw.len() as u32 } else { 0 },
 		};
 
-		let instance:Instance = unwrap_result_or_error!(unsafe { entry.create_instance(&create_info, None) }, LibHandlerError::InstanceCreating);
+		let instance:Instance = on_error!(unsafe { entry.create_instance(&create_info, None) }, 
+										  return Err(LibHandlerError::InstanceCreating));
 
 		let dbg_loader = DebugUtils::new(&entry, &instance);
 
 		let dbg_messenger:DebugUtilsMessengerEXT = if enable_debug {
-			unwrap_result_or_error!(unsafe { dbg_loader.create_debug_utils_messenger(&dbg_msg_info, None) }, LibHandlerError::DebugUtilsCreating)
+			on_error!(unsafe { dbg_loader.create_debug_utils_messenger(&dbg_msg_info, None) }, return Err(LibHandlerError::DebugUtilsCreating))
 		}
 		else {
 			DebugUtilsMessengerEXT::null()
@@ -115,6 +122,7 @@ impl LibHandler {
 		})
 	}
 
+	/// Provide Vulkan API entry with 1.0.0 version
 	pub fn with_default() -> Result<LibHandler, LibHandlerError> {
 		LibHandler::new(1, 0, 0, false)
 	}

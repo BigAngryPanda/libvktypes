@@ -1,51 +1,69 @@
+//! Various functions, macros, types etc to make your life easier
+
 pub mod macros {
-    /*
-        example
-        let entry:Entry = unwrap_result_or_error!(unsafe { Entry::new() }, VkEnvironmentError::LibraryLoad);
-
-        let entry:Entry = match unsafe { Entry::new() } {
-                Ok(val) => val,
-                Err(..) => return Err(VkEnvironmentError::LibraryLoad),
-            }
-        };
-    */
     #[macro_export]
-    macro_rules! unwrap_result_or_error {
-        ( $e:expr, $err_val:expr ) => {
-            match $e {
-                Ok(x) => x,
-                Err(_) => return Err($err_val),
-            }
-        }
-    }
-
-    #[macro_export]
-    macro_rules! unwrap_result_or_none {
-        ( $e:expr ) => {
-            match $e {
-                Ok(x) => x,
-                Err(_) => return None,
-            }
-        }
-    }
-
-    #[macro_export]
-    macro_rules! unwrap_option_or_error {
-        ( $e:expr, $err_val:expr ) => {
+    macro_rules! on_option {
+        ( $e:expr, $err_exp:expr ) => {
             match $e {
                 Some(x) => x,
-                None => return Err($err_val),
+                None => { $err_exp },
             }
         }
-    }   
+    }
+
+    /// Unwrap value ```Ok(x)``` or performs err_exp on error
+    ///
+    /// Variable ```err``` represents error case
+    ///
+    /// Example
+    /// ```not_run
+    /// let x = on_error!(f(x), return Err(err));
+    ///
+    /// let x = match f(x) {
+    ///    Ok(x) => x,
+    ///    Err(err) => { return Err(err) },
+    /// };
+    /// ```
+    #[macro_export]
+    macro_rules! on_error {
+        ( $e:expr, $err_exp:expr ) => {
+            match $e {
+                Ok(x) => x,
+                #[allow(unused_variables)]
+                Err(err) => { $err_exp },
+            }
+        }
+    } 
 }
 
+/// 
 pub mod filters {
     use crate::hardware::{
         HWDescription,
         QueueFamilyDescription,
         MemoryDescription,
     };
+
+    /// Aggregate information about selected hardware
+    #[derive(Debug, Clone, Copy)]
+    pub struct HWIndex {
+        /// Device index from collection of HW devices
+        pub device: usize,
+        /// Queue family index
+        pub queue:  usize,
+        /// Memory description index
+        pub memory: usize
+    }
+
+    impl HWIndex {
+        fn new(dev: usize, queue: usize, mem: usize) -> HWIndex {
+            HWIndex {
+                device: dev,
+                queue: queue,
+                memory: mem
+            }
+        }
+    }
 
     pub fn is_compute_family(desc: &QueueFamilyDescription) -> bool {
         desc.support_compute && desc.support_transfer
@@ -61,10 +79,10 @@ pub mod filters {
 
     pub fn any_memory(_: &MemoryDescription) -> bool {
         true
-    }   
+    }
 
-    // Return physical_device index, queue index, memory index
-    pub fn select_hw<'a, I, P, U, S>(descs: I, hw_p: P, q_p: U, m_p: S) -> Option<(usize, usize, usize)> 
+    /// Return first suitable index defined by predicates
+    pub fn select_hw<'a, I, P, U, S>(descs: I, hw_p: P, q_p: U, m_p: S) -> Option<HWIndex> 
     where
         I: Iterator<Item = &'a HWDescription>,
         P: Fn(&HWDescription) -> bool,
@@ -89,18 +107,18 @@ pub mod filters {
             }
         };
 
-        let hw_wrapper = |(i, hw_desc): (usize, &HWDescription)| -> Option<(usize, usize, usize)> {
+        let hw_search = |(i, hw_desc): (usize, &HWDescription)| -> Option<HWIndex> {
             let q_res = hw_desc.queues.iter().enumerate().find_map(q_wrapper);
-            let m_res = hw_desc.memory_types.iter().enumerate().find_map(m_wrapper);
+            let m_res = hw_desc.memory_info.iter().enumerate().find_map(m_wrapper);
 
             if hw_p(hw_desc) && q_res.is_some() && m_res.is_some() {
-                Some((i, q_res.unwrap(), m_res.unwrap()))
+                Some(HWIndex::new(i, q_res.unwrap(), m_res.unwrap()))
             }
             else {
                 None
             }
         };
 
-        descs.enumerate().find_map(hw_wrapper)
+        descs.enumerate().find_map(hw_search)
     }
 }
