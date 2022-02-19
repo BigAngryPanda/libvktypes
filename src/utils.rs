@@ -33,10 +33,10 @@ pub mod macros {
                 Err(err) => { $err_exp },
             }
         }
-    } 
+    }
 }
 
-/// 
+///
 pub mod filters {
     use crate::hardware::{
         HWDescription,
@@ -66,7 +66,7 @@ pub mod filters {
     }
 
     pub fn is_compute_family(desc: &QueueFamilyDescription) -> bool {
-        desc.support_compute && desc.support_transfer
+        desc.is_compute() && desc.is_transfer()
     }
 
     pub fn any_hw(_: &HWDescription) -> bool {

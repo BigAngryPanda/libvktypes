@@ -55,7 +55,7 @@ impl<'a> MemoryPool<'a> {
 		};
 
 		let buffer:Buffer = on_error!(
-			unsafe { self.ldevice.device.create_buffer(&buffer_info, None) }, 
+			unsafe { self.ldevice.device.create_buffer(&buffer_info, None) },
 			return Err(MemoryAllocationError::Buffer)
 		);
 
@@ -95,12 +95,7 @@ impl<'a> Drop for MemoryPool<'a> {
 	}
 }
 
-#[derive(Debug)]
-pub enum MemoryAllocationError {
-	DeviceMemory,
-	UnsupportedMemoryType,
-	Buffer,
-}
+
 
 #[derive(Debug)]
 pub struct Memory {
@@ -109,7 +104,18 @@ pub struct Memory {
 	size: u64,
 }
 
+#[derive(Debug)]
+pub enum MemoryAllocationError {
+	DeviceMemory,
+	UnsupportedMemoryType,
+	Buffer,
+}
+
 impl Memory {
+	pub fn new() -> Result<Memory, MemoryAllocationError> {
+		unimplemented!()
+	}
+
 	pub fn access(&self) {
 		unimplemented!()
 	}

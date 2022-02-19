@@ -1,7 +1,8 @@
 //! # Provides layer on Vulkan API hardware representing types
 
+use ash::vk;
+
 use ash::vk::{
-	PhysicalDevice,
 	PhysicalDeviceProperties,
 	PhysicalDeviceMemoryProperties,
 	MemoryType,
@@ -23,36 +24,50 @@ use crate::on_error;
 use std::ffi::CStr;
 use std::fmt;
 
-/// Represent information about single queue family 
+/// Represent information about single queue family
 ///
 #[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VkQueueFlagBits>"]
 #[derive(Debug)]
 pub struct QueueFamilyDescription {
-	/// How many queues in family
-	pub count: u32,
-	/// Is VK_QUEUE_GRAPHICS_BIT set for queue family
-	pub support_graphics: bool,
-	/// Is VK_QUEUE_COMPUTE_BIT set for queue family
-	pub support_compute: bool,
-	/// Is VK_QUEUE_TRANSFER_BIT set for queue family
-	pub support_transfer: bool,
-	/// Is VK_QUEUE_SPARSE_BINDING_BIT set for queue family
-	pub support_sparce_binding: bool,
+	count: u32,
+	property: vk::QueueFlags,
 }
 
 impl QueueFamilyDescription {
 	fn new(property: &QueueFamilyProperties) -> QueueFamilyDescription {
 		QueueFamilyDescription {
 			count: property.queue_count,
-			support_graphics: property.queue_flags.contains(QueueFlags::GRAPHICS),
-			support_compute: property.queue_flags.contains(QueueFlags::COMPUTE),
-			support_transfer: property.queue_flags.contains(QueueFlags::TRANSFER),
-			support_sparce_binding: property.queue_flags.contains(QueueFlags::SPARSE_BINDING),
+			property: property.queue_flags,
 		}
 	}
 
 	fn from_vec(properties: Vec<QueueFamilyProperties>) -> Vec<QueueFamilyDescription> {
 		properties.iter().map(|x| QueueFamilyDescription::new(x)).collect()
+	}
+
+	/// How many queues in family
+	pub fn count(&self) -> u32 {
+		self.count
+	}
+
+	/// Is VK_QUEUE_GRAPHICS_BIT set for queue family
+	pub fn is_graphics(&self) -> bool {
+		self.property.contains(QueueFlags::GRAPHICS)
+	}
+
+	/// Is VK_QUEUE_COMPUTE_BIT set for queue family
+	pub fn is_compute(&self) -> bool {
+		self.property.contains(QueueFlags::COMPUTE)
+	}
+
+	/// Is VK_QUEUE_TRANSFER_BIT set for queue family
+	pub fn is_transfer(&self) -> bool {
+		self.property.contains(QueueFlags::TRANSFER)
+	}
+
+	/// Is VK_QUEUE_SPARSE_BINDING_BIT set for queue family
+	pub fn is_sparce_binding(&self) -> bool {
+		self.property.contains(QueueFlags::SPARSE_BINDING)
 	}
 }
 
@@ -62,46 +77,35 @@ impl fmt::Display for QueueFamilyDescription {
 					Support graphics:       {}\n\
 					Support compute:        {}\n\
 					Support transfer:       {}\n\
-					Support sparce binding: {}\n", 
+					Support sparce binding: {}\n",
 					self.count,
-					if self.support_graphics { "yes" } else { "no" },
-					if self.support_compute { "yes" } else { "no" },
-					if self.support_transfer { "yes" } else { "no" },
-					if self.support_sparce_binding { "yes" } else { "no" })
+					if self.is_graphics() { "yes" } else { "no" },
+					if self.is_compute() { "yes" } else { "no" },
+					if self.is_transfer() { "yes" } else { "no" },
+					if self.is_sparce_binding() { "yes" } else { "no" })
 	}
 }
 
 /// Represents information about each heap
 ///
 #[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html>"]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MemoryDescription {
 	/// Heap size in bytes
 	pub heap_size: u64,
-	/// Describes which memory type this memory heap has
-	pub memory_type: u32,
-	/// Specifies that the heap corresponds to device-local memory (is VK_MEMORY_HEAP_DEVICE_LOCAL_BIT set)
-	pub local: bool,
-	/// Is VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT set for the memory
-	pub host_visible: bool,
-	/// Is VK_MEMORY_PROPERTY_HOST_COHERENT_BIT set for the memory
-	pub host_coherent: bool,
-	/// Is VK_MEMORY_PROPERTY_HOST_CACHED_BIT set for the memory
-	pub host_cached: bool,
-	/// Is VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT set for the memory
-	pub lazily_allocated: bool,
+	/// Corresponding heap index
+	pub heap_index: u32,
+	property : vk::MemoryPropertyFlags,
 }
 
+// leave only bitmask
+// write methods
 impl MemoryDescription {
-	fn new(mem_type: &MemoryType, heap_size: u64) -> MemoryDescription {
+	fn new(mem_type: &MemoryType, size: u64) -> MemoryDescription {
 		MemoryDescription {
-			heap_size: heap_size,
-			memory_type: mem_type.heap_index,
-			local: mem_type.property_flags.contains(MemoryPropertyFlags::DEVICE_LOCAL),
-			host_visible: mem_type.property_flags.contains(MemoryPropertyFlags::HOST_VISIBLE),
-			host_coherent: mem_type.property_flags.contains(MemoryPropertyFlags::HOST_COHERENT),
-			host_cached: mem_type.property_flags.contains(MemoryPropertyFlags::HOST_CACHED),
-			lazily_allocated: mem_type.property_flags.contains(MemoryPropertyFlags::LAZILY_ALLOCATED),
+			heap_size: size,
+			heap_index: mem_type.heap_index,
+			property : mem_type.property_flags,
 		}
 	}
 
@@ -117,28 +121,54 @@ impl MemoryDescription {
 
 		result
 	}
+
+	/// Is VK_MEMORY_HEAP_DEVICE_LOCAL_BIT set
+	pub fn is_local(&self) -> bool {
+		self.property.contains(MemoryPropertyFlags::DEVICE_LOCAL)
+	}
+
+	/// Is VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT set for the memory
+	pub fn is_host_visible(&self) -> bool {
+		self.property.contains(MemoryPropertyFlags::HOST_VISIBLE)
+	}
+
+	/// Is VK_MEMORY_PROPERTY_HOST_COHERENT_BIT set for the memory
+	pub fn is_host_coherent(&self) -> bool {
+		self.property.contains(MemoryPropertyFlags::HOST_COHERENT)
+	}
+
+	/// Is VK_MEMORY_PROPERTY_HOST_CACHED_BIT set for the memory
+	pub fn is_host_cached(&self) -> bool {
+		self.property.contains(MemoryPropertyFlags::HOST_CACHED)
+	}
+
+	/// Is VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT set for the memory
+	pub fn is_lazily_allocated(&self) -> bool {
+		self.property.contains(MemoryPropertyFlags::LAZILY_ALLOCATED)
+	}
 }
 
 impl fmt::Display for MemoryDescription {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f,  "Heap size, bytes:        {}, in kb: {}, in mb: {}\n\
-					Memory type index:       {}\n\
-					Memory local:            {}\n\
-					Memory host visible:     {}\n\
-					Memory host coherent:    {}\n\
-					Memory host cached:      {}\n\
-					Memory lazily allocated: {}\n",
+		write!(f,  "Heap size, bytes: {}, in kb: {}, in mb: {}\n\
+					Heap index:       {}\n\
+					Memory properties:  \n\
+					Local:            {}\n\
+					Host visible:     {}\n\
+					Host coherent:    {}\n\
+					Host cached:      {}\n\
+					Lazily allocated: {}\n",
 					self.heap_size, self.heap_size / 1024, self.heap_size / (1024*1024),
-					self.memory_type,
-					if self.local { "yes" } else { "no" },
-					if self.host_visible { "yes" } else { "no" },
-					if self.host_coherent { "yes" } else { "no" },
-					if self.host_cached { "yes" } else { "no" },
-					if self.lazily_allocated { "yes" } else { "no" })
+					self.heap_index,
+					if self.is_local() { "yes" } else { "no" },
+					if self.is_host_visible() { "yes" } else { "no" },
+					if self.is_host_coherent() { "yes" } else { "no" },
+					if self.is_host_cached() { "yes" } else { "no" },
+					if self.is_lazily_allocated() { "yes" } else { "no" })
 	}
 }
 
-/// Represents GPU type   
+/// Represents GPU type
 ///
 #[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceType.html>"]
 #[derive(Debug, PartialEq, Eq)]
@@ -182,7 +212,7 @@ impl fmt::Display for HWType {
 #[derive(Debug)]
 pub struct HWDescription {
 	/// Raw VkPhysicalDevice object
-	pub hw_device: PhysicalDevice,
+	pub hw_device: vk::PhysicalDevice,
 	/// Hardware type from VkPhysicalDeviceType
 	pub hw_type: HWType,
 	/// Hardware ID from VkPhysicalDeviceProperties
@@ -204,7 +234,7 @@ pub struct HWDescription {
 }
 
 impl HWDescription {
-	fn new(lib: &LibHandler, hw: PhysicalDevice) -> HWDescription {
+	fn new(lib: &LibHandler, hw: vk::PhysicalDevice) -> HWDescription {
 		let properties:PhysicalDeviceProperties = unsafe { lib.instance.get_physical_device_properties(hw) };
 
 		let queue_properties:Vec<QueueFamilyProperties> = unsafe { 
@@ -235,7 +265,7 @@ impl HWDescription {
 	///
 	/// Note: empty collection does not necessary mean failure
 	pub fn list(lib: &LibHandler) -> Option<Vec<HWDescription>> {
-		let hw:Vec<PhysicalDevice> = on_error!(unsafe { lib.instance.enumerate_physical_devices() }, return None);
+		let hw:Vec<vk::PhysicalDevice> = on_error!(unsafe { lib.instance.enumerate_physical_devices() }, return None);
 
 		Some(hw.into_iter().map(|dev| HWDescription::new(lib, dev)).collect())
 	}

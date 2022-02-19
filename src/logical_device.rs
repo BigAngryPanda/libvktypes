@@ -12,7 +12,10 @@ use ash::vk::{
 };
 
 use crate::instance::LibHandler;
-use crate::hardware::HWDescription;
+use crate::hardware::{
+	HWDescription,
+	MemoryDescription,
+};
 use crate::on_error;
 
 use std::ptr;
@@ -24,6 +27,7 @@ pub struct LogicalDevice<'a> {
 	pub device: Device,
 	#[doc(hidden)]
 	pub queue: Queue,
+	mem_info: Vec<MemoryDescription>,
 	_marker: PhantomData<&'a LibHandler>,
 }
 
@@ -58,11 +62,12 @@ impl<'a> LogicalDevice<'a> {
 
 		let dev:Device = on_error!(unsafe { lib.instance.create_device(desc.hw_device, &create_info, None) }, return None);
 
-		let queue:Queue = unsafe { dev.get_device_queue(q_family_index as u32, 0) };
+		let dev_queue:Queue = unsafe { dev.get_device_queue(q_family_index as u32, 0) };
 
 		let result = LogicalDevice {
 			device: dev,
-			queue: queue,
+			queue: dev_queue,
+			mem_info: desc.memory_info.clone(),
 			_marker: PhantomData,
 		};
 
