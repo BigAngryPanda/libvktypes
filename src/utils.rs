@@ -11,7 +11,7 @@ pub mod macros {
         }
     }
 
-    /// Unwrap value ```Ok(x)``` or performs err_exp on error
+    /// Unwrap value. Return ```Ok(x)``` or performs action on error
     ///
     /// Variable ```err``` represents error case
     ///
@@ -82,7 +82,7 @@ pub mod filters {
     }
 
     /// Return first suitable index defined by predicates
-    pub fn select_hw<'a, I, P, U, S>(descs: I, hw_p: P, q_p: U, m_p: S) -> Option<HWIndex> 
+    pub fn select_hw<'a, I, P, U, S>(descs: I, hw_p: P, q_p: U, m_p: S) -> Option<HWIndex>
     where
         I: Iterator<Item = &'a HWDescription>,
         P: Fn(&HWDescription) -> bool,

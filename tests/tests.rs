@@ -4,6 +4,7 @@ mod tests {
     use libvktypes::hardware::*;
     use libvktypes::utils::filters::*;
     use libvktypes::logical_device::*;
+    use libvktypes::memory::*;
 
     fn hw_selector(hw_desc: &HWDescription) -> bool {
         hw_desc.hw_type != HWType::CPU && hw_desc.hw_type != HWType::Unknown
@@ -11,12 +12,12 @@ mod tests {
 
     #[test]
     fn default_instance_creation() {
-        assert_eq!(LibHandler::with_default().is_ok(), true);
+        assert!(LibHandler::with_default().is_ok());
     }
 
     #[test]
     fn instance_creation() {
-        assert_eq!(LibHandler::new(1, 0, 57, true).is_ok(), true);
+        assert!(LibHandler::new(1, 0, 57, true).is_ok());
     }
 
     #[test]
@@ -24,7 +25,7 @@ mod tests {
         let instance = LibHandler::with_default().expect("Failed to create instance");
         let hw_list  = HWDescription::list(&instance);
 
-        assert_eq!(hw_list.is_some(), true);
+        assert!(hw_list.is_some());
 
         // To enable stdout in tests run cargo test -- --nocapture
         // https://stackoverflow.com/questions/25106554/why-doesnt-println-work-in-rust-unit-tests
@@ -39,14 +40,38 @@ mod tests {
         let instance = LibHandler::with_default().expect("Failed to create instance");
         let hw_list  = HWDescription::list(&instance).expect("No suitable devices");
 
-        let hw_info = select_hw(hw_list.iter(), hw_selector, is_compute_family, any_memory);
+        let hw_info = select_hw(hw_list.iter(), hw_selector, is_compute_family, any_memory)
+                        .expect("Failed to get device information");
 
-        assert_eq!(hw_info.is_some(), true);
+        let hw_dev_ref = &hw_list[hw_info.device];
 
-        let hw_dev_ref = &hw_list[hw_info.unwrap().device];
+        let l_dev = LogicalDevice::new(&instance, hw_dev_ref, hw_info.queue);
 
-        let l_dev = LogicalDevice::new(&instance, hw_dev_ref, hw_info.unwrap().queue);
+        assert!(l_dev.is_some());
+    }
 
-        assert_eq!(l_dev.is_some(), true);
+    #[test]
+    fn memory_allocation() {
+        let instance = LibHandler::with_default().expect("Failed to create instance");
+        let hw_list  = HWDescription::list(&instance).expect("No suitable devices");
+
+        let hw_info = select_hw(hw_list.iter(), hw_selector, is_compute_family, any_memory)
+                        .expect("Failed to get device information");
+
+        let hw_dev_ref = &hw_list[hw_info.device];
+
+        let l_dev = LogicalDevice::new(&instance, hw_dev_ref, hw_info.queue).expect("Failed to create logical device");
+
+        let test_memory = l_dev.allocate_memory(1,
+            MemoryProperty::HOST_VISIBLE,
+            BufferType::STORAGE_BUFFER | BufferType::TRANSFER_SRC | BufferType::TRANSFER_DST);
+
+        assert!(test_memory.is_ok());
+
+        let fail_test_memory = l_dev.allocate_memory(0,
+            MemoryProperty::HOST_VISIBLE,
+            BufferType::STORAGE_BUFFER | BufferType::TRANSFER_SRC | BufferType::TRANSFER_DST);
+
+        assert!(fail_test_memory.is_err());
     }
 }
