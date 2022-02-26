@@ -62,13 +62,13 @@ mod tests {
 
         let l_dev = LogicalDevice::new(&instance, hw_dev_ref, hw_info.queue).expect("Failed to create logical device");
 
-        let test_memory = l_dev.allocate_memory(1,
+        let test_memory = Memory::new(&l_dev, 1,
             MemoryProperty::HOST_VISIBLE,
             BufferType::STORAGE_BUFFER | BufferType::TRANSFER_SRC | BufferType::TRANSFER_DST);
 
         assert!(test_memory.is_ok());
 
-        let fail_test_memory = l_dev.allocate_memory(0,
+        let fail_test_memory = Memory::new(&l_dev, 0,
             MemoryProperty::HOST_VISIBLE,
             BufferType::STORAGE_BUFFER | BufferType::TRANSFER_SRC | BufferType::TRANSFER_DST);
 

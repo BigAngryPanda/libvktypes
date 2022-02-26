@@ -5,7 +5,11 @@ use ash::vk;
 use std::ptr;
 
 use crate::logical_device::LogicalDevice;
-use crate::on_error;
+use crate::hardware::MemoryProperty;
+use crate::{
+	on_error,
+	on_option
+};
 /*
 /// Represent buffer purpose
 #[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkDescriptorType.html>"]
@@ -82,29 +86,192 @@ pub struct Memory<'a> {
 	i_device_memory: vk::DeviceMemory,
 	i_buffer: vk::Buffer,
 	i_size: u64,
+	i_flags: MemoryProperty,
 }
 
 #[derive(Debug)]
-pub enum MemoryAllocationError {
+pub enum MemoryError {
 	DeviceMemory,
 	NoMemoryType,
 	Buffer,
+	MapAccess,
+	Flush,
 }
 
+#[derive(Debug)]
+pub enum AccessError {
+	MemoryMap,
+}
+
+// TODO rewrite memory subsystem
+// idea: memory pool return memory_type object
+// by passing 'MemoryType' object we allocate actual memory (Buffer + MemoryRequirements ?)
+// pros: memorize actual memory type
 impl<'a> Memory<'a> {
 	pub fn new(dev: &'a LogicalDevice<'a>,
-		   dev_memory: vk::DeviceMemory,
-		   buf: vk::Buffer, size: u64) -> Memory {
+			   mem_size: u64,
+			   mem_props: MemoryProperty,
+			   buf_type: BufferType) -> Result<Memory, MemoryError>
+	{
+		let buffer_info = vk::BufferCreateInfo {
+			s_type: vk::StructureType::BUFFER_CREATE_INFO,
+			p_next: ptr::null(),
+			flags: vk::BufferCreateFlags::empty(),
+			size: mem_size,
+			usage: buf_type,
+			sharing_mode: vk::SharingMode::EXCLUSIVE,
+			queue_family_index_count: 1,
+			p_queue_family_indices: &dev.i_queue_index,
+		};
+
+		let buffer:vk::Buffer = on_error!(
+			unsafe { dev.i_device.create_buffer(&buffer_info, None) },
+			return Err(MemoryError::Buffer)
+		);
+
+		let requirements:vk::MemoryRequirements = unsafe { dev.i_device.get_buffer_memory_requirements(buffer) };
+
+		let mem_index:u32 = on_option!(
+			dev.i_mem_info.iter().enumerate().find_map(
+				|(i, d)| if ((requirements.memory_type_bits >> i) & 1) == 1 && d.is_compatible(mem_props) {
+					Some(i as u32)
+				}
+				else {
+					None
+				}
+			),
+			return Err(MemoryError::NoMemoryType)
+		);
+
+		let memory_info = vk::MemoryAllocateInfo {
+			s_type: vk::StructureType::MEMORY_ALLOCATE_INFO,
+			p_next: ptr::null(),
+			allocation_size: requirements.size,
+			memory_type_index: mem_index,
+		};
+
+		let dev_memory:vk::DeviceMemory = on_error!(
+			unsafe { dev.i_device.allocate_memory(&memory_info, None) },
+			return Err(MemoryError::DeviceMemory)
+		);
+
+		// Without coherency we have to manually synchronize memory between host and device
+		if !mem_props.contains(vk::MemoryPropertyFlags::HOST_COHERENT) {
+			let mem_range = vk::MappedMemoryRange {
+				s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
+				p_next: ptr::null(),
+				memory: dev_memory,
+				offset: 0,
+				size: vk::WHOLE_SIZE
+			};
+
+			unsafe {
+				on_error!(
+					dev.i_device.map_memory(dev_memory, 0, mem_size, vk::MemoryMapFlags::empty()),
+					return Err(MemoryError::MapAccess)
+				);
+
+				on_error!(
+					dev.i_device.flush_mapped_memory_ranges(&[mem_range]),
+					return Err(MemoryError::Flush)
+				);
+
+				dev.i_device.unmap_memory(dev_memory);
+			}
+		}
+
+		Ok(
 			Memory {
 				i_ldevice: dev,
 				i_device_memory: dev_memory,
-				i_buffer: buf,
-				i_size: size,
+				i_buffer: buffer,
+				i_size: mem_size,
+				i_flags: mem_props,
 			}
+		)
 	}
 
-	pub fn access(&self) {
-		unimplemented!()
+	/// Performs action on mutable memory
+	///
+	/// If memory is not coherent performs vkFlushMappedMemoryRanges
+	///
+	/// In other words makes host memory changes available to device
+	pub fn write<F>(&self, f: F) -> Result<(), MemoryError>
+		where F: Fn(&mut [u8])
+	{
+		use core::ffi::c_void;
+
+		let data:*mut c_void = on_error!(
+			unsafe {
+				self.i_ldevice.i_device.map_memory(self.i_device_memory, 0, self.i_size, vk::MemoryMapFlags::empty())
+			},
+			return Err(MemoryError::MapAccess)
+		);
+
+		f(unsafe {std::slice::from_raw_parts_mut(data as *mut u8, self.i_size as usize)});
+
+		if !self.i_flags.contains(vk::MemoryPropertyFlags::HOST_COHERENT) {
+			let mem_range = vk::MappedMemoryRange {
+				s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
+				p_next: ptr::null(),
+				memory: self.i_device_memory,
+				offset: 0,
+				size: vk::WHOLE_SIZE
+			};
+
+			on_error!(
+				unsafe {
+					self.i_ldevice.i_device.flush_mapped_memory_ranges(&[mem_range])
+				},
+				return Err(MemoryError::Flush)
+			);
+		}
+
+		unsafe { self.i_ldevice.i_device.unmap_memory(self.i_device_memory) };
+
+		Ok(())
+	}
+
+	/// Return copy of buffer's memory
+	///
+	/// If memory is not coherent performs vkInvalidateMappedMemoryRanges
+	///
+	/// Makes device memory changes available to host (compare with [Memory::write()] method)
+	///
+	/// Note: on failure return same error [MemoryError::Flush]
+	pub fn read(&self) -> Result<&[u8], MemoryError>
+	{
+		use core::ffi::c_void;
+
+		if !self.i_flags.contains(vk::MemoryPropertyFlags::HOST_COHERENT) {
+			let mem_range = vk::MappedMemoryRange {
+				s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
+				p_next: ptr::null(),
+				memory: self.i_device_memory,
+				offset: 0,
+				size: vk::WHOLE_SIZE
+			};
+
+			on_error!(
+				unsafe {
+					self.i_ldevice.i_device.invalidate_mapped_memory_ranges(&[mem_range])
+				},
+				return Err(MemoryError::Flush)
+			);
+		}
+
+		let data:*mut c_void = on_error!(
+			unsafe {
+				self.i_ldevice.i_device.map_memory(self.i_device_memory, 0, self.i_size, vk::MemoryMapFlags::empty())
+			},
+			return Err(MemoryError::MapAccess)
+		);
+
+		let result:&[u8] = unsafe {std::slice::from_raw_parts_mut(data as *mut u8, self.i_size as usize)};
+
+		unsafe { self.i_ldevice.i_device.unmap_memory(self.i_device_memory) };
+
+		Ok(result)
 	}
 }
 
