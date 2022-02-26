@@ -96,6 +96,7 @@ pub enum MemoryError {
 	Buffer,
 	MapAccess,
 	Flush,
+	Bind,
 }
 
 #[derive(Debug)]
@@ -180,6 +181,11 @@ impl<'a> Memory<'a> {
 			}
 		}
 
+		on_error!(
+			unsafe { dev.i_device.bind_buffer_memory(buffer, dev_memory, 0) },
+			return Err(MemoryError::Bind)
+		);
+
 		Ok(
 			Memory {
 				i_ldevice: dev,
@@ -193,7 +199,8 @@ impl<'a> Memory<'a> {
 
 	/// Performs action on mutable memory
 	///
-	/// If memory is not coherent performs vkFlushMappedMemoryRanges
+	/// If memory is not coherent performs
+	/// [vkFlushMappedMemoryRanges](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkFlushMappedMemoryRanges.html)
 	///
 	/// In other words makes host memory changes available to device
 	pub fn write<F>(&self, f: F) -> Result<(), MemoryError>
@@ -234,7 +241,8 @@ impl<'a> Memory<'a> {
 
 	/// Return copy of buffer's memory
 	///
-	/// If memory is not coherent performs vkInvalidateMappedMemoryRanges
+	/// If memory is not coherent performs
+	/// [vkInvalidateMappedMemoryRanges](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkInvalidateMappedMemoryRanges.html)
 	///
 	/// Makes device memory changes available to host (compare with [Memory::write()] method)
 	///
