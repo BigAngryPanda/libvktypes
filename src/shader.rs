@@ -17,8 +17,8 @@ use std::path::Path;
 
 /// Shader type represents loaded shader bytecode wrapper
 /// You may think of it as file handler
-#[derive(Debug)]
-pub struct Shader {
+pub struct Shader<'a> {
+	i_dev: &'a LogicalDevice<'a>,
 	pub i_module: vk::ShaderModule,
 	pub i_entry: String
 }
@@ -30,8 +30,8 @@ pub enum ShaderError {
 	ShaderCreation,
 }
 
-impl Shader {
-	pub fn from_bytecode(dev: &LogicalDevice, bytecode: &[u32], entry: String) -> Result<Shader, ShaderError> {
+impl<'a> Shader<'a> {
+	pub fn from_bytecode(dev: &'a LogicalDevice, bytecode: &[u32], entry: String) -> Result<Shader<'a>, ShaderError> {
 		let shader_info = vk::ShaderModuleCreateInfo {
 			s_type: vk::StructureType::SHADER_MODULE_CREATE_INFO,
 			p_next: ptr::null(),
@@ -45,15 +45,16 @@ impl Shader {
 			return Err(ShaderError::ShaderCreation)
 		);
 
-		let result = Shader {
-			i_module: shader_module,
-			i_entry:  entry
-		};
-
-		Ok(result)
+		Ok(
+			Shader {
+				i_dev:    dev,
+				i_module: shader_module,
+				i_entry:  entry
+			}
+		)
 	}
 
-	pub fn from_src(dev: &LogicalDevice, path: &str, entry: String) -> Result<Shader, ShaderError> {
+	pub fn from_src(dev: &'a LogicalDevice, path: &str, entry: String) -> Result<Shader<'a>, ShaderError> {
 		let mut spv_file:File = on_error!(
 			File::open(Path::new(path)),
 			return Err(ShaderError::InvalidFile)
@@ -65,5 +66,23 @@ impl Shader {
 		);
 
 		Shader::from_bytecode(dev, &spv_bytecode, entry)
+	}
+
+	/// Return reference to entry function (point) in shader
+	pub fn entry_point(&'a self) -> &'a String {
+		&self.i_entry
+	}
+
+	/// Return reference to inner VkShaderModule
+	pub fn module(&'a self) -> &'a vk::ShaderModule {
+		&self.i_module
+	}
+}
+
+impl<'a> Drop for Shader<'a> {
+	fn drop(&mut self) {
+		unsafe {
+			self.i_dev.device().destroy_shader_module(self.i_module, None);
+		}
 	}
 }
