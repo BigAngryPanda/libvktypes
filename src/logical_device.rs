@@ -1,4 +1,4 @@
-//! Logical device type
+//! Provide API to hardware device
 
 use ash::Device;
 
@@ -75,6 +75,11 @@ impl<'a> LogicalDevice<'a> {
 		};
 
 		Some(result)
+	}
+
+	/// Return reference to internal VkDevice
+	pub fn device(&'a self) -> &'a Device {
+		&self.i_device
 	}
 }
 
