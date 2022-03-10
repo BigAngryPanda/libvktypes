@@ -16,7 +16,7 @@ pub mod macros {
     /// Variable ```err``` represents error case
     ///
     /// Example
-    /// ```not_run
+    /// ```ignore
     /// let x = on_error!(f(x), return Err(err));
     ///
     /// let x = match f(x) {

@@ -21,6 +21,7 @@ pub enum ComputePipelineError {
 	Pipeline
 }
 
+/// Represents single pipeline
 pub struct ComputePipeline<'a> {
 	i_ldev:            &'a LogicalDevice<'a>,
 	i_pipeline_layout: vk::PipelineLayout,

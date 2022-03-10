@@ -16,6 +16,7 @@ use std::fs::File;
 use std::path::Path;
 
 /// Shader type represents loaded shader bytecode wrapper
+///
 /// You may think of it as file handler
 pub struct Shader<'a> {
 	i_dev: &'a LogicalDevice<'a>,

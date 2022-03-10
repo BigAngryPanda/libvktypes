@@ -17,8 +17,26 @@ use crate::{
 ///
 #[doc = "Vulkan documentation <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkBufferUsageFlagBits.html>"]
 pub type BufferType = vk::BufferUsageFlags;
+#[doc(hidden)]
 pub type BufferDescriptor = vk::DescriptorBufferInfo;
 
+/// Represents single memory handler
+///
+/// Example of memory allocation
+/// ```ignore
+/// // size in bytes
+/// static MEMORY_SIZE:u64 = 1024;
+///
+/// // create logical device
+/// let dev = ...;
+///
+/// //allocate memory
+/// let test_memory = Memory::new(
+///     &dev, MEMORY_SIZE,
+///     MemoryProperty::HOST_VISIBLE,
+///     BufferType::STORAGE_BUFFER | BufferType::TRANSFER_SRC | BufferType::TRANSFER_DST
+/// );
+/// ```
 pub struct Memory<'a> {
 	i_ldevice: &'a LogicalDevice<'a>,
 	i_device_memory: vk::DeviceMemory,
@@ -217,6 +235,7 @@ impl<'a> Memory<'a> {
 		Ok(result)
 	}
 
+	#[doc(hidden)]
 	pub fn get_descriptor(&self) -> BufferDescriptor {
 		vk::DescriptorBufferInfo {
 			buffer: self.i_buffer,
