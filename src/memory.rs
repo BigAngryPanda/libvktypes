@@ -235,6 +235,16 @@ impl<'a> Memory<'a> {
 		Ok(result)
 	}
 
+	/// Return size of the buffer in bytes
+	pub fn size(&self) -> u64 {
+		self.i_size
+	}
+
+	#[doc(hidden)]
+	pub fn buffer(&self) -> vk::Buffer {
+		self.i_buffer
+	}
+
 	#[doc(hidden)]
 	pub fn get_descriptor(&self) -> BufferDescriptor {
 		vk::DescriptorBufferInfo {

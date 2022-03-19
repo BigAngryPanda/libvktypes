@@ -1,5 +1,6 @@
 //! Provide API to hardware device
 
+use ash::vk;
 use ash::Device;
 
 use ash::vk::{
@@ -8,7 +9,6 @@ use ash::vk::{
 	StructureType,
 	DeviceCreateInfo,
 	DeviceCreateFlags,
-	Queue,
 };
 
 use crate::instance::LibHandler;
@@ -26,7 +26,7 @@ use std::marker::PhantomData;
 pub struct LogicalDevice<'a> {
 	#[doc(hidden)]
 	pub i_device: Device,
-	i_queue: Queue,
+	i_queue: vk::Queue,
 	pub i_queue_index: u32,
 	pub i_mem_info: Vec<MemoryDescription>,
 	_marker: PhantomData<&'a LibHandler>,
@@ -64,7 +64,7 @@ impl<'a> LogicalDevice<'a> {
 
 		let dev:Device = on_error!(unsafe { lib.instance.create_device(desc.hw_device, &create_info, None) }, return None);
 
-		let dev_queue:Queue = unsafe { dev.get_device_queue(q_family_index as u32, 0) };
+		let dev_queue:vk::Queue = unsafe { dev.get_device_queue(q_family_index as u32, 0) };
 
 		let result = LogicalDevice {
 			i_device: dev,
@@ -77,9 +77,19 @@ impl<'a> LogicalDevice<'a> {
 		Some(result)
 	}
 
-	/// Return reference to internal VkDevice
+	#[doc(hidden)]
 	pub fn device(&'a self) -> &'a Device {
 		&self.i_device
+	}
+
+	/// Return queue family index
+	pub fn queue_index(&self) -> u32 {
+		self.i_queue_index
+	}
+
+	#[doc(hidden)]
+	pub fn queue(&self) -> vk::Queue {
+		self.i_queue
 	}
 }
 

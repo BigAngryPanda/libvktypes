@@ -26,6 +26,7 @@ pub struct ComputePipeline<'a> {
 	i_ldev:            &'a LogicalDevice<'a>,
 	i_pipeline_layout: vk::PipelineLayout,
 	i_desc_set_layout: vk::DescriptorSetLayout,
+	i_desc_set:        vk::DescriptorSet,
 	i_desc_pool:       vk::DescriptorPool,
 	i_pipeline:        vk::Pipeline,
 	i_pipeline_cache:  vk::PipelineCache,
@@ -180,12 +181,28 @@ impl<'a> ComputePipeline<'a> {
 				i_ldev: dev,
 				i_pipeline_layout: pipeline_layout,
 				i_desc_set_layout: desc_set_layout,
-				i_desc_pool:       desc_pool,
-				i_pipeline:        pipelines[0],
-				i_pipeline_cache:  pipeline_cache,
+				i_desc_set       : desc_set[0],
+				i_desc_pool      : desc_pool,
+				i_pipeline       : pipelines[0],
+				i_pipeline_cache : pipeline_cache,
 			}
 		)
     }
+
+	#[doc(hidden)]
+	pub fn descriptor_set(&self) -> vk::DescriptorSet {
+		self.i_desc_set
+	}
+
+	#[doc(hidden)]
+	pub fn pipeline_layout(&self) -> vk::PipelineLayout {
+		self.i_pipeline_layout
+	}
+
+	#[doc(hidden)]
+	pub fn pipeline(&self) -> vk::Pipeline {
+		self.i_pipeline
+	}
 }
 
 impl<'a> Drop for ComputePipeline<'a> {
