@@ -44,7 +44,7 @@ impl<'a> ComputePipeline<'a> {
 			}
 		];
 
-		let pool_size:u32 = 1;
+		let pool_size: u32 = 1;
 
 		// So max_sets is hom many *sets* we can possibly allocate
 		// While PoolSize defines how many *descriptors* we can allocate
@@ -178,7 +178,7 @@ impl<'a> ComputePipeline<'a> {
 
         Ok(
 			ComputePipeline {
-				i_ldev: dev,
+				i_ldev           : dev,
 				i_pipeline_layout: pipeline_layout,
 				i_desc_set_layout: desc_set_layout,
 				i_desc_set       : desc_set[0],

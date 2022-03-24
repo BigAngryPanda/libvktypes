@@ -76,14 +76,14 @@ impl<'a> Memory<'a> {
 			p_queue_family_indices: &dev.i_queue_index,
 		};
 
-		let buffer:vk::Buffer = on_error!(
+		let buffer: vk::Buffer = on_error!(
 			unsafe { dev.i_device.create_buffer(&buffer_info, None) },
 			return Err(MemoryError::Buffer)
 		);
 
-		let requirements:vk::MemoryRequirements = unsafe { dev.i_device.get_buffer_memory_requirements(buffer) };
+		let requirements: vk::MemoryRequirements = unsafe { dev.i_device.get_buffer_memory_requirements(buffer) };
 
-		let mem_index:u32 = on_option!(
+		let mem_index: u32 = on_option!(
 			dev.i_mem_info.iter().enumerate().find_map(
 				|(i, d)| if ((requirements.memory_type_bits >> i) & 1) == 1 && d.is_compatible(mem_props) {
 					Some(i as u32)
@@ -228,7 +228,7 @@ impl<'a> Memory<'a> {
 			return Err(MemoryError::MapAccess)
 		);
 
-		let result:&[u8] = unsafe {std::slice::from_raw_parts_mut(data as *mut u8, self.i_size as usize)};
+		let result: &[u8] = unsafe {std::slice::from_raw_parts_mut(data as *mut u8, self.i_size as usize)};
 
 		unsafe { self.i_ldevice.i_device.unmap_memory(self.i_device_memory) };
 

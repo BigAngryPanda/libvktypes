@@ -38,7 +38,7 @@ impl<'a> LogicalDevice<'a> {
 	///
 	/// Hence lifetime requirements
 	pub fn new(lib: &'a LibHandler, desc: &HWDescription, q_family_index: usize) -> Option<LogicalDevice<'a>> {
-		let priorities:[f32; 1] = [1.0_f32];
+		let priorities: [f32; 1] = [1.0_f32];
 
 		let dev_queue_info = DeviceQueueCreateInfo {
 			s_type: StructureType::DEVICE_QUEUE_CREATE_INFO,
@@ -62,9 +62,12 @@ impl<'a> LogicalDevice<'a> {
 			p_enabled_features: ptr::null(),
 		};
 
-		let dev:Device = on_error!(unsafe { lib.instance.create_device(desc.hw_device, &create_info, None) }, return None);
+		let dev: Device = on_error!(
+			unsafe { lib.instance.create_device(desc.hw_device, &create_info, None) },
+			return None
+		);
 
-		let dev_queue:vk::Queue = unsafe { dev.get_device_queue(q_family_index as u32, 0) };
+		let dev_queue: vk::Queue = unsafe { dev.get_device_queue(q_family_index as u32, 0) };
 
 		let result = LogicalDevice {
 			i_device: dev,

@@ -41,7 +41,7 @@ impl<'a> Shader<'a> {
 			p_code: bytecode.as_ptr(),
 		};
 
-		let shader_module:vk::ShaderModule = on_error!(
+		let shader_module: vk::ShaderModule = on_error!(
 			unsafe { dev.i_device.create_shader_module(&shader_info, None) },
 			return Err(ShaderError::ShaderCreation)
 		);
@@ -56,12 +56,12 @@ impl<'a> Shader<'a> {
 	}
 
 	pub fn from_src(dev: &'a LogicalDevice, path: &str, entry: String) -> Result<Shader<'a>, ShaderError> {
-		let mut spv_file:File = on_error!(
+		let mut spv_file: File = on_error!(
 			File::open(Path::new(path)),
 			return Err(ShaderError::InvalidFile)
 		);
 
-		let spv_bytecode:Vec<u32> = on_error!(
+		let spv_bytecode: Vec<u32> = on_error!(
 			read_spv(&mut spv_file),
 			return Err(ShaderError::BytecodeRead)
 		);

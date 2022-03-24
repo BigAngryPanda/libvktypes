@@ -59,7 +59,7 @@ impl LibHandler {
 	///
 	/// Debug layer print information in stdout
 	pub fn new(major: u32, minor: u32, patch: u32, enable_debug: bool) -> Result<LibHandler, LibHandlerError> {
-		let entry:Entry = Entry::linked();
+		let entry: Entry = Entry::linked();
 
 		let app_info = ApplicationInfo {
 			s_type: StructureType::APPLICATION_INFO,
@@ -89,7 +89,7 @@ impl LibHandler {
 	        p_user_data: ptr::null_mut(),
 	    };
 
-	    let extension_names_raw:Vec<*const i8> = vec![DebugUtils::name().as_ptr()];
+	    let extension_names_raw: Vec<*const i8> = vec![DebugUtils::name().as_ptr()];
 
 		let create_info = InstanceCreateInfo {
 			s_type: StructureType::INSTANCE_CREATE_INFO,
@@ -102,12 +102,12 @@ impl LibHandler {
 	        enabled_extension_count: if enable_debug { extension_names_raw.len() as u32 } else { 0 },
 		};
 
-		let instance:Instance = on_error!(unsafe { entry.create_instance(&create_info, None) }, 
+		let instance: Instance = on_error!(unsafe { entry.create_instance(&create_info, None) }, 
 										  return Err(LibHandlerError::InstanceCreating));
 
 		let dbg_loader = DebugUtils::new(&entry, &instance);
 
-		let dbg_messenger:DebugUtilsMessengerEXT = if enable_debug {
+		let dbg_messenger: DebugUtilsMessengerEXT = if enable_debug {
 			on_error!(unsafe { dbg_loader.create_debug_utils_messenger(&dbg_msg_info, None) }, return Err(LibHandlerError::DebugUtilsCreating))
 		}
 		else {

@@ -253,13 +253,13 @@ pub struct HWDescription {
 
 impl HWDescription {
 	fn new(lib: &LibHandler, hw: vk::PhysicalDevice) -> HWDescription {
-		let properties:PhysicalDeviceProperties = unsafe { lib.instance.get_physical_device_properties(hw) };
+		let properties: PhysicalDeviceProperties = unsafe { lib.instance.get_physical_device_properties(hw) };
 
-		let queue_properties:Vec<QueueFamilyProperties> = unsafe {
+		let queue_properties: Vec<QueueFamilyProperties> = unsafe {
 			lib.instance.get_physical_device_queue_family_properties(hw)
 		};
 
-		let memory_desc:Vec<MemoryDescription> = unsafe {
+		let memory_desc: Vec<MemoryDescription> = unsafe {
 			MemoryDescription::from_properties(&lib.instance.get_physical_device_memory_properties(hw))
 		};
 
@@ -283,7 +283,9 @@ impl HWDescription {
 	///
 	/// Note: empty collection does not necessary mean failure
 	pub fn list(lib: &LibHandler) -> Option<Vec<HWDescription>> {
-		let hw:Vec<vk::PhysicalDevice> = on_error!(unsafe { lib.instance.enumerate_physical_devices() }, return None);
+		let hw: Vec<vk::PhysicalDevice> = on_error!(
+			unsafe { lib.instance.enumerate_physical_devices() }, return None
+		);
 
 		Some(hw.into_iter().map(|dev| HWDescription::new(lib, dev)).collect())
 	}
