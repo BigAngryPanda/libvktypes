@@ -191,6 +191,7 @@ impl<'a> ComputeQueue<'a> {
 		Ok(())
 	}
 
+	// TODO bug! we have to destroy fence if any error occured after fence creating
 	pub fn exec(&self, wait_stage: PipelineStage, timeout: u64) -> Result<(), ComputeQueueError> {
 		let device = self.i_ldevice.device();
 
