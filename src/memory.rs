@@ -108,7 +108,8 @@ impl<'a> Memory<'a> {
 		);
 
 		// Without coherency we have to manually synchronize memory between host and device
-		if !mem_props.contains(vk::MemoryPropertyFlags::HOST_COHERENT) {
+		if !mem_props.contains(vk::MemoryPropertyFlags::HOST_COHERENT)
+			&& mem_props.contains(vk::MemoryPropertyFlags::HOST_VISIBLE) {
 			let mem_range = vk::MappedMemoryRange {
 				s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
 				p_next: ptr::null(),
