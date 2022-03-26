@@ -35,7 +35,7 @@ pub struct ComputePipeline<'a> {
 // TODO provide dynamic buffer binding
 // TODO shader module must outlive pipeline?
 impl<'a> ComputePipeline<'a> {
-	fn new(dev: &'a LogicalDevice, buffers: &[Memory], shader: &Shader) -> Result<ComputePipeline<'a>, ComputePipelineError> {
+	pub fn new(dev: &'a LogicalDevice, buffers: &[Memory], shader: &Shader) -> Result<ComputePipeline<'a>, ComputePipelineError> {
 		let desc_size:[vk::DescriptorPoolSize; 1] =
 		[
 			vk::DescriptorPoolSize {
