@@ -46,7 +46,7 @@ impl<'a> ComputePipeline<'a> {
 
 		let pool_size: u32 = 1;
 
-		// So max_sets is hom many *sets* we can possibly allocate
+		// So max_sets is how many *sets* we can possibly allocate
 		// While PoolSize defines how many *descriptors* we can allocate
 		// within single set ?
 		let desc_info = vk::DescriptorPoolCreateInfo {
@@ -63,7 +63,7 @@ impl<'a> ComputePipeline<'a> {
 			return Err(ComputePipelineError::DescriptorPool)
 		);
 
-		let bindings:Vec<vk::DescriptorSetLayoutBinding> = buffers.iter().enumerate().map(
+		let bindings: Vec<vk::DescriptorSetLayoutBinding> = buffers.iter().enumerate().map(
 			|(i, _)| vk::DescriptorSetLayoutBinding {
 				binding: i as u32,
 				descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
