@@ -3,7 +3,10 @@
 use ash::vk;
 
 use crate::logical_device::LogicalDevice;
-use crate::memory::Memory;
+use crate::memory::{
+	Memory,
+	BufferDescriptor
+};
 use crate::shader::Shader;
 
 use crate::on_error;
@@ -114,12 +117,16 @@ impl<'a> ComputePipeline<'a> {
 			return Err(ComputePipelineError::DescriptorSet)
 		);
 
+		let buffer_descs: Vec<BufferDescriptor> = buffers.iter().map(
+			|b| b.get_descriptor()
+		).collect();
+
 		// TODO big question can we update set with single vk::WriteDescriptorSet?
 		// by setting descriptor_count
 		// what will be with dst_binding?
 		// how we access in shader?
-		let write_desc:Vec<vk::WriteDescriptorSet> = buffers.iter().enumerate().map(
-			|(i, b)| vk::WriteDescriptorSet {
+		let write_desc: Vec<vk::WriteDescriptorSet> = buffers.iter().enumerate().map(
+			|(i, _)| vk::WriteDescriptorSet {
 				s_type: vk::StructureType::WRITE_DESCRIPTOR_SET,
 				p_next: ptr::null(),
 				dst_set: desc_set[0],
@@ -128,7 +135,7 @@ impl<'a> ComputePipeline<'a> {
 				descriptor_count: 1,
 				descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
 				p_image_info: ptr::null(),
-				p_buffer_info: &b.get_descriptor(),
+				p_buffer_info: &buffer_descs[i],
 				p_texel_buffer_view: ptr::null()
 			}
 		).collect();
