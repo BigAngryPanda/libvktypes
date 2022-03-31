@@ -8,6 +8,7 @@ use crate::memory::{
 	BufferDescriptor
 };
 use crate::shader::Shader;
+use crate::specialization_constants::SpecializationConstant;
 
 use crate::on_error;
 
@@ -38,7 +39,10 @@ pub struct ComputePipeline<'a> {
 // TODO provide dynamic buffer binding
 // TODO shader module must outlive pipeline?
 impl<'a> ComputePipeline<'a> {
-	pub fn new(dev: &'a LogicalDevice, buffers: &[&Memory], shader: &Shader) -> Result<ComputePipeline<'a>, ComputePipelineError> {
+	pub fn new<T>(dev: &'a LogicalDevice,
+				buffers: &[&Memory],
+				shader: &Shader,
+				spec_data: &SpecializationConstant<T>) -> Result<ComputePipeline<'a>, ComputePipelineError> {
 		let desc_size:[vk::DescriptorPoolSize; 1] =
 		[
 			vk::DescriptorPoolSize {
@@ -157,6 +161,7 @@ impl<'a> ComputePipeline<'a> {
 
 // TODO handle case when we failed CString creation
 		let entry_name = CString::new(shader.i_entry.clone()).expect("");
+		let info: vk::SpecializationInfo = spec_data.info();
 
 		let pipeline_shader = vk::PipelineShaderStageCreateInfo {
 			s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -165,7 +170,7 @@ impl<'a> ComputePipeline<'a> {
 			stage: vk::ShaderStageFlags::COMPUTE,
 			module: shader.i_module,
 			p_name: entry_name.as_ptr(),
-			p_specialization_info: ptr::null()
+			p_specialization_info: &info
 		};
 
 		let pipeline_info = vk::ComputePipelineCreateInfo {
