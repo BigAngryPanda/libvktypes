@@ -48,6 +48,20 @@ impl<'a> SpecializationConstant {
 		}
 	}
 
+	pub fn empty() -> SpecializationConstant {
+		let info = vk::SpecializationInfo {
+			map_entry_count: 0,
+			p_map_entries: ptr::null(),
+			data_size: 0,
+			p_data: ptr::null()
+		};
+
+		SpecializationConstant {
+			i_map: Vec::new(),
+			i_info: info
+		}
+	}
+
 	#[doc(hidden)]
 	pub fn info(&self) -> &vk::SpecializationInfo {
 		&self.i_info
