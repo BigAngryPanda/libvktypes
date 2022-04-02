@@ -42,7 +42,8 @@ impl<'a> ComputePipeline<'a> {
 	pub fn new(dev: &'a LogicalDevice,
 				buffers: &[&Memory],
 				shader: &Shader,
-				spec_data: &SpecializationConstant) -> Result<ComputePipeline<'a>, ComputePipelineError> {
+				spec_data: &SpecializationConstant,
+				push_const_size: u32) -> Result<ComputePipeline<'a>, ComputePipelineError> {
 		let desc_size:[vk::DescriptorPoolSize; 1] =
 		[
 			vk::DescriptorPoolSize {
@@ -93,14 +94,20 @@ impl<'a> ComputePipeline<'a> {
 			return Err(ComputePipelineError::DescriptorSetLayout)
 		);
 
+		let push_const_range = vk::PushConstantRange {
+			stage_flags: vk::ShaderStageFlags::COMPUTE,
+			offset: 0,
+			size: push_const_size,
+		};
+
 		let pipeline_layout_info = vk::PipelineLayoutCreateInfo {
 			s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
 			p_next: ptr::null(),
 			flags: vk::PipelineLayoutCreateFlags::empty(),
 			set_layout_count: 1,
 			p_set_layouts: &desc_set_layout,
-			push_constant_range_count: 0,
-			p_push_constant_ranges: ptr::null()
+			push_constant_range_count: 1,
+			p_push_constant_ranges: &push_const_range
 		};
 
 		let pipeline_layout = on_error!(

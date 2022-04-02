@@ -163,6 +163,16 @@ impl<'a> ComputeQueue<'a> {
 		}
 	}
 
+	pub fn update_push_constants(&self, pipe: &ComputePipeline, data: &[u8]) {
+		let device = self.i_ldevice.device();
+
+		unsafe {
+			device.cmd_push_constants(
+				self.i_buffer, pipe.pipeline_layout(), vk::ShaderStageFlags::COMPUTE, 0, data
+			)
+		}
+	}
+
 	pub fn cmd_bind_pipeline(&self, pipe: &ComputePipeline) {
 		let device = self.i_ldevice.device();
 
