@@ -7,6 +7,5 @@ pub mod pipeline;
 pub mod shader;
 pub mod cmd_queue;
 pub mod specialization_constants;
-pub mod push_constants;
 
 // https://crates.io/crates/glsl-to-spirv
