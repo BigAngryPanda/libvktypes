@@ -42,7 +42,7 @@ impl<'a> ComputePipeline<'a> {
 	pub fn new(dev: &'a LogicalDevice,
 				buffers: &[&Memory],
 				shader: &Shader,
-				spec_data: Option<&SpecializationConstant>) -> Result<ComputePipeline<'a>, ComputePipelineError> {
+				spec_data: &SpecializationConstant) -> Result<ComputePipeline<'a>, ComputePipelineError> {
 		let desc_size:[vk::DescriptorPoolSize; 1] =
 		[
 			vk::DescriptorPoolSize {
@@ -161,15 +161,6 @@ impl<'a> ComputePipeline<'a> {
 
 // TODO handle case when we failed CString creation
 		let entry_name = CString::new(shader.i_entry.clone()).expect("");
-		let info = match spec_data {
-			Some(val) => val.info(),
-			None => vk::SpecializationInfo {
-				map_entry_count: 0,
-				p_map_entries: ptr::null(),
-				data_size: 0,
-				p_data: ptr::null()
-			}
-		};
 
 		let pipeline_shader = vk::PipelineShaderStageCreateInfo {
 			s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -178,7 +169,7 @@ impl<'a> ComputePipeline<'a> {
 			stage: vk::ShaderStageFlags::COMPUTE,
 			module: shader.i_module,
 			p_name: entry_name.as_ptr(),
-			p_specialization_info: &info
+			p_specialization_info: spec_data.info()
 		};
 
 		let pipeline_info = vk::ComputePipelineCreateInfo {
