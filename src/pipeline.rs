@@ -106,7 +106,7 @@ impl<'a> ComputePipeline<'a> {
 			flags: vk::PipelineLayoutCreateFlags::empty(),
 			set_layout_count: 1,
 			p_set_layouts: &desc_set_layout,
-			push_constant_range_count: 1,
+			push_constant_range_count: if push_const_size != 0 { 1 } else { 0 },
 			p_push_constant_ranges: if push_const_size != 0 { &push_const_range } else { ptr::null() }
 		};
 
