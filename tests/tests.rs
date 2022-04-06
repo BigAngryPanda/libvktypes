@@ -6,10 +6,6 @@ mod tests {
     use libvktypes::logical_device::*;
     use libvktypes::memory::*;
 
-    fn hw_selector(hw_desc: &HWDescription) -> bool {
-        hw_desc.hw_type != HWType::CPU && hw_desc.hw_type != HWType::Unknown
-    }
-
     #[test]
     fn default_instance_creation() {
         assert!(LibHandler::with_default().is_ok());
@@ -40,7 +36,7 @@ mod tests {
         let instance = LibHandler::with_default().expect("Failed to create instance");
         let hw_list  = HWDescription::list(&instance).expect("No suitable devices");
 
-        let hw_info = select_hw(hw_list.iter(), hw_selector, is_compute_family, any_memory)
+        let hw_info = select_hw(hw_list.iter(), dedicated_hw, is_compute_family, any_memory)
                         .expect("Failed to get device information");
 
         let hw_dev_ref = &hw_list[hw_info.device];
@@ -55,7 +51,7 @@ mod tests {
         let instance = LibHandler::with_default().expect("Failed to create instance");
         let hw_list  = HWDescription::list(&instance).expect("No suitable devices");
 
-        let hw_info = select_hw(hw_list.iter(), hw_selector, is_compute_family, any_memory)
+        let hw_info = select_hw(hw_list.iter(), dedicated_hw, is_compute_family, any_memory)
                         .expect("Failed to get device information");
 
         let hw_dev_ref = &hw_list[hw_info.device];

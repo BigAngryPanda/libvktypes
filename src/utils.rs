@@ -66,7 +66,7 @@ pub mod filters {
         }
     }
 
-	pub fn dedicated_device(hw_desc: &HWDescription) -> bool {
+	pub fn dedicated_hw(hw_desc: &HWDescription) -> bool {
 		hw_desc.hw_type != HWType::CPU && hw_desc.hw_type != HWType::Unknown
 	}
 
