@@ -42,6 +42,7 @@ pub mod filters {
         HWDescription,
         QueueFamilyDescription,
         MemoryDescription,
+		HWType
     };
 
     /// Aggregate information about selected hardware
@@ -64,6 +65,10 @@ pub mod filters {
             }
         }
     }
+
+	pub fn dedicated_device(hw_desc: &HWDescription) -> bool {
+		hw_desc.hw_type != HWType::CPU && hw_desc.hw_type != HWType::Unknown
+	}
 
     pub fn is_compute_family(desc: &QueueFamilyDescription) -> bool {
         desc.is_compute() && desc.is_transfer()
