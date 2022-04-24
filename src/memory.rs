@@ -157,8 +157,8 @@ impl<'a> Memory<'a> {
 	/// [vkFlushMappedMemoryRanges](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkFlushMappedMemoryRanges.html)
 	///
 	/// In other words makes host memory changes available to device
-	pub fn write<F>(&self, f: F) -> Result<(), MemoryError>
-		where F: Fn(&mut [u8])
+	pub fn write<F>(&self, f: &mut F) -> Result<(), MemoryError>
+		where F: FnMut(&mut [u8])
 	{
 		use core::ffi::c_void;
 
