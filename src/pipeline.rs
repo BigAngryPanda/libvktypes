@@ -128,9 +128,20 @@ impl<'a> ComputePipeline<'a> {
 			return Err(ComputePipelineError::DescriptorSet)
 		);
 
-		let buffer_descs: Vec<BufferDescriptor> = buffers.iter().map(
-			|b| b.get_descriptor()
-		).collect();
+		let mut offset_counter = 0u64;
+		let mut buffer_descs: Vec<BufferDescriptor> = Vec::new();
+
+		for buffer in buffers {
+			buffer_descs.push(
+					vk::DescriptorBufferInfo {
+					buffer: buffer.buffer(),
+					offset: offset_counter,
+					range: vk::WHOLE_SIZE
+				}
+			);
+
+			offset_counter += buffer.size();
+		}
 
 		// TODO big question can we update set with single vk::WriteDescriptorSet?
 		// by setting descriptor_count
