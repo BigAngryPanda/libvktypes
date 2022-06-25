@@ -79,12 +79,12 @@ mod instance {
         layers,
         extensions
     };
-    use libvktypes::resources::lib;
+    use libvktypes::resources::lib_instance::LibInstance;
     use libvktypes::utility::debug;
 
     #[test]
     fn default_instance() {
-        let lib = lib::LibInstance::new(&lib_type::LibInstanceType::default());
+        let lib = LibInstance::new(&lib_type::LibInstanceType::default());
 
         assert!(lib.is_ok());
     }
@@ -97,7 +97,7 @@ mod instance {
             ..lib_type::LibInstanceType::default()
         };
 
-        let lib = lib::LibInstance::new(&lib_type);
+        let lib = LibInstance::new(&lib_type);
 
         assert!(lib.is_ok());
     }
@@ -109,7 +109,7 @@ mod instance {
             ..lib_type::LibInstanceType::default()
         };
 
-        let lib = lib::LibInstance::new(&lib_type);
+        let lib = LibInstance::new(&lib_type);
 
         assert!(lib.is_ok());
     }

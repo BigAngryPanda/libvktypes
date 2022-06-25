@@ -38,7 +38,7 @@ impl DebugLayer {
                 pfn_user_callback: Some(debug::vulkan_debug_utils_callback),
                 p_user_data: ptr::null_mut(),
             }
-        )       
+        )
     }
 
     pub fn as_raw(&self) -> &vk::DebugUtilsMessengerCreateInfoEXT {
