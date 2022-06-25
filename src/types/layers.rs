@@ -1,6 +1,10 @@
 //! Instance layers
 
-use std::ffi::{c_void, CString};
+use ash::vk;
+
+use crate::utility::debug;
+
+use std::ffi::c_void;
 use std::{
     fmt,
     ptr
@@ -10,13 +14,9 @@ use std::fmt::{
     Debug
 };
 
-use ash::vk;
-
-use crate::utility::debug;
-
 pub trait Layer {
     fn info(&self) -> *const c_void;
-    fn name() -> CString;
+    const NAME: &'static str;
 }
 
 pub struct DebugLayer(vk::DebugUtilsMessengerCreateInfoEXT);
@@ -51,9 +51,7 @@ impl Layer for DebugLayer {
         &self.0 as *const vk::DebugUtilsMessengerCreateInfoEXT as *const c_void
     }
 
-    fn name() -> CString {
-        CString::new("VK_LAYER_KHRONOS_validation").expect("Failed to create layer name")
-    }
+    const NAME: &'static str = "VK_LAYER_KHRONOS_validation";
 }
 
 impl Default for DebugLayer {
