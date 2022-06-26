@@ -16,7 +16,7 @@ use std::fmt::{
 
 pub trait Layer {
     fn info(&self) -> *const c_void;
-    const name: &'static str;
+    const NAME: &'static str;
 }
 
 pub struct DebugLayer(vk::DebugUtilsMessengerCreateInfoEXT);
@@ -51,7 +51,7 @@ impl Layer for DebugLayer {
         &self.0 as *const vk::DebugUtilsMessengerCreateInfoEXT as *const c_void
     }
 
-    const name: &'static str = "VK_LAYER_KHRONOS_validation";
+    const NAME: &'static str = "VK_LAYER_KHRONOS_validation";
 }
 
 impl Default for DebugLayer {
