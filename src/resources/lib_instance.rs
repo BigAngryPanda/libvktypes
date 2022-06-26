@@ -46,7 +46,7 @@ impl LibInstance {
             ),
         };
 
-        let layer_names = [DebugLayer::NAME];
+        let layer_names = [DebugLayer::name];
         let layers: Vec<*const i8> = layer_names.iter().map(|raw_name| raw_name.as_ptr() as *const i8).collect();
 
         let create_info = vk::InstanceCreateInfo {
