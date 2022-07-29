@@ -1,2 +1,3 @@
-pub mod lib_instance;
+pub mod lib;
 pub mod hw;
+pub mod device;

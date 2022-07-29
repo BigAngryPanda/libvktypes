@@ -1,7 +1,7 @@
 use ash::vk;
 
 use crate::on_error_ret;
-use crate::resources::lib_instance::LibInstance;
+use crate::resources::lib;
 
 use std::ffi::CStr;
 use std::fmt;
@@ -240,7 +240,7 @@ pub struct HWDevice {
 }
 
 impl HWDevice {
-    fn new(lib: &LibInstance, hw: vk::PhysicalDevice) -> HWDevice {
+    fn new(lib: &lib::Instance, hw: vk::PhysicalDevice) -> HWDevice {
         let properties: vk::PhysicalDeviceProperties =
             unsafe { lib.instance().get_physical_device_properties(hw) };
 
@@ -410,7 +410,7 @@ pub enum HWError {
 pub struct HWDescription(Vec<HWDevice>);
 
 impl HWDescription {
-    pub fn new(lib: &LibInstance) -> Result<HWDescription, HWError> {
+    pub fn new(lib: &lib::Instance) -> Result<HWDescription, HWError> {
         let hw: Vec<vk::PhysicalDevice> = on_error_ret!(
             unsafe { lib.instance().enumerate_physical_devices() },
             HWError::Enumerate

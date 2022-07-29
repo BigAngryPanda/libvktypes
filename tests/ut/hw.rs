@@ -1,22 +1,22 @@
 use libvktypes::types::{
-    lib_type,
+    lib,
     layers,
     extensions
 };
 use libvktypes::resources::{
-    lib_instance::LibInstance,
+    lib::Instance,
     hw::HWDescription,
 };
 
 #[test]
 fn hardware_inspection() {
-    let lib_type = lib_type::LibInstanceType {
+    let lib_type = lib::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
         extensions: &[extensions::DEBUG_EXT_NAME],
-        ..lib_type::LibInstanceType::default()
+        ..lib::InstanceType::default()
     };
 
-    let lib = LibInstance::new(&lib_type).expect("Failed to load library");
+    let lib = Instance::new(&lib_type).expect("Failed to load library");
     let hw_list = HWDescription::new(&lib).expect("Failed to list hardware");
 
     // To enable stdout in tests run cargo test -- --nocapture

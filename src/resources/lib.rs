@@ -3,12 +3,12 @@ use ash::vk;
 use ash::extensions::ext;
 
 use crate::on_error_ret;
-use crate::types::lib_type::LibInstanceType;
+use crate::types::lib;
 use crate::types::layers::{DebugLayer, Layer};
 
 use std::ptr;
 
-pub struct LibInstance {
+pub struct Instance {
     _entry: ash::Entry,
     i_instance: ash::Instance,
     i_debug_loader: ext::DebugUtils,
@@ -16,17 +16,17 @@ pub struct LibInstance {
 }
 
 #[derive(Debug)]
-pub enum LibInstanceError {
+pub enum InstanceError {
     LibraryLoad,
     Instance,
     DebugUtilsCreating,
     Unknown,
 }
 
-impl LibInstance {
-    pub fn new(desc: &LibInstanceType) -> Result<LibInstance, LibInstanceError> {
+impl Instance {
+    pub fn new(desc: &lib::InstanceType) -> Result<Instance, InstanceError> {
         let entry: ash::Entry = if desc.dynamic_load {
-            on_error_ret!(unsafe { ash::Entry::load() }, LibInstanceError::LibraryLoad)
+            on_error_ret!(unsafe { ash::Entry::load() }, InstanceError::LibraryLoad)
         } else {
             ash::Entry::linked()
         };
@@ -78,19 +78,19 @@ impl LibInstance {
 
         let instance: ash::Instance = on_error_ret!(
             unsafe { entry.create_instance(&create_info, None) },
-            LibInstanceError::Instance
+            InstanceError::Instance
         );
 
         let dbg_loader = ext::DebugUtils::new(&entry, &instance);
 
         let dbg_messenger: vk::DebugUtilsMessengerEXT = if let Some(layer) = &desc.debug_layer {
-            on_error_ret!(unsafe { dbg_loader.create_debug_utils_messenger(layer.as_raw(), None) }, LibInstanceError::DebugUtilsCreating)
+            on_error_ret!(unsafe { dbg_loader.create_debug_utils_messenger(layer.as_raw(), None) }, InstanceError::DebugUtilsCreating)
         }
         else {
             vk::DebugUtilsMessengerEXT::null()
         };
 
-        Ok(LibInstance {
+        Ok(Instance {
 			_entry: entry,
 			i_instance: instance,
 			i_debug_loader: dbg_loader,
@@ -103,7 +103,7 @@ impl LibInstance {
     }
 }
 
-impl Drop for LibInstance {
+impl Drop for Instance {
     fn drop(&mut self) {
 		if self.i_debug_messenger != vk::DebugUtilsMessengerEXT::null() {
 			unsafe { self.i_debug_loader.destroy_debug_utils_messenger(self.i_debug_messenger, None); }

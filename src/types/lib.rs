@@ -3,7 +3,7 @@ use crate::types::layers::DebugLayer;
 use std::ffi::CStr;
 
 #[derive(Debug)]
-pub struct LibInstanceType<'a> {
+pub struct InstanceType<'a> {
     pub version_major: u32,
     pub version_minor: u32,
     pub version_patch: u32,
@@ -12,9 +12,9 @@ pub struct LibInstanceType<'a> {
     pub extensions: &'a [&'a CStr],
 }
 
-impl<'a> Default for LibInstanceType<'a> {
-    fn default() -> LibInstanceType<'a> {
-        LibInstanceType {
+impl<'a> Default for InstanceType<'a> {
+    fn default() -> InstanceType<'a> {
+        InstanceType {
             version_major: 1,
             version_minor: 0,
             version_patch: 0,
