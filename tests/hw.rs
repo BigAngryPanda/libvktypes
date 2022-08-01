@@ -1,23 +1,20 @@
-use libvktypes::types::{
-    lib,
+use libvktypes::resources::{
+    libvk,
+    hw,
     layers,
     extensions
-};
-use libvktypes::resources::{
-    lib::Instance,
-    hw::HWDescription,
 };
 
 #[test]
 fn hardware_inspection() {
-    let lib_type = lib::InstanceType {
+    let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
         extensions: &[extensions::DEBUG_EXT_NAME],
-        ..lib::InstanceType::default()
+        ..libvk::InstanceType::default()
     };
 
-    let lib = Instance::new(&lib_type).expect("Failed to load library");
-    let hw_list = HWDescription::new(&lib).expect("Failed to list hardware");
+    let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
+    let hw_list = hw::Description::poll(&lib).expect("Failed to list hardware");
 
     // To enable stdout in tests run cargo test -- --nocapture
     // https://stackoverflow.com/questions/25106554/why-doesnt-println-work-in-rust-unit-tests

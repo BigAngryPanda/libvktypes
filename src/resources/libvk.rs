@@ -3,10 +3,34 @@ use ash::vk;
 use ash::extensions::ext;
 
 use crate::on_error_ret;
-use crate::types::lib;
-use crate::types::layers::{DebugLayer, Layer};
+use crate::resources::layers::{DebugLayer, Layer};
 
 use std::ptr;
+
+use std::ffi::CStr;
+
+#[derive(Debug)]
+pub struct InstanceType<'a> {
+    pub version_major: u32,
+    pub version_minor: u32,
+    pub version_patch: u32,
+    pub dynamic_load: bool,
+    pub debug_layer: Option<DebugLayer>,
+    pub extensions: &'a [&'a CStr],
+}
+
+impl<'a> Default for InstanceType<'a> {
+    fn default() -> InstanceType<'a> {
+        InstanceType {
+            version_major: 1,
+            version_minor: 0,
+            version_patch: 0,
+            dynamic_load: false,
+            debug_layer: None,
+            extensions: &[],
+        }
+    }
+}
 
 pub struct Instance {
     _entry: ash::Entry,
@@ -24,7 +48,7 @@ pub enum InstanceError {
 }
 
 impl Instance {
-    pub fn new(desc: &lib::InstanceType) -> Result<Instance, InstanceError> {
+    pub fn new(desc: &InstanceType) -> Result<Instance, InstanceError> {
         let entry: ash::Entry = if desc.dynamic_load {
             on_error_ret!(unsafe { ash::Entry::load() }, InstanceError::LibraryLoad)
         } else {
@@ -98,6 +122,7 @@ impl Instance {
 		})
     }
 
+    #[doc(hidden)]
     pub fn instance(&self) -> &ash::Instance {
         &self.i_instance
     }

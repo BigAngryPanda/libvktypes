@@ -1,7 +1,11 @@
+//! Provide information about available hardware
+//!
+//! Instead of [dev module](crate::resources::dev) `hw` represents hardware level
+
 use ash::vk;
 
 use crate::on_error_ret;
-use crate::resources::lib;
+use crate::resources::libvk;
 
 use std::ffi::CStr;
 use std::fmt;
@@ -51,21 +55,28 @@ impl fmt::Display for HWType {
 #[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VkQueueFlagBits>"]
 #[derive(Debug)]
 pub struct QueueFamilyDescription {
+    i_index: u32,
     i_count: u32,
     i_property: vk::QueueFlags,
 }
 
 impl QueueFamilyDescription {
-    fn new(property: &vk::QueueFamilyProperties) -> QueueFamilyDescription {
+    fn new(property: &vk::QueueFamilyProperties, index: u32) -> QueueFamilyDescription {
         QueueFamilyDescription {
+            i_index: index,
             i_count: property.queue_count,
             i_property: property.queue_flags,
         }
     }
 
-    /// How many queues in family
+    /// Return how many queues in family
     pub fn count(&self) -> u32 {
         self.i_count
+    }
+
+    /// Return queue family index
+    pub fn index(&self) -> u32 {
+        self.i_index
     }
 
     /// Is VK_QUEUE_GRAPHICS_BIT set for queue family
@@ -94,10 +105,10 @@ impl fmt::Display for QueueFamilyDescription {
         write!(
             f,
             "Number of queues:       {}\n\
-                    Support graphics:       {}\n\
-                    Support compute:        {}\n\
-                    Support transfer:       {}\n\
-                    Support sparce binding: {}\n",
+            Support graphics:       {}\n\
+            Support compute:        {}\n\
+            Support transfer:       {}\n\
+            Support sparce binding: {}\n",
             self.count(),
             if self.is_graphics() { "yes" } else { "no" },
             if self.is_compute()  { "yes" } else { "no" },
@@ -201,14 +212,14 @@ impl fmt::Display for MemoryDescription {
         write!(
             f,
             "Memory type index: {}\n\
-                  Heap index:        {}\n\
-                  Heap size: {} bytes, {} kb, {} mb, {} gb\n\
-                  Memory properties:  \n\
-                  Local:            {}\n\
-                  Host visible:     {}\n\
-                  Host coherent:    {}\n\
-                  Host cached:      {}\n\
-                  Lazily allocated: {}\n",
+            Heap index:        {}\n\
+            Heap size: {} bytes, {} kb, {} mb, {} gb\n\
+            Memory properties:  \n\
+            Local:            {}\n\
+            Host visible:     {}\n\
+            Host coherent:    {}\n\
+            Host cached:      {}\n\
+            Lazily allocated: {}\n",
             self.index(),
             self.heap_index(),
             mem_size,
@@ -240,7 +251,7 @@ pub struct HWDevice {
 }
 
 impl HWDevice {
-    fn new(lib: &lib::Instance, hw: vk::PhysicalDevice) -> HWDevice {
+    fn new(lib: &libvk::Instance, hw: vk::PhysicalDevice) -> HWDevice {
         let properties: vk::PhysicalDeviceProperties =
             unsafe { lib.instance().get_physical_device_properties(hw) };
 
@@ -255,7 +266,7 @@ impl HWDevice {
 
             mem_props
                 .memory_types
-                .into_iter()
+                .iter()
                 .enumerate()
                 .map(|(i, _)| MemoryDescription::new(&mem_props, i))
                 .filter(|m| m.is_local() || m.is_host_visible() || m.is_host_cached() || m.is_host_coherent())
@@ -271,14 +282,16 @@ impl HWDevice {
             i_vendor_id: properties.vendor_id,
             i_queues: queue_properties
                 .iter()
-                .map(QueueFamilyDescription::new)
+                .enumerate()
+                .map(|(i, prop)| QueueFamilyDescription::new(prop, i as u32))
+                .filter(|q| q.is_compute() || q.is_graphics() || q.is_transfer() || q.is_sparce_binding())
                 .collect(),
             i_heap_info: memory_desc,
         }
     }
 
-    pub fn device(&self) -> &vk::PhysicalDevice {
-        &self.i_device
+    pub fn device(&self) -> vk::PhysicalDevice {
+        self.i_device
     }
 
     /// Device name
@@ -329,6 +342,24 @@ impl HWDevice {
         self.i_vendor_id
     }
 
+    /// Return true if GPU type is `Discrete`
+    ///
+    /// Otherwise false
+    ///
+    /// See HWType
+    pub fn is_discrete_gpu(&self) -> bool {
+        self.i_hw_type == HWType::Discrete
+    }
+
+    /// Return true if GPU type is `Integrated`
+    ///
+    /// Otherwise false
+    ///
+    /// See HWType
+    pub fn is_integrated_gpu(&self) -> bool {
+        self.i_hw_type == HWType::Integrated
+    }
+
     /// Return iterator over available queues
     pub fn queues(&self) -> impl Iterator<Item = &QueueFamilyDescription> {
         self.i_queues.iter()
@@ -337,6 +368,38 @@ impl HWDevice {
     /// Return iterator over available memory heaps
     pub fn memory(&self) -> impl Iterator<Item = &MemoryDescription> {
         self.i_heap_info.iter()
+    }
+
+    /// Return iterator over all suitable queues
+    pub fn filter_queue<T>(&self, f: T) -> impl Iterator<Item = &QueueFamilyDescription>
+    where
+        T: Fn(&QueueFamilyDescription) -> bool,
+    {
+        self.queues().filter(move |x| f(x))
+    }
+
+    /// Return first suitable queue or None
+    pub fn find_first_queue<T>(&self, f: T) -> Option<&QueueFamilyDescription>
+    where
+        T: Fn(&QueueFamilyDescription) -> bool,
+    {
+        self.queues().find(move |x| f(x))
+    }
+
+    /// Return iterator over all suitable memory heaps
+    pub fn filter_memory<T>(&self, f: T) -> impl Iterator<Item = &MemoryDescription>
+    where
+        T: Fn(&MemoryDescription) -> bool,
+    {
+        self.memory().filter(move |x| f(x))
+    }
+
+    /// Return first suitable memory or None
+    pub fn find_first_memory<T>(&self, f: T) -> Option<&MemoryDescription>
+    where
+        T: Fn(&MemoryDescription) -> bool,
+    {
+        self.memory().find(move |x| f(x))
     }
 }
 
@@ -407,16 +470,16 @@ pub enum HWError {
     Enumerate,
 }
 
-pub struct HWDescription(Vec<HWDevice>);
+pub struct Description(Vec<HWDevice>);
 
-impl HWDescription {
-    pub fn new(lib: &lib::Instance) -> Result<HWDescription, HWError> {
+impl Description {
+    pub fn poll(lib: &libvk::Instance) -> Result<Description, HWError> {
         let hw: Vec<vk::PhysicalDevice> = on_error_ret!(
             unsafe { lib.instance().enumerate_physical_devices() },
             HWError::Enumerate
         );
 
-        Ok(HWDescription(
+        Ok(Description(
             hw.into_iter().map(|dev| HWDevice::new(lib, dev)).collect(),
         ))
     }
@@ -426,17 +489,27 @@ impl HWDescription {
         self.0.iter()
     }
 
-    pub fn select<T>(&self, selector: T) -> impl Iterator<Item = &HWDevice>
+    pub fn filter_hw<T>(&self, selector: T) -> impl Iterator<Item = &HWDevice>
     where
         T: Fn(&HWDevice) -> bool,
     {
         self.list().filter(move |x| selector(x))
     }
 
-    pub fn select_first<T>(&self, selector: T) -> Option<&HWDevice>
+    // TODO mb rewrite it with find_map?
+    pub fn find_first<T, U, S>(&self, dev: T, queue: U, mem: S)
+        -> Option<(&HWDevice, &QueueFamilyDescription, &MemoryDescription)>
     where
         T: Fn(&HWDevice) -> bool,
+        U: Fn(&QueueFamilyDescription) -> bool,
+        S: Fn(&MemoryDescription) -> bool,
     {
-        self.list().find(move |x| selector(x))
+        for hw in self.filter_hw(dev) {
+            if let (Some(q), Some(m)) = (hw.find_first_queue(&queue), hw.find_first_memory(&mem)) {
+                return Some((hw, q, m));
+            }
+        }
+
+        None
     }
 }

@@ -12,7 +12,7 @@ use std::fmt::{
 
 use ash::vk;
 
-use crate::utility::debug;
+use crate::resources::debug;
 
 pub trait Layer {
     fn info(&self) -> *const c_void;
