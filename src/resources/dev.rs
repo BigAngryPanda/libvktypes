@@ -14,10 +14,10 @@ pub struct DeviceType<'a> {
     pub lib: &'a libvk::Instance,
     pub hw: &'a hw::HWDevice,
     pub queue_family_index: u32,
-    pub queue_count: u32,
     pub priorities: &'a [f32],
 }
 
+#[derive(Debug)]
 pub enum DeviceError {
     Creating,
 }
@@ -28,6 +28,7 @@ pub enum DeviceError {
 pub struct Device<'a> {
     i_device: ash::Device,
     i_queue_index: u32,
+    i_hw: &'a hw::HWDevice,
     _marker: PhantomData<&'a libvk::Instance>,
 }
 
@@ -35,13 +36,13 @@ pub struct Device<'a> {
 ///
 /// Hence lifetime requirements
 impl<'a> Device<'a> {
-    pub fn new(dev_type: &DeviceType) -> Result<Device<'a>, DeviceError> {
+    pub fn new(dev_type: &'a DeviceType) -> Result<Device<'a>, DeviceError> {
         let dev_queue_info = vk::DeviceQueueCreateInfo {
             s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
             p_next: ptr::null(),
             flags: vk::DeviceQueueCreateFlags::empty(),
             queue_family_index: dev_type.queue_family_index,
-            queue_count: dev_type.queue_count,
+            queue_count: dev_type.priorities.len() as u32,
             p_queue_priorities: dev_type.priorities.as_ptr(),
         };
 
@@ -63,15 +64,24 @@ impl<'a> Device<'a> {
             DeviceError::Creating
         );
 
-        Ok(Device {
+        Ok(Device::<'a> {
             i_device: dev,
             i_queue_index: dev_type.queue_family_index,
+            i_hw: dev_type.hw,
             _marker: PhantomData,
         })
     }
 
     pub fn queue_index(&self) -> u32 {
         self.i_queue_index
+    }
+
+    pub fn device(&self) -> &ash::Device {
+        &self.i_device
+    }
+
+    pub fn hw(&self) -> &hw::HWDevice {
+        self.i_hw
     }
 }
 

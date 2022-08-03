@@ -122,6 +122,15 @@ impl fmt::Display for QueueFamilyDescription {
     }
 }
 
+/// Represents memory capabilities
+///
+/// Each memory has its own property as bitmask
+///
+/// Method checks that selected memory satisfies requirements defined by ```flags```
+///
+#[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.MemoryPropertyFlags.html>"]
+///
+#[doc = "See more <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkMemoryPropertyFlagBits.html>"]
 pub type MemoryProperty = vk::MemoryPropertyFlags;
 
 /// Represents information about each heap
@@ -134,7 +143,7 @@ pub struct MemoryDescription {
     i_heap_size: u64,
     /// Corresponding heap index
     i_heap_index: u32,
-    i_property: MemoryProperty,
+    i_property: vk::MemoryPropertyFlags,
 }
 
 impl MemoryDescription {
@@ -166,13 +175,13 @@ impl MemoryDescription {
     }
 
     /// Each memory has its own property as bitmask
-    ///
-    /// Method checks that selected memory satisfies requirements defined by ```flags```
-    ///
-    #[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkMemoryPropertyFlagBits.html>"]
-    pub fn is_compatible(&self, flags: MemoryProperty) -> bool {
-        self.i_property.contains(flags)
-    }
+	///
+	/// Method checks that selected memory satisfies requirements defined by ```flags```
+	///
+	#[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkMemoryPropertyFlagBits.html>"]
+	pub fn is_compatible(&self, flags: MemoryProperty) -> bool {
+		self.i_property.contains(flags)
+	}
 
     /// Is VK_MEMORY_HEAP_DEVICE_LOCAL_BIT set
     pub fn is_local(&self) -> bool {

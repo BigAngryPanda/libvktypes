@@ -24,7 +24,6 @@ fn device_creation() {
         lib: &lib,
         hw: hw_dev,
         queue_family_index: queue.index(),
-        queue_count: 1,
         priorities: &[1.0_f32],
     };
 
