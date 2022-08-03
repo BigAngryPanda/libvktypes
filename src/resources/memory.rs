@@ -1,3 +1,5 @@
+//! Contains memory handler as well as allocation function
+
 use ash::vk;
 
 use crate::resources::hw;
