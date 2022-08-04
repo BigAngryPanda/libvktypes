@@ -76,8 +76,8 @@ impl<'a> Shader<'a> {
     }
 
     #[doc(hidden)]
-    pub fn module(&'a self) -> &'a vk::ShaderModule {
-        &self.i_module
+    pub fn module(&'a self) -> vk::ShaderModule {
+        self.i_module
     }
 }
 
