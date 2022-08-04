@@ -72,14 +72,17 @@ impl<'a> Device<'a> {
         })
     }
 
+    #[doc(hidden)]
     pub fn queue_index(&self) -> u32 {
         self.i_queue_index
     }
 
+    #[doc(hidden)]
     pub fn device(&self) -> &ash::Device {
         &self.i_device
     }
 
+    #[doc(hidden)]
     pub fn hw(&self) -> &hw::HWDevice {
         self.i_hw
     }
