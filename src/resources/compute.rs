@@ -31,13 +31,13 @@ pub enum PipelineError {
 
 /// Represents compute pipeline
 pub struct Pipeline<'a> {
-	i_dev:             &'a dev::Device<'a>,
-	i_pipeline_layout: vk::PipelineLayout,
-	i_desc_set_layout: vk::DescriptorSetLayout,
-	i_desc_set:        vk::DescriptorSet,
-	i_desc_pool:       vk::DescriptorPool,
-	i_pipeline:        vk::Pipeline,
-	i_pipeline_cache:  vk::PipelineCache,
+    i_dev:             &'a dev::Device<'a>,
+    i_pipeline_layout: vk::PipelineLayout,
+    i_desc_set_layout: vk::DescriptorSetLayout,
+    i_desc_set:        vk::DescriptorSet,
+    i_desc_pool:       vk::DescriptorPool,
+    i_pipeline:        vk::Pipeline,
+    i_pipeline_cache:  vk::PipelineCache,
 }
 
 // TODO provide dynamic buffer binding
@@ -232,15 +232,15 @@ impl<'a> Pipeline<'a> {
 }
 
 impl<'a> Drop for Pipeline<'a> {
-	fn drop(&mut self) {
-		let device = self.i_dev.device();
+    fn drop(&mut self) {
+        let device = self.i_dev.device();
 
-		unsafe {
-			device.destroy_pipeline_layout(self.i_pipeline_layout, None);
-			device.destroy_descriptor_set_layout(self.i_desc_set_layout, None);
-			device.destroy_descriptor_pool(self.i_desc_pool, None);
-			device.destroy_pipeline(self.i_pipeline, None);
-			device.destroy_pipeline_cache(self.i_pipeline_cache, None);
-		}
-	}
+        unsafe {
+            device.destroy_pipeline_layout(self.i_pipeline_layout, None);
+            device.destroy_descriptor_set_layout(self.i_desc_set_layout, None);
+            device.destroy_descriptor_pool(self.i_desc_pool, None);
+            device.destroy_pipeline(self.i_pipeline, None);
+            device.destroy_pipeline_cache(self.i_pipeline_cache, None);
+        }
+    }
 }
