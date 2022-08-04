@@ -8,11 +8,12 @@ use crate::on_error_ret;
 use std::{ptr, mem};
 use std::fs::File;
 use std::path::Path;
+use std::ffi::CString;
 
 pub struct ShaderType<'a> {
     pub device: &'a dev::Device<'a>,
     pub path: &'a str,
-    pub entry: &'a str,
+    pub entry: CString,
 }
 
 #[derive(Debug)]
@@ -28,7 +29,7 @@ pub enum ShaderError {
 pub struct Shader<'a> {
 	i_dev: &'a dev::Device<'a>,
 	i_module: vk::ShaderModule,
-	i_entry: &'a str,
+	i_entry: CString,
 }
 
 impl<'a> Shader<'a> {
@@ -69,12 +70,12 @@ impl<'a> Shader<'a> {
         Shader::from_bytecode(shader_type, &spv_bytecode)
     }
 
-    /// Return reference to entry function (point) in shader
-    pub fn entry_point(&'a self) -> &'a str {
-        self.i_entry
+    /// Return reference to name of entry function (point) in shader
+    pub fn entry(&'a self) -> &CString {
+        &self.i_entry
     }
 
-    /// Return reference to inner VkShaderModule
+    #[doc(hidden)]
     pub fn module(&'a self) -> &'a vk::ShaderModule {
         &self.i_module
     }
