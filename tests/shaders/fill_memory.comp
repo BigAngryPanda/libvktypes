@@ -1,4 +1,4 @@
-// glslang -V shader.comp
+// glslangValidator -V fill_memory.comp -o fill_memory.spv
 #version 460
 
 layout(binding = 0) buffer Input {
