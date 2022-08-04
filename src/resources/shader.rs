@@ -51,7 +51,7 @@ impl<'a> Shader<'a> {
             Shader {
                 i_dev: shader_type.device,
                 i_module: shader_module,
-                i_entry: shader_type.entry
+                i_entry: shader_type.entry.clone()
             }
         )
     }
