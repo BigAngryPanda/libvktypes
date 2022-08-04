@@ -34,6 +34,7 @@ pub struct MemoryType<'a> {
     pub queue_families: &'a [u32],
 }
 
+#[derive(Debug)]
 pub enum MemoryError {
     Buffer,
     NoMemoryType,
@@ -225,6 +226,11 @@ impl<'a> Memory<'a> {
     /// Return size of the buffer in bytes
     pub fn size(&self) -> u64 {
         self.i_size
+    }
+
+    #[doc(hidden)]
+    pub fn buffer(&self) -> vk::Buffer {
+        self.i_buffer
     }
 }
 

@@ -14,3 +14,4 @@ pub mod extensions;
 pub mod debug;
 pub mod memory;
 pub mod shader;
+pub mod compute;
