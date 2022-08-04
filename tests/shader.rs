@@ -40,7 +40,7 @@ fn load_shader() {
 
     let shader_type = shader::ShaderType {
         device: &device,
-        path: "tests/shaders/fill_memory.spv",
+        path: "tests/compiled_shaders/fill_memory.spv",
         entry: CString::new("main").expect("Failed to allocate string"),
     };
 
