@@ -10,6 +10,26 @@ Library provides wrapper around Vulkan API to make work easier
 
 General idea as in Vulkan is creating functional objects by providing related configuration structs
 
+## Using in project
+
+As library in alpha stage only git is available
+
+```
+[dependencies]
+libvktypes = { git = "https://github.com/BigAngryPanda/libvktypes", branch = "main"}
+```
+
+## Tests
+
+```
+cargo test (module name) (-- --nocapture)
+```
+
+Example
+```
+cargo test hw -- --nocapture
+```
+
 ## Docs
 
 ```
