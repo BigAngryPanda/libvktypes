@@ -28,6 +28,7 @@ pub enum DeviceError {
 pub struct Device<'a> {
     i_device: ash::Device,
     i_queue_index: u32,
+    i_queue_count: u32,
     i_hw: &'a hw::HWDevice,
     _marker: PhantomData<&'a libvk::Instance>,
 }
@@ -67,6 +68,7 @@ impl<'a> Device<'a> {
         Ok(Device::<'a> {
             i_device: dev,
             i_queue_index: dev_type.queue_family_index,
+            i_queue_count: dev_type.priorities.len() as u32,
             i_hw: dev_type.hw,
             _marker: PhantomData,
         })
@@ -75,6 +77,11 @@ impl<'a> Device<'a> {
     #[doc(hidden)]
     pub fn queue_index(&self) -> u32 {
         self.i_queue_index
+    }
+
+    #[doc(hidden)]
+    pub fn queue_count(&self) -> u32 {
+        self.i_queue_count
     }
 
     #[doc(hidden)]
