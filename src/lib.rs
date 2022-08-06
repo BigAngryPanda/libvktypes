@@ -1,14 +1,18 @@
-pub mod instance;
-pub mod hardware;
-pub mod utils;
-pub mod logical_device;
+//! Functional objects definitions such as Instance and Device
+//!
+//! Instead of types `resources` are more sophisticated and carry some internal logic (instead of types which is pure description)
+//!
+//! Here `resource` and `object` is used interchangeably
+//!
+//! Usually each object created via providing corresponded object type
+
+pub mod libvk;
+pub mod hw;
+pub mod dev;
+pub mod layers;
+pub mod extensions;
+pub mod debug;
 pub mod memory;
-pub mod pipeline;
 pub mod shader;
-pub mod cmd_queue;
-pub mod specialization_constants;
-
-pub mod resources;
-pub mod macros;
-
-// https://crates.io/crates/glsl-to-spirv
+pub mod compute;
+pub mod cmd;
