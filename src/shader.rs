@@ -2,7 +2,7 @@
 use ash::vk;
 use ash::util::read_spv;
 
-use crate::resources::dev;
+use crate::dev;
 use crate::on_error_ret;
 
 use std::{ptr, mem};

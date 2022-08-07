@@ -3,7 +3,7 @@ use ash::vk;
 use ash::extensions::ext;
 
 use crate::on_error_ret;
-use crate::resources::layers::{DebugLayer, Layer};
+use crate::layers::{DebugLayer, Layer};
 
 use std::ptr;
 

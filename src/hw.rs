@@ -5,7 +5,7 @@
 use ash::vk;
 
 use crate::on_error_ret;
-use crate::resources::libvk;
+use crate::libvk;
 
 use std::ffi::CStr;
 use std::fmt;

@@ -6,6 +6,7 @@
 //!
 //! Usually each object created via providing corresponded object type
 
+pub mod macros;
 pub mod libvk;
 pub mod hw;
 pub mod dev;

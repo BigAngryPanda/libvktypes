@@ -2,8 +2,8 @@
 
 use ash::vk;
 
-use crate::resources::hw;
-use crate::resources::dev;
+use crate::hw;
+use crate::dev;
 use crate::on_error_ret;
 
 use std::ptr;

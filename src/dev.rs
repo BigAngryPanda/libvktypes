@@ -4,7 +4,7 @@
 
 use ash::vk;
 
-use crate::resources::{libvk, hw};
+use crate::{libvk, hw};
 use crate::on_error_ret;
 
 use std::marker::PhantomData;

@@ -4,9 +4,9 @@
 
 use ash::vk;
 
-use crate::resources::dev;
-use crate::resources::memory;
-use crate::resources::shader;
+use crate::dev;
+use crate::memory;
+use crate::shader;
 
 use crate::on_error_ret;
 

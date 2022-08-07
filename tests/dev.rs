@@ -1,4 +1,4 @@
-use libvktypes::resources::{dev, extensions, hw, layers, libvk};
+use libvktypes::{dev, extensions, hw, layers, libvk};
 
 #[test]
 fn device_creation() {

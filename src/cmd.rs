@@ -2,7 +2,7 @@
 
 use ash::vk;
 
-use crate::resources::{dev, memory, compute};
+use crate::{dev, memory, compute};
 
 use crate::on_error_ret;
 

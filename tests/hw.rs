@@ -1,4 +1,4 @@
-use libvktypes::resources::{
+use libvktypes::{
     libvk,
     hw,
     layers,
