@@ -35,6 +35,6 @@ macro_rules! on_error {
 #[macro_export]
 macro_rules! on_error_ret {
     ( $e:expr, $err_exp:expr ) => {
-        crate::on_error!($e, return Err($err_exp))
+        $crate::on_error!($e, return Err($err_exp))
     }
 }
