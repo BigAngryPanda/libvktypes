@@ -35,3 +35,18 @@ fn dynamic_load_instance() {
 
     assert!(lib.is_ok());
 }
+
+#[test]
+fn multiple_ext() {
+    let lib_type = libvk::InstanceType {
+        debug_layer: Some(layers::DebugLayer::default()),
+        extensions: &[extensions::DEBUG_EXT_NAME.as_ptr(),
+            extensions::SURFACE_EXT_NAME.as_ptr(),
+            extensions::XLIB_SURFACE_EXT_NAME.as_ptr()],
+        ..libvk::InstanceType::default()
+    };
+
+    let lib = libvk::Instance::new(&lib_type);
+
+    assert!(lib.is_ok());
+}
