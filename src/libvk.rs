@@ -33,7 +33,7 @@ impl<'a> Default for InstanceType<'a> {
 }
 
 pub struct Instance {
-    _entry: ash::Entry,
+    i_entry: ash::Entry,
     i_instance: ash::Instance,
     i_debug_loader: ext::DebugUtils,
     i_debug_messenger: vk::DebugUtilsMessengerEXT,
@@ -115,7 +115,7 @@ impl Instance {
         };
 
         Ok(Instance {
-			_entry: entry,
+			i_entry: entry,
 			i_instance: instance,
 			i_debug_loader: dbg_loader,
 			i_debug_messenger: dbg_messenger,
@@ -125,6 +125,11 @@ impl Instance {
     #[doc(hidden)]
     pub fn instance(&self) -> &ash::Instance {
         &self.i_instance
+    }
+
+    #[doc(hidden)]
+    pub fn entry(&self) -> &ash::Entry {
+        &self.i_entry
     }
 }
 

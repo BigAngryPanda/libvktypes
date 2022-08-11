@@ -5,3 +5,5 @@ pub mod memory;
 pub mod shader;
 pub mod compute_pipeline;
 pub mod cmd;
+pub mod window;
+pub mod surface;
