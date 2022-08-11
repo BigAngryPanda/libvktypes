@@ -4,7 +4,7 @@ use libvktypes::{dev, extensions, hw, layers, libvk};
 fn device_creation() {
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME],
+        extensions: &[extensions::DEBUG_EXT_NAME.as_ptr()],
         ..libvk::InstanceType::default()
     };
 

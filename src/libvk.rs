@@ -16,7 +16,7 @@ pub struct InstanceType<'a> {
     pub version_patch: u32,
     pub dynamic_load: bool,
     pub debug_layer: Option<DebugLayer>,
-    pub extensions: &'a [&'a CStr],
+    pub extensions: &'a [*const i8],
 }
 
 impl<'a> Default for InstanceType<'a> {
@@ -91,7 +91,7 @@ impl Instance {
             pp_enabled_extension_names: if desc.extensions.is_empty() {
                 ptr::null()
             } else {
-                &desc.extensions[0].as_ptr()
+                desc.extensions.as_ptr()
             },
             enabled_extension_count: if desc.extensions.is_empty() {
                 0

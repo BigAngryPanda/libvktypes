@@ -16,7 +16,7 @@ use std::ffi::CString;
 fn cmd_pool_allocation() {
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME],
+        extensions: &[extensions::DEBUG_EXT_NAME.as_ptr()],
         ..libvk::InstanceType::default()
     };
 
@@ -52,7 +52,7 @@ fn cmd_pool_allocation() {
 fn cmd_buffer_exec() {
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME],
+        extensions: &[extensions::DEBUG_EXT_NAME.as_ptr()],
         ..libvk::InstanceType::default()
     };
 

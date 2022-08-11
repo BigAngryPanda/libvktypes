@@ -11,7 +11,7 @@ use libvktypes::{
 fn compute_memory_allocation() {
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME],
+        extensions: &[extensions::DEBUG_EXT_NAME.as_ptr()],
         ..libvk::InstanceType::default()
     };
 
@@ -52,7 +52,7 @@ fn compute_memory_allocation() {
 fn zero_allocation() {
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME],
+        extensions: &[extensions::DEBUG_EXT_NAME.as_ptr()],
         ..libvk::InstanceType::default()
     };
 
