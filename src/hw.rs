@@ -474,8 +474,8 @@ impl fmt::Display for HWDevice {
         write!(
             f,
             "*****************************\n\
-                  Queue family information\n\
-                  *****************************\n"
+            Queue family information\n\
+            *****************************\n"
         )
         .unwrap();
 
@@ -494,8 +494,8 @@ impl fmt::Display for HWDevice {
         write!(
             f,
             "*****************************\n\
-                  Memory information\n\
-                  *****************************\n"
+            Memory information\n\
+            *****************************\n"
         )
         .unwrap();
 
