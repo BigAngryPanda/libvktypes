@@ -5,7 +5,7 @@ use ash::extensions::khr;
 
 use winit::platform::unix::WindowExtUnix;
 
-use crate::{libvk, window};
+use crate::{libvk, window, hw};
 use crate::{on_error_ret, on_option};
 
 use std::ptr;
@@ -78,5 +78,50 @@ impl Surface {
 impl Drop for Surface {
     fn drop(&mut self) {
         unsafe { self.i_loader.destroy_surface(self.i_surface, None) };
+    }
+}
+
+pub enum CapabilitiesError {
+    Modes,
+    Capabilities,
+    Formats
+}
+
+pub struct Capabilities {
+    i_modes: Vec<vk::PresentModeKHR>,
+    i_capabilities: vk::SurfaceCapabilitiesKHR,
+    i_formats: Vec<vk::SurfaceFormatKHR>,
+}
+
+impl Capabilities {
+    pub fn get(hw: &hw::HWDevice, surface: &Surface) -> Result<Capabilities, CapabilitiesError> {
+        let mods = on_error_ret!(
+            unsafe {
+                surface.loader().get_physical_device_surface_present_modes(hw.device(), surface.surface())
+            },
+            CapabilitiesError::Modes
+        );
+
+        let capabilities = on_error_ret!(
+            unsafe {
+                surface.loader().get_physical_device_surface_capabilities(hw.device(), surface.surface())
+            },
+            CapabilitiesError::Capabilities
+        );
+
+        let formats = on_error_ret!(
+            unsafe {
+                surface.loader().get_physical_device_surface_formats(hw.device(), surface.surface())
+            },
+            CapabilitiesError::Formats
+        );
+
+        Ok(
+            Capabilities {
+                i_modes: mods,
+                i_capabilities: capabilities,
+                i_formats: formats
+            }
+        )
     }
 }
