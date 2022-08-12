@@ -67,6 +67,7 @@ pub struct QueueFamilyDescription {
 }
 
 impl QueueFamilyDescription {
+    #[doc(hidden)]
     fn new(property: &vk::QueueFamilyProperties, index: u32) -> QueueFamilyDescription {
         QueueFamilyDescription {
             i_index: index,
@@ -153,6 +154,7 @@ pub struct MemoryDescription {
 }
 
 impl MemoryDescription {
+    #[doc(hidden)]
     fn new(properties: &vk::PhysicalDeviceMemoryProperties, mem_index: usize) -> MemoryDescription {
         let mem_type: vk::MemoryType = properties.memory_types[mem_index];
         let heap_size: u64 = properties.memory_heaps[mem_type.heap_index as usize].size;
@@ -429,6 +431,7 @@ impl HWDevice {
         self.memory().find(move |x| f(x))
     }
 
+    /// Does selected queue family within hw device supports surface
     pub fn support_surface(
         &self,
         surface: surface::Surface,
@@ -518,6 +521,7 @@ impl fmt::Display for HWDevice {
 pub struct Description(Vec<HWDevice>);
 
 impl Description {
+    /// Try to retrieve information about hardware
     pub fn poll(lib: &libvk::Instance) -> Result<Description, HWError> {
         let hw: Vec<vk::PhysicalDevice> = on_error_ret!(
             unsafe { lib.instance().enumerate_physical_devices() },
