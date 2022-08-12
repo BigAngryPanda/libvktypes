@@ -7,8 +7,6 @@ use crate::layers::{DebugLayer, Layer};
 
 use std::ptr;
 
-use std::ffi::CStr;
-
 #[derive(Debug)]
 pub struct InstanceType<'a> {
     pub version_major: u32,
