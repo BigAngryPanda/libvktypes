@@ -5,10 +5,16 @@
 use ash::vk;
 
 use crate::on_error_ret;
-use crate::libvk;
+use crate::{libvk, surface};
 
 use std::ffi::CStr;
 use std::fmt;
+
+#[derive(Debug)]
+pub enum HWError {
+    Enumerate,
+    SurfaceSupport,
+}
 
 /// Represents GPU type
 ///
@@ -410,6 +416,13 @@ impl HWDevice {
     {
         self.memory().find(move |x| f(x))
     }
+
+    pub fn support_surface(&self, surface: surface::Surface, queue_family_index: u32) -> Result<bool, HWError> {
+        match unsafe {surface.loader().get_physical_device_surface_support(self.device(), queue_family_index, surface.surface())} {
+            Ok(val) => Ok(val),
+            Err(_) => Err(HWError::SurfaceSupport),
+        }
+    }
 }
 
 // Call unwrap to supress warnings
@@ -472,11 +485,6 @@ impl fmt::Display for HWDevice {
 
         Ok(())
     }
-}
-
-#[derive(Debug)]
-pub enum HWError {
-    Enumerate,
 }
 
 pub struct Description(Vec<HWDevice>);

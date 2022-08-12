@@ -63,6 +63,16 @@ impl Surface {
             }
         )
     }
+
+    #[doc(hidden)]
+    pub fn loader(&self) -> &khr::Surface {
+        &self.i_loader
+    }
+
+    #[doc(hidden)]
+    pub fn surface(&self) -> vk::SurfaceKHR {
+        self.i_surface
+    }
 }
 
 impl Drop for Surface {
