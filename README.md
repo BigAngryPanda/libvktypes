@@ -30,6 +30,22 @@ Example
 cargo test hw -- --nocapture
 ```
 
+Some tests (with window creation) were excluded from test set (i.e. you cannot run it with `cargo test`)
+
+The reason is you cannot create EventLoop multiple times
+
+To run excluded tests use
+```
+-- --ignored
+```
+
+Example
+```
+cargo test init_window -- --ignored
+```
+
+Note: do not run multiple excluded tests at once
+
 ## Docs
 
 ```
