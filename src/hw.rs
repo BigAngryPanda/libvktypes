@@ -181,13 +181,13 @@ impl MemoryDescription {
     }
 
     /// Each memory has its own property as bitmask
-	///
-	/// Method checks that selected memory satisfies requirements defined by ```flags```
-	///
-	#[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkMemoryPropertyFlagBits.html>"]
-	pub fn is_compatible(&self, flags: MemoryProperty) -> bool {
-		self.i_property.contains(flags)
-	}
+    ///
+    /// Method checks that selected memory satisfies requirements defined by ```flags```
+    ///
+    #[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkMemoryPropertyFlagBits.html>"]
+    pub fn is_compatible(&self, flags: MemoryProperty) -> bool {
+        self.i_property.contains(flags)
+    }
 
     /// Is VK_MEMORY_HEAP_DEVICE_LOCAL_BIT set
     pub fn is_local(&self) -> bool {
@@ -284,13 +284,23 @@ impl HWDevice {
                 .iter()
                 .enumerate()
                 .map(|(i, _)| MemoryDescription::new(&mem_props, i))
-                .filter(|m| m.is_local() || m.is_host_visible() || m.is_host_cached() || m.is_host_coherent())
+                .filter(|m| {
+                    m.is_local()
+                        || m.is_host_visible()
+                        || m.is_host_cached()
+                        || m.is_host_coherent()
+                })
                 .collect()
         };
 
         HWDevice {
             i_device: hw,
-            i_name: unsafe { CStr::from_ptr(&properties.device_name[0]).to_str().unwrap().to_owned() },
+            i_name: unsafe {
+                CStr::from_ptr(&properties.device_name[0])
+                    .to_str()
+                    .unwrap()
+                    .to_owned()
+            },
             i_hw_type: HWType::new(properties.device_type),
             i_hw_id: properties.device_id,
             i_version: properties.api_version,
@@ -299,7 +309,9 @@ impl HWDevice {
                 .iter()
                 .enumerate()
                 .map(|(i, prop)| QueueFamilyDescription::new(prop, i as u32))
-                .filter(|q| q.is_compute() || q.is_graphics() || q.is_transfer() || q.is_sparce_binding())
+                .filter(|q| {
+                    q.is_compute() || q.is_graphics() || q.is_transfer() || q.is_sparce_binding()
+                })
                 .collect(),
             i_heap_info: memory_desc,
         }
@@ -417,8 +429,18 @@ impl HWDevice {
         self.memory().find(move |x| f(x))
     }
 
-    pub fn support_surface(&self, surface: surface::Surface, queue_family_index: u32) -> Result<bool, HWError> {
-        match unsafe {surface.loader().get_physical_device_surface_support(self.device(), queue_family_index, surface.surface())} {
+    pub fn support_surface(
+        &self,
+        surface: surface::Surface,
+        queue_family_index: u32,
+    ) -> Result<bool, HWError> {
+        match unsafe {
+            surface.loader().get_physical_device_surface_support(
+                self.device(),
+                queue_family_index,
+                surface.surface(),
+            )
+        } {
             Ok(val) => Ok(val),
             Err(_) => Err(HWError::SurfaceSupport),
         }
@@ -449,10 +471,13 @@ impl fmt::Display for HWDevice {
         )
         .unwrap();
 
-        write!(f, "*****************************\n\
+        write!(
+            f,
+            "*****************************\n\
                   Queue family information\n\
                   *****************************\n"
-        ).unwrap();
+        )
+        .unwrap();
 
         for (i, queue) in self.i_queues.iter().enumerate() {
             write!(
@@ -466,10 +491,13 @@ impl fmt::Display for HWDevice {
             .unwrap();
         }
 
-        write!(f, "*****************************\n\
+        write!(
+            f,
+            "*****************************\n\
                   Memory information\n\
                   *****************************\n"
-        ).unwrap();
+        )
+        .unwrap();
 
         for (i, info) in self.i_heap_info.iter().enumerate() {
             write!(
@@ -514,8 +542,12 @@ impl Description {
     }
 
     // TODO mb rewrite it with find_map?
-    pub fn find_first<T, U, S>(&self, dev: T, queue: U, mem: S)
-        -> Option<(&HWDevice, &QueueFamilyDescription, &MemoryDescription)>
+    pub fn find_first<T, U, S>(
+        &self,
+        dev: T,
+        queue: U,
+        mem: S,
+    ) -> Option<(&HWDevice, &QueueFamilyDescription, &MemoryDescription)>
     where
         T: Fn(&HWDevice) -> bool,
         U: Fn(&QueueFamilyDescription) -> bool,
