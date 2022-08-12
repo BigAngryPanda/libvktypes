@@ -15,6 +15,7 @@ pub struct DeviceType<'a> {
     pub hw: &'a hw::HWDevice,
     pub queue_family_index: u32,
     pub priorities: &'a [f32],
+    pub extensions: &'a [*const i8],
 }
 
 #[derive(Debug)]

@@ -25,6 +25,7 @@ fn device_creation() {
         hw: hw_dev,
         queue_family_index: queue.index(),
         priorities: &[1.0_f32],
+        extensions: &[],
     };
 
     assert!(dev::Device::new(&dev_type).is_ok());
