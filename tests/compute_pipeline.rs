@@ -15,7 +15,7 @@ use std::ffi::CString;
 fn create_pipeline() {
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME.as_ptr()],
+        extensions: &[extensions::DEBUG_EXT_NAME],
         ..libvk::InstanceType::default()
     };
 

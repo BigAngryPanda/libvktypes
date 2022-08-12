@@ -6,11 +6,11 @@ use std::ffi::CStr;
 
 pub type ExtentionNamesList<'a> = Vec<&'a CStr>;
 
-pub const DEBUG_EXT_NAME: &CStr = ext::DebugUtils::name();
+pub const DEBUG_EXT_NAME: *const i8 = ext::DebugUtils::name().as_ptr();
 
-pub const SURFACE_EXT_NAME: &CStr = khr::Surface::name();
+pub const SURFACE_EXT_NAME: *const i8 = khr::Surface::name().as_ptr();
 
-pub const XLIB_SURFACE_EXT_NAME: &CStr = khr::XlibSurface::name();
+pub const XLIB_SURFACE_EXT_NAME: *const i8 = khr::XlibSurface::name().as_ptr();
 
 /// Device ext
-pub const SWAPCHAIN_EXT_NAME: &CStr = khr::Swapchain::name();
+pub const SWAPCHAIN_EXT_NAME: *const i8 = khr::Swapchain::name().as_ptr();

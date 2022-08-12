@@ -7,9 +7,9 @@ fn init_surface() {
 
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME.as_ptr(),
-            extensions::SURFACE_EXT_NAME.as_ptr(),
-            extensions::XLIB_SURFACE_EXT_NAME.as_ptr()
+        extensions: &[extensions::DEBUG_EXT_NAME,
+            extensions::SURFACE_EXT_NAME,
+            extensions::XLIB_SURFACE_EXT_NAME
         ],
         ..libvk::InstanceType::default()
     };
@@ -31,9 +31,9 @@ fn get_capabilities() {
 
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME.as_ptr(),
-            extensions::SURFACE_EXT_NAME.as_ptr(),
-            extensions::XLIB_SURFACE_EXT_NAME.as_ptr()
+        extensions: &[extensions::DEBUG_EXT_NAME,
+            extensions::SURFACE_EXT_NAME,
+            extensions::XLIB_SURFACE_EXT_NAME
         ],
         ..libvk::InstanceType::default()
     };

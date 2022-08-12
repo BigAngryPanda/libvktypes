@@ -4,7 +4,7 @@ use libvktypes::{dev, extensions, hw, layers, libvk};
 fn device_creation() {
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME.as_ptr()],
+        extensions: &[extensions::DEBUG_EXT_NAME],
         ..libvk::InstanceType::default()
     };
 
@@ -35,7 +35,7 @@ fn device_creation() {
 fn with_ext() {
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME.as_ptr()],
+        extensions: &[extensions::DEBUG_EXT_NAME],
         ..libvk::InstanceType::default()
     };
 
@@ -56,7 +56,7 @@ fn with_ext() {
         hw: hw_dev,
         queue_family_index: queue.index(),
         priorities: &[1.0_f32],
-        extensions: &[extensions::SWAPCHAIN_EXT_NAME.as_ptr()],
+        extensions: &[extensions::SWAPCHAIN_EXT_NAME],
     };
 
     assert!(dev::Device::new(&dev_type).is_ok());
