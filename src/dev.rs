@@ -56,8 +56,8 @@ impl<'a> Device<'a> {
             p_queue_create_infos: &dev_queue_info,
             enabled_layer_count: 0,
             pp_enabled_layer_names: ptr::null(),
-            enabled_extension_count: 0,
-            pp_enabled_extension_names: ptr::null(),
+            enabled_extension_count: dev_type.extensions.len() as u32,
+            pp_enabled_extension_names: dev_type.extensions.as_ptr(),
             p_enabled_features: ptr::null(),
         };
 
