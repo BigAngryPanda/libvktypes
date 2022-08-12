@@ -2,6 +2,7 @@ use libvktypes::{window, libvk, layers, extensions, hw, surface};
 
 #[cfg(target_os = "linux")]
 #[test]
+#[ignore]
 fn init_surface() {
     let window = window::Window::new().expect("Failed to create window");
 
@@ -26,6 +27,7 @@ fn init_surface() {
 
 #[cfg(target_os = "linux")]
 #[test]
+#[ignore]
 fn get_capabilities() {
     let window = window::Window::new().expect("Failed to create window");
 
