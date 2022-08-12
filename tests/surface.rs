@@ -57,5 +57,10 @@ fn get_capabilities() {
 
     let surface = surface::Surface::new(&surface_cfg).expect("Failed to create surface");
 
-    assert!(surface::Capabilities::get(hw_dev, &surface).is_ok());
+    let cap_type = surface::CapabilitiesType {
+        hw: hw_dev,
+        surface: &surface
+    };
+
+    assert!(surface::Capabilities::get(&cap_type).is_ok());
 }

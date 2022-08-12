@@ -87,6 +87,11 @@ pub enum CapabilitiesError {
     Formats
 }
 
+pub struct CapabilitiesType<'a> {
+    pub hw: &'a hw::HWDevice,
+    pub surface: &'a Surface
+}
+
 pub struct Capabilities {
     i_modes: Vec<vk::PresentModeKHR>,
     i_capabilities: vk::SurfaceCapabilitiesKHR,
@@ -94,7 +99,10 @@ pub struct Capabilities {
 }
 
 impl Capabilities {
-    pub fn get(hw: &hw::HWDevice, surface: &Surface) -> Result<Capabilities, CapabilitiesError> {
+    pub fn get(cap_type: &CapabilitiesType) -> Result<Capabilities, CapabilitiesError> {
+        let hw = cap_type.hw;
+        let surface = cap_type.surface;
+
         let mods = on_error_ret!(
             unsafe {
                 surface.loader().get_physical_device_surface_present_modes(hw.device(), surface.surface())
