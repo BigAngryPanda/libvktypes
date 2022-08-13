@@ -1,6 +1,6 @@
 //! Provides API to the selected GPU
 //!
-//! Instead of [hw module](crate::resources::hw) `dev` represents logical level
+//! Instead of [hw module](crate::hw) `dev` represents logical level
 
 use ash::vk;
 

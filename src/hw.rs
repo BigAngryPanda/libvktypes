@@ -1,6 +1,6 @@
 //! Provide information about available hardware
 //!
-//! Instead of [dev module](crate::resources::dev) `hw` represents hardware level
+//! Instead of [dev module](crate::dev) `hw` represents hardware level
 
 use ash::vk;
 
