@@ -19,3 +19,4 @@ pub mod compute;
 pub mod cmd;
 pub mod surface;
 pub mod window;
+pub mod swapchain;

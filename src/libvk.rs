@@ -1,3 +1,7 @@
+//! Provide library handler
+//!
+//! Typically it is your first object to create
+
 use ash;
 use ash::vk;
 use ash::extensions::ext;

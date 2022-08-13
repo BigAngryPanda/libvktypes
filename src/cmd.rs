@@ -135,7 +135,7 @@ impl<'a> CmdBufferType<'a> {
 
     /// Copy `src` buffer into `dst`
     ///
-    /// If `dst` has less capacity then copy only first [Memory::size()] bytes
+    /// If `dst` has less capacity then copy only first [crate::memory::Memory::size()] bytes
     ///
     /// If `src` has less capacity then rest of the `dst` memory will be left intact
     pub fn copy(&mut self, src: &'a memory::Memory, dst: &'a memory::Memory)  {

@@ -1,6 +1,4 @@
 //! Represent pipeline and its configuration
-//!
-//! Note: only [memory](crate::resorces::memory::Memory) with memory::UsageFlags::STORAGE_BUFFER is allowed
 
 use ash::vk;
 
@@ -12,6 +10,7 @@ use crate::on_error_ret;
 
 use std::ptr;
 
+/// Note: only [memory](crate::memory::Memory) with memory::UsageFlags::STORAGE_BUFFER is allowed
 pub struct PipelineType<'a> {
     pub device: &'a dev::Device<'a>,
     pub buffers: &'a [&'a memory::Memory<'a>],

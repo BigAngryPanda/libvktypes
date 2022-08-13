@@ -1,4 +1,4 @@
-//! Provides API to the selected GPU
+//! Provides API to the selected GPU (Logical device)
 //!
 //! Instead of [hw module](crate::hw) `dev` represents logical level
 

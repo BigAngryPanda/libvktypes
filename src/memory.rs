@@ -187,7 +187,7 @@ impl<'a> Memory<'a> {
     /// If memory is not coherent performs
     /// [vkInvalidateMappedMemoryRanges](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkInvalidateMappedMemoryRanges.html)
     ///
-    /// I.e., makes device memory changes available to host (compare with [Memory::write()] method)
+    /// I.e. makes device memory changes available to host (compare with [Memory::write()] method)
     ///
     /// Note: on failure return same error [MemoryError::Flush]
     pub fn read(&self) -> Result<&[u8], MemoryError>
