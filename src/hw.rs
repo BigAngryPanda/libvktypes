@@ -59,7 +59,7 @@ impl fmt::Display for HWType {
 /// Represent information about single queue family
 ///
 #[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VkQueueFlagBits>"]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct QueueFamilyDescription {
     i_index: u32,
     i_count: u32,
@@ -256,6 +256,7 @@ impl fmt::Display for MemoryDescription {
     }
 }
 
+#[derive(Clone)]
 pub struct HWDevice {
     i_device: vk::PhysicalDevice,
     i_name: String,

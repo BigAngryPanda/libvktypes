@@ -10,6 +10,11 @@ use crate::on_error_ret;
 use std::marker::PhantomData;
 use std::ptr;
 
+/// Device configuration structure
+///
+/// Note: to prevent lifetime bounds [HWDevice](crate::hw::HWDevice) will be cloned
+///
+/// It is not optimal but maybe in the future it will be fixed
 pub struct DeviceType<'a> {
     pub lib: &'a libvk::Instance,
     pub hw: &'a hw::HWDevice,
@@ -30,7 +35,7 @@ pub struct Device<'a> {
     i_device: ash::Device,
     i_queue_index: u32,
     i_queue_count: u32,
-    i_hw: &'a hw::HWDevice,
+    i_hw: hw::HWDevice,
     _marker: PhantomData<&'a libvk::Instance>,
 }
 
@@ -38,7 +43,7 @@ pub struct Device<'a> {
 ///
 /// Hence lifetime requirements
 impl<'a> Device<'a> {
-    pub fn new(dev_type: &'a DeviceType) -> Result<Device<'a>, DeviceError> {
+    pub fn new(dev_type: &DeviceType) -> Result<Device<'a>, DeviceError> {
         let dev_queue_info = vk::DeviceQueueCreateInfo {
             s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
             p_next: ptr::null(),
@@ -70,7 +75,7 @@ impl<'a> Device<'a> {
             i_device: dev,
             i_queue_index: dev_type.queue_family_index,
             i_queue_count: dev_type.priorities.len() as u32,
-            i_hw: dev_type.hw,
+            i_hw: dev_type.hw.clone(),
             _marker: PhantomData,
         })
     }
@@ -92,7 +97,7 @@ impl<'a> Device<'a> {
 
     #[doc(hidden)]
     pub fn hw(&self) -> &hw::HWDevice {
-        self.i_hw
+        &self.i_hw
     }
 }
 
