@@ -105,6 +105,38 @@ impl QueueFamilyDescription {
     pub fn is_sparce_binding(&self) -> bool {
         self.i_property.contains(vk::QueueFlags::SPARSE_BINDING)
     }
+
+    /// Does selected queue family within hw device supports surface
+    ///
+    /// Return [error](crate::hw::HWError) if failed to get support
+    pub fn explicit_support_surface(
+        &self,
+        surface: &surface::Surface,
+        hw: &HWDevice,
+    ) -> Result<bool, HWError> {
+        match unsafe {
+            surface.loader().get_physical_device_surface_support(
+                hw.device(),
+                self.i_index,
+                surface.surface(),
+            )
+        } {
+            Ok(val) => Ok(val),
+            Err(_) => Err(HWError::SurfaceSupport),
+        }
+    }
+
+    /// Does selected queue family within hw device supports surface
+    ///
+    /// Instead of [explicit method](crate::hw::QueueFamilyDescription::explicit_support_surface)
+    /// return false if failed to get support or queue family does not support presentation
+    pub fn support_surface(
+        &self,
+        surface: &surface::Surface,
+        hw: &HWDevice,
+    ) -> bool {
+        matches!(self.explicit_support_surface(surface, hw), Ok(true))
+    }
 }
 
 impl fmt::Display for QueueFamilyDescription {
@@ -430,24 +462,6 @@ impl HWDevice {
         T: Fn(&MemoryDescription) -> bool,
     {
         self.memory().find(move |x| f(x))
-    }
-
-    /// Does selected queue family within hw device supports surface
-    pub fn support_surface(
-        &self,
-        surface: surface::Surface,
-        queue_family_index: u32,
-    ) -> Result<bool, HWError> {
-        match unsafe {
-            surface.loader().get_physical_device_surface_support(
-                self.device(),
-                queue_family_index,
-                surface.surface(),
-            )
-        } {
-            Ok(val) => Ok(val),
-            Err(_) => Err(HWError::SurfaceSupport),
-        }
     }
 }
 

@@ -1,4 +1,4 @@
-//! Represents abstraction over native surface or window object
+//! Abstraction over native surface or window object
 
 use ash::vk;
 use ash::extensions::khr;
@@ -81,6 +81,91 @@ impl Drop for Surface {
     }
 }
 
+/// Surface formats
+///
+/// Contains two field: [`format`](self::ImageFormat) and [`color_space`](self::ColorSpace)
+///
+#[doc = "Ash documentation: <https://docs.rs/ash/latest/ash/vk/struct.SurfaceFormatKHR.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSurfaceFormatKHR.html>"]
+///
+/// # Example
+///
+/// ```
+/// use libvktypes::surface::{SurfaceFormat, ImageFormat, ColorSpace};
+///
+/// SurfaceFormat {
+///     format: ImageFormat::R8G8B8A8_UNORM,
+///     color_space: ColorSpace::SRGB_NONLINEAR,
+/// };
+/// ```
+pub type SurfaceFormat = vk::SurfaceFormatKHR;
+
+/// Image formats
+///
+#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.Format.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkFormat.html>"]
+pub type ImageFormat = vk::Format;
+
+/// Color spaces
+///
+#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.ColorSpaceKHR.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkColorSpaceKHR.html>"]
+pub type ColorSpace = vk::ColorSpaceKHR;
+
+/// Present modes
+///
+#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.PresentModeKHR.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPresentModeKHR.html>"]
+pub type PresentMode = vk::PresentModeKHR;
+
+/// Image usage flags
+///
+#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.ImageUsageFlags.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkImageUsageFlagBits.html>"]
+pub type UsageFlags = vk::ImageUsageFlags;
+
+/// Structure specifying a two-dimensional extent
+///
+/// Contains two field: `width` and `height`
+///
+#[doc = "Ash documentation: <https://docs.rs/ash/latest/ash/vk/struct.Extent2D.html>"]
+///
+#[doc = "Vulkan documentation: <https://docs.rs/ash/latest/ash/vk/struct.Extent2D.html>"]
+///
+/// # Example
+///
+/// ```
+/// use libvktypes::surface::Extent2D;
+///
+/// Extent2D {
+///     width: 1920,
+///     height: 1080,
+/// };
+/// ```
+pub type Extent2D = vk::Extent2D;
+
+/// Value describing the transform, relative to the presentation engine’s natural orientation
+///
+/// It is applied to the image content prior to presentation
+///
+#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.SurfaceTransformFlagsKHR.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSurfaceTransformFlagBitsKHR.html>"]
+pub type PreTransformation = vk::SurfaceTransformFlagsKHR;
+
+/// Value indicating the alpha compositing mode to use when this surface is composited together with other surfaces on certain window systems
+///
+#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.CompositeAlphaFlagsKHR.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkCompositeAlphaFlagBitsKHR.html>"]
+pub type CompositeAlphaFlags = vk::CompositeAlphaFlagsKHR;
+
+#[derive(Debug)]
 pub enum CapabilitiesError {
     Modes,
     Capabilities,
@@ -99,6 +184,7 @@ pub struct Capabilities {
 }
 
 impl Capabilities {
+    /// Query for surface capabilities for the selected hw device
     pub fn get(cap_type: &CapabilitiesType) -> Result<Capabilities, CapabilitiesError> {
         let hw = cap_type.hw;
         let surface = cap_type.surface;
@@ -131,5 +217,67 @@ impl Capabilities {
                 i_formats: formats
             }
         )
+    }
+
+    /// Return number of minimal number of images required for the swapchain
+    pub fn min_img_count(&self) -> u32 {
+        self.i_capabilities.min_image_count
+    }
+
+    /// Return number of max number of images supported for the swapchain
+    ///
+    /// Note: function return [u32::MAX] if there is no limit (max = 0) or limit is equal to [u32::MAX]
+    pub fn max_img_count(&self) -> u32 {
+        if self.i_capabilities.max_image_count == 0 {
+            u32::MAX
+        }
+        else {
+            self.i_capabilities.max_image_count
+        }
+    }
+
+    /// Return true if `count` is in range [min_img_count; max_img_count]
+    pub fn is_img_count_supported(&self, count: u32) -> bool {
+        (self.min_img_count()..=self.max_img_count()).contains(&count)
+    }
+
+    /// Does surface support provided combination of format and color
+    pub fn is_format_supported(&self, format: SurfaceFormat) -> bool {
+        self.i_formats.contains(&format)
+    }
+
+    /// Return iterator over available surface formats and corresponding color schemes
+    pub fn formats(&self) -> impl Iterator<Item = &SurfaceFormat> {
+        self.i_formats.iter()
+    }
+
+    /// Return iterator over all available presentation modes
+    pub fn modes(&self) -> impl Iterator<Item = &PresentMode> {
+        self.i_modes.iter()
+    }
+
+    /// Does surface support provided presentation mode
+    pub fn is_mode_supported(&self, mode: PresentMode) -> bool {
+        self.i_modes.contains(&mode)
+    }
+
+    /// Check if selected flags is supported
+    pub fn is_flags_supported(&self, flags: UsageFlags) -> bool {
+        self.i_capabilities.supported_usage_flags.contains(flags)
+    }
+
+    /// Return 2d extent supported by surface
+    pub fn extent2d(&self) -> Extent2D {
+        self.i_capabilities.current_extent
+    }
+
+    /// Return current transformation
+    pub fn pre_transformation(&self) -> PreTransformation {
+        self.i_capabilities.current_transform
+    }
+
+    /// Retrun current composite alpha flags
+    pub fn alpha_composition(&self) -> CompositeAlphaFlags {
+        self.i_capabilities.supported_composite_alpha
     }
 }

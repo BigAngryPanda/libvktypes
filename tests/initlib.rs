@@ -1,14 +1,3 @@
-//pub mod libvk;
-//pub mod hw;
-//pub mod dev;
-pub mod memory;
-pub mod shader;
-pub mod compute_pipeline;
-pub mod cmd;
-//pub mod window;
-//pub mod surface;
-pub mod swapchain;
-
 use libvktypes::{dev, extensions, hw, layers, libvk, surface, window};
 
 #[cfg(target_os = "linux")]
@@ -26,7 +15,6 @@ pub fn get_graphics_instance() -> libvk::Instance {
     libvk::Instance::new(&lib_type).expect("Failed to create instance")
 }
 
-#[cfg(test)]
 pub fn get_window() -> window::Window {
     window::Window::new().expect("Failed to create window")
 }
