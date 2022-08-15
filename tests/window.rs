@@ -1,7 +1,7 @@
-use libvktypes::window;
+#[path = "./mod.rs"]
+mod test_context;
 
 #[test]
-#[ignore]
 fn init_window() {
-    assert!(window::Window::new().is_ok());
+    test_context::get_window();
 }

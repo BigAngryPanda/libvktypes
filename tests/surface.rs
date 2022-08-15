@@ -1,10 +1,12 @@
-use libvktypes::{window, libvk, layers, extensions, hw, surface};
+use libvktypes::{libvk, layers, extensions, hw, surface};
+
+#[path = "./mod.rs"]
+mod test_context;
 
 #[cfg(target_os = "linux")]
 #[test]
-#[ignore]
 fn init_surface() {
-    let window = window::Window::new().expect("Failed to create window");
+    let window_ref = test_context::get_window();
 
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
@@ -19,7 +21,7 @@ fn init_surface() {
 
     let surface_cfg = surface::SurfaceType {
         lib: &lib,
-        window: &window,
+        window: window_ref,
     };
 
     assert!(surface::Surface::new(&surface_cfg).is_ok());
@@ -27,9 +29,8 @@ fn init_surface() {
 
 #[cfg(target_os = "linux")]
 #[test]
-#[ignore]
 fn get_capabilities() {
-    let window = window::Window::new().expect("Failed to create window");
+    let window_ref = test_context::get_window();
 
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
@@ -54,7 +55,7 @@ fn get_capabilities() {
 
     let surface_cfg = surface::SurfaceType {
         lib: &lib,
-        window: &window,
+        window: window_ref,
     };
 
     let surface = surface::Surface::new(&surface_cfg).expect("Failed to create surface");

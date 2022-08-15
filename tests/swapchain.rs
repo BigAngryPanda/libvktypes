@@ -1,33 +1,24 @@
-use libvktypes::{hw, surface, swapchain};
+use libvktypes::{surface, swapchain};
 
-#[path = "./initlib.rs"]
-mod initlib;
+#[path = "./mod.rs"]
+mod test_context;
 
 #[cfg(target_os = "linux")]
 #[test]
-#[ignore]
 fn init_swapchain() {
-    let window = initlib::get_window();
+    let lib_ref = test_context::get_graphics_instance();
 
-    let lib = initlib::get_graphics_instance();
+    let surface_ref = test_context::get_surface();
 
-    let surface = initlib::get_surface(&lib, &window);
+    let device = test_context::get_graphics_device();
 
-    let hw_list = hw::Description::poll(&lib).expect("Failed to list hardware");
+    let graphic_queue = test_context::get_graphics_queue();
 
-    let (hw_dev, qf, _) = hw_list
-        .find_first(
-            hw::HWDevice::is_discrete_gpu,
-            hw::QueueFamilyDescription::is_graphics,
-            |_| true,
-        )
-        .expect("Failed to find suitable hardware device");
+    let present_queue = test_context::get_present_queue();
 
-    assert!(qf.support_surface(&surface, hw_dev));
+    assert_eq!(graphic_queue.index(), present_queue.index());
 
-    let device = initlib::get_graphics_device(&lib, hw_dev, qf);
-
-    let capabilities = initlib::get_surface_capabilities(hw_dev, &surface);
+    let capabilities = test_context::get_surface_capabilities();
 
     assert!(capabilities.is_img_count_supported(3));
     assert!(capabilities.is_format_supported(surface::SurfaceFormat {
@@ -38,9 +29,9 @@ fn init_swapchain() {
     assert!(capabilities.is_flags_supported(surface::UsageFlags::COLOR_ATTACHMENT));
 
     let swp_type = swapchain::SwapchainType {
-        lib: &lib,
-        dev: &device,
-        surface: &surface,
+        lib: lib_ref,
+        dev: device,
+        surface: surface_ref,
         num_of_images: 3,
         format: surface::ImageFormat::B8G8R8A8_UNORM,
         color: surface::ColorSpace::SRGB_NONLINEAR,
