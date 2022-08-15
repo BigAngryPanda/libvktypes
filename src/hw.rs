@@ -111,8 +111,8 @@ impl QueueFamilyDescription {
     /// Return [error](crate::hw::HWError) if failed to get support
     pub fn explicit_support_surface(
         &self,
-        surface: &surface::Surface,
         hw: &HWDevice,
+        surface: &surface::Surface
     ) -> Result<bool, HWError> {
         match unsafe {
             surface.loader().get_physical_device_surface_support(
@@ -132,10 +132,10 @@ impl QueueFamilyDescription {
     /// return false if failed to get support or queue family does not support presentation
     pub fn support_surface(
         &self,
-        surface: &surface::Surface,
         hw: &HWDevice,
+        surface: &surface::Surface
     ) -> bool {
-        matches!(self.explicit_support_surface(surface, hw), Ok(true))
+        matches!(self.explicit_support_surface(hw, surface), Ok(true))
     }
 }
 
