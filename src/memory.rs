@@ -1,9 +1,10 @@
-//! Contains memory handler as well as allocation function
+//! Contains memory buffer, image etc.
+//!
+//! All types that are like "set of user data in memory" represented here
 
 use ash::vk;
 
-use crate::hw;
-use crate::dev;
+use crate::{hw, dev};
 use crate::on_error_ret;
 
 use std::ptr;
@@ -25,6 +26,7 @@ pub type UsageFlags = vk::BufferUsageFlags;
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSharingMode.html>"]
 pub type SharingMode = vk::SharingMode;
 
+/// Configuration of [`Memory`](Memory) struct
 pub struct MemoryType<'a> {
     pub device: &'a dev::Device<'a>,
     pub size: u64,
@@ -34,16 +36,29 @@ pub struct MemoryType<'a> {
     pub queue_families: &'a [u32],
 }
 
+/// Errors during [`Memory`](Memory) initialization and access
 #[derive(Debug)]
 pub enum MemoryError {
+    /// Failed to [create](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateBuffer.html) buffer
     Buffer,
+    /// Failed to get suitable memory index
+    ///
+    /// In other words no memory is satisfying memory [`usage flags`](MemoryType::usage)
     NoMemoryType,
+    /// Failed to [allocate](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAllocateMemory.html) memory
     DeviceMemory,
+    /// Failed to
+    /// [map](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkMapMemory.html) memory
     MapAccess,
+    /// Failed to
+    /// [flush](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkFlushMappedMemoryRanges.html) memory
     Flush,
+    /// Failed to
+    /// [bind](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkBindBufferMemory.html) memory
     Bind,
 }
 
+/// Aligned region in memory with [specified](MemoryType) properties
 pub struct Memory<'a> {
     i_device: &'a dev::Device<'a>,
     i_device_memory: vk::DeviceMemory,
@@ -53,6 +68,13 @@ pub struct Memory<'a> {
 }
 
 impl<'a> Memory<'a> {
+    /// Allocate new region of memory
+    ///
+    /// Note: if memory is HOST_VISIBLE and is not HOST_COHERENT performs
+    /// [map_memory](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkMapMemory.html)
+    /// and
+    /// [flush](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkFlushMappedMemoryRanges.html)
+    /// which may result in [errors](MemoryError::MapAccess)
     pub fn allocate(mem_cfg: &'a MemoryType) -> Result<Memory<'a>, MemoryError> {
         let buffer_info = vk::BufferCreateInfo {
             s_type: vk::StructureType::BUFFER_CREATE_INFO,
