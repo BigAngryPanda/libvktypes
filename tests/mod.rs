@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use libvktypes::{libvk, dev, extensions, hw, layers, surface, window};
 
 use std::sync::Once;
