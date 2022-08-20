@@ -12,11 +12,18 @@ fn init_swapchain() {
 
     let device = test_context::get_graphics_device();
 
-    let graphic_queue = test_context::get_graphics_queue();
+/*
+    We have to search for presentation queue to pass validation layer
 
-    let present_queue = test_context::get_present_queue();
-
-    assert_eq!(graphic_queue.index(), present_queue.index());
+    [Debug][Error][Validation]"vkCreateSwapchainKHR():
+    pCreateInfo->surface is not known at this time to be supported for presentation by this device.
+    The vkGetPhysicalDeviceSurfaceSupportKHR() must be called beforehand,
+    and it must return VK_TRUE support with this surface for at least one queue family of this device.
+    The Vulkan spec states:
+    surface must be a surface that is supported by the device as determined using vkGetPhysicalDeviceSurfaceSupportKHR
+    (https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#VUID-VkSwapchainCreateInfoKHR-surface-01270)"
+*/
+    let _ = test_context::get_present_queue();
 
     let capabilities = test_context::get_surface_capabilities();
 
