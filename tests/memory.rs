@@ -1,3 +1,6 @@
+#[path = "./mod.rs"]
+mod test_context;
+
 use libvktypes::{
     dev,
     extensions,
@@ -89,4 +92,18 @@ fn zero_allocation() {
     };
 
     assert!(memory::Memory::allocate(&mem_type).is_err());
+}
+
+#[test]
+fn images_allocation() {
+    let dev = test_context::get_graphics_device();
+
+    let swp = test_context::get_swapchain();
+
+    let img_type = memory::ImageListType {
+        device: dev,
+        swapchain: swp,
+    };
+
+    assert!(memory::ImageList::from_swapchain(&img_type).is_ok());
 }

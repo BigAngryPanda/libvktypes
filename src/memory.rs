@@ -4,7 +4,7 @@
 
 use ash::vk;
 
-use crate::{hw, dev};
+use crate::{hw, dev, swapchain};
 use crate::on_error_ret;
 
 use std::ptr;
@@ -262,5 +262,111 @@ impl<'a> Drop for Memory<'a> {
             self.i_device.device().destroy_buffer(self.i_buffer, None);
             self.i_device.device().free_memory(self.i_device_memory, None);
         };
+    }
+}
+
+/// Errors during [`Image`] initialization and access
+#[derive(Debug)]
+pub enum ImageError {
+    GetImages,
+    ImageView,
+}
+
+/// Images represent multidimensional - up to 3 - arrays of data
+///
+/// Instead of [`Memory`] `Image` are more specified
+pub struct Image<'a> {
+    i_dev: &'a dev::Device<'a>,
+    i_image_view: vk::ImageView,
+}
+
+impl<'a> Image<'a> {
+    #[doc(hidden)]
+    fn new(device: &'a dev::Device<'a>, img: vk::Image, img_format: vk::Format) -> Result<Image<'a>, ImageError> {
+        let image_info:vk::ImageViewCreateInfo = vk::ImageViewCreateInfo {
+            s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
+            p_next: ptr::null(),
+            flags: vk::ImageViewCreateFlags::empty(),
+            view_type: vk::ImageViewType::TYPE_2D,
+            format: img_format,
+            components: vk::ComponentMapping {
+                r: vk::ComponentSwizzle::R,
+                g: vk::ComponentSwizzle::G,
+                b: vk::ComponentSwizzle::B,
+                a: vk::ComponentSwizzle::A,
+            },
+            subresource_range: vk::ImageSubresourceRange {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            image: img,
+        };
+
+        let img_view = on_error_ret!(
+            unsafe { device.device().create_image_view(&image_info, None) },
+            ImageError::ImageView
+        );
+
+        Ok(
+            Image {
+                i_dev: device,
+                i_image_view: img_view
+            }
+        )
+    }
+}
+
+impl<'a> Drop for Image<'a> {
+    fn drop(&mut self) {
+        unsafe { self.i_dev.device().destroy_image_view(self.i_image_view, None) };
+    }
+}
+
+pub struct ImageListType<'a> {
+    pub device: &'a dev::Device<'a>,
+    pub swapchain: &'a swapchain::Swapchain
+}
+
+/// Collection of [`Images`](Image)
+pub struct ImageList<'a>(Vec::<Image<'a>>);
+
+impl<'a> ImageList<'a> {
+    /// Retrieves [image handlers](Image) from [`Swapchain`](crate::swapchain::Swapchain)
+    pub fn from_swapchain(swp_type: &'a ImageListType) -> Result<ImageList<'a>, ImageError> {
+        let swapchain_images = on_error_ret!(
+            unsafe {
+                swp_type.swapchain.loader().get_swapchain_images(swp_type.swapchain.swapchain())
+            },
+            ImageError::GetImages
+        );
+
+        let mut img_view = Vec::<Image<'a>>::new();
+
+        for img in swapchain_images {
+            match Image::new(swp_type.device, img, swp_type.swapchain.format()) {
+                Ok(val) => img_view.push(val),
+                Err(e) => return Err(e),
+            }
+        }
+
+        Ok(ImageList(img_view))
+    }
+
+    /// Number of images in list
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Is list empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Return iterator over images in list
+    pub fn images(&self) -> impl Iterator<Item = &Image> {
+        self.0.iter()
     }
 }

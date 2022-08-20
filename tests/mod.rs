@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use libvktypes::{libvk, dev, extensions, hw, layers, surface, window};
+use libvktypes::{libvk, dev, extensions, hw, layers, surface, window, swapchain};
 
 use std::sync::Once;
 use std::mem::MaybeUninit;
@@ -33,6 +33,10 @@ static mut SURFACE_CAP: MaybeUninit<surface::Capabilities> = MaybeUninit::<surfa
 static INIT_GRAPHICS_DEV: Once = Once::new();
 
 static mut GRAPHICS_DEV: MaybeUninit<dev::Device> = MaybeUninit::<dev::Device>::uninit();
+
+static INIT_SWAPCHAIN: Once = Once::new();
+
+static mut SWAPCHAIN: MaybeUninit<swapchain::Swapchain> = MaybeUninit::<swapchain::Swapchain>::uninit();
 
 pub fn get_window() -> &'static window::Window {
     unsafe {
@@ -152,5 +156,40 @@ pub fn get_graphics_device() -> &'static dev::Device<'static> {
         });
 
         GRAPHICS_DEV.assume_init_ref()
+    }
+}
+
+pub fn get_swapchain() -> &'static swapchain::Swapchain {
+    unsafe {
+        INIT_SWAPCHAIN.call_once(|| {
+            let lib_ref = get_graphics_instance();
+
+            let surface_ref = get_surface();
+
+            let device = get_graphics_device();
+
+            // Look at tests/swapchain.rs to understand why we have to do this
+            let _ = get_present_queue();
+
+            let capabilities = get_surface_capabilities();
+
+            let swp_type = swapchain::SwapchainType {
+                lib: lib_ref,
+                dev: device,
+                surface: surface_ref,
+                num_of_images: 2,
+                format: capabilities.formats().next().expect("No available formats").format,
+                color: capabilities.formats().next().expect("No available formats").color_space,
+                present_mode: *capabilities.modes().next().expect("No available modes"),
+                flags: surface::UsageFlags::COLOR_ATTACHMENT,
+                extent: capabilities.extent2d(),
+                transform: capabilities.pre_transformation(),
+                alpha: capabilities.alpha_composition(),
+            };
+
+            SWAPCHAIN.write(swapchain::Swapchain::new(&swp_type).expect("Failed to create swapchain"));
+        });
+
+        SWAPCHAIN.assume_init_ref()
     }
 }

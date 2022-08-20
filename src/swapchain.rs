@@ -67,6 +67,7 @@ pub struct SwapchainType<'a> {
 pub struct Swapchain {
     i_loader: khr::Swapchain,
     i_swapchain: vk::SwapchainKHR,
+    i_format: vk::Format,
 }
 
 impl Swapchain {
@@ -101,8 +102,24 @@ impl Swapchain {
             Swapchain {
                 i_loader: loader,
                 i_swapchain: swapchain,
+                i_format: swp_type.format,
             }
         )
+    }
+
+    #[doc(hidden)]
+    pub fn loader(&self) -> &khr::Swapchain {
+        &self.i_loader
+    }
+
+    #[doc(hidden)]
+    pub fn swapchain(&self) -> vk::SwapchainKHR {
+        self.i_swapchain
+    }
+
+    #[doc(hidden)]
+    pub fn format(&self) -> vk::Format {
+        self.i_format
     }
 }
 
