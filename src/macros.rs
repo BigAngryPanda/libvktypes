@@ -50,3 +50,36 @@ macro_rules! on_error_ret {
         $crate::on_error!($e, return Err($err_exp))
     }
 }
+
+/// Return [`const pointer`](pointer) to collection's data
+///
+/// or [`null`](std::ptr::null) if there are no items in collection
+///
+/// Example
+/// ```
+/// use libvktypes::data_ptr;
+///
+/// let data = vec![42_u32];
+///
+/// // This expression
+///
+/// let data_ptr: *const u32 = data_ptr!(data);
+///
+/// // is equivalent to
+///
+/// let data_ptr: *const u32 = if data.is_empty() {
+///     std::ptr::null()
+/// }  else {
+///     data.as_ptr()
+/// };
+/// ```
+#[macro_export]
+macro_rules! data_ptr {
+    ( $e:expr ) => {
+        if $e.is_empty() {
+            std::ptr::null()
+        } else {
+            $e.as_ptr()
+        }
+    }
+}
