@@ -10,24 +10,36 @@ macro_rules! on_option {
 
 /// Unwrap value. Return ```Ok(x)``` or performs action on error
 ///
-/// Variable ```err``` represents error case
-///
 /// Example
-/// ```ignore
-/// let x = on_error!(f(x), return Err(err));
+/// ```
+/// use libvktypes::on_error;
 ///
-/// let x = match f(x) {
-///    Ok(x) => x,
-///    Err(err) => { return Err(err) },
-/// };
+/// // Two functions are identical
+/// fn foo() -> Result<u32, &'static str> {
+///     let x: Result<u32, &'static str> = Ok(42);
+///
+///     let result = match x {
+///         Ok(val) => val,
+///         Err(err) => { return Err("Foo error") },
+///     };
+///
+///     Ok(result)
+/// }
+///
+/// fn foo_with_macros() -> Result<u32, &'static str> {
+///     let x: Result<u32, &'static str> = Ok(42);
+///
+///     let result = on_error!(x, return Err("Foo error"));
+///
+///     Ok(result)
+/// }
 /// ```
 #[macro_export]
 macro_rules! on_error {
     ( $e:expr, $err_exp:expr ) => {
         match $e {
             Ok(x) => x,
-            #[allow(unused_variables)]
-            Err(err) => { $err_exp },
+            Err(_) => { $err_exp },
         }
     }
 }
