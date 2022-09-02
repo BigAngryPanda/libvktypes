@@ -12,7 +12,7 @@ use std::path::Path;
 use std::ffi::CString;
 
 pub struct ShaderType<'a> {
-    pub device: &'a dev::Device<'a>,
+    pub device: &'a dev::Device,
     pub path: &'a str,
     pub entry: CString,
 }
@@ -28,7 +28,7 @@ pub enum ShaderError {
 ///
 /// You may think of it as file handler
 pub struct Shader<'a> {
-	i_dev: &'a dev::Device<'a>,
+	i_dev: &'a dev::Device,
 	i_module: vk::ShaderModule,
 	i_entry: CString,
 }

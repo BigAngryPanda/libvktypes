@@ -52,7 +52,7 @@ pub enum SwapchainError {
 /// [Capabilities::alpha_composition](crate::surface::Capabilities::alpha_composition) for `alpha`
 pub struct SwapchainType<'a> {
     pub lib: &'a libvk::Instance,
-    pub dev: &'a dev::Device<'a>,
+    pub dev: &'a dev::Device,
     pub surface: &'a surface::Surface,
     pub num_of_images: u32,
     pub format: surface::ImageFormat,

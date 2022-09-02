@@ -252,7 +252,7 @@ impl Error for RenderPassError { }
 
 /// [`RenderPass`] configuration
 pub struct RenderPassType<'a, 'b: 'a> {
-    pub device: &'b dev::Device<'b>,
+    pub device: &'b dev::Device,
     pub attachments: &'a [AttachmentInfo],
     pub sync_info: &'a [SubpassSync],
     pub subpasses: &'a [SubpassInfo<'b>],
@@ -260,7 +260,7 @@ pub struct RenderPassType<'a, 'b: 'a> {
 
 /// Context for executing graphics pipeline
 pub struct RenderPass<'a> {
-    i_dev: &'a dev::Device<'a>,
+    i_dev: &'a dev::Device,
     i_rp: vk::RenderPass,
 }
 
@@ -315,7 +315,7 @@ impl<'a> RenderPass<'a> {
     }
 
     /// Create [`RenderPass`] with single subpass and single attachment
-    pub fn single_subpass(dev: &'a dev::Device<'a>, img_format: surface::ImageFormat)
+    pub fn single_subpass(dev: &'a dev::Device, img_format: surface::ImageFormat)
         -> Result<RenderPass<'a>, RenderPassError>
     {
         let dependencies:[vk::SubpassDependency; 2] = [
@@ -496,7 +496,7 @@ impl From<&VertexInputCfg> for vk::VertexInputAttributeDescription {
 }
 
 pub struct PipelineType<'a> {
-    pub device: &'a dev::Device<'a>,
+    pub device: &'a dev::Device,
     pub vertex_shader: &'a shader::Shader<'a>,
     /// Size of every vertex
     pub vertex_size: u32,
@@ -532,7 +532,7 @@ impl fmt::Display for PipelineError {
 impl Error for PipelineError { }
 
 pub struct Pipeline<'a> {
-    i_dev: &'a dev::Device<'a>,
+    i_dev: &'a dev::Device,
     i_layout: vk::PipelineLayout,
     i_pipeline: vk::Pipeline,
 }

@@ -34,7 +34,7 @@ pub enum Cmd<'a> {
 }
 
 pub struct CmdPoolType<'a> {
-    pub device: &'a dev::Device<'a>
+    pub device: &'a dev::Device
 }
 
 #[derive(Debug)]
@@ -43,7 +43,7 @@ pub enum CmdPoolError {
 }
 
 pub struct CmdPool<'a> {
-    i_device: &'a dev::Device<'a>,
+    i_device: &'a dev::Device,
     i_pool: vk::CommandPool,
 }
 

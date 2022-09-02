@@ -28,7 +28,7 @@ pub type SharingMode = vk::SharingMode;
 
 /// Configuration of [`Memory`](Memory) struct
 pub struct MemoryType<'a> {
-    pub device: &'a dev::Device<'a>,
+    pub device: &'a dev::Device,
     pub size: u64,
     pub properties: hw::MemoryProperty,
     pub usage: UsageFlags,
@@ -60,7 +60,7 @@ pub enum MemoryError {
 
 /// Aligned region in memory with [specified](MemoryType) properties
 pub struct Memory<'a> {
-    i_device: &'a dev::Device<'a>,
+    i_device: &'a dev::Device,
     i_device_memory: vk::DeviceMemory,
     i_buffer: vk::Buffer,
     i_size: u64,
@@ -276,13 +276,13 @@ pub enum ImageError {
 ///
 /// Instead of [`Memory`] `Image` are more specified
 pub struct Image<'a> {
-    i_dev: &'a dev::Device<'a>,
+    i_dev: &'a dev::Device,
     i_image_view: vk::ImageView,
 }
 
 impl<'a> Image<'a> {
     #[doc(hidden)]
-    fn new(device: &'a dev::Device<'a>, img: vk::Image, img_format: vk::Format) -> Result<Image<'a>, ImageError> {
+    fn new(device: &'a dev::Device, img: vk::Image, img_format: vk::Format) -> Result<Image<'a>, ImageError> {
         let image_info:vk::ImageViewCreateInfo = vk::ImageViewCreateInfo {
             s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
             p_next: ptr::null(),
@@ -326,7 +326,7 @@ impl<'a> Drop for Image<'a> {
 }
 
 pub struct ImageListType<'a> {
-    pub device: &'a dev::Device<'a>,
+    pub device: &'a dev::Device,
     pub swapchain: &'a swapchain::Swapchain
 }
 

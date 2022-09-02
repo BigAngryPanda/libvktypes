@@ -31,19 +31,19 @@ pub enum DeviceError {
 /// Core structure of the library
 ///
 /// `Device` represents logical device and provide API to the selected GPU
-pub struct Device<'a> {
+pub struct Device {
     i_device: ash::Device,
     i_queue_index: u32,
     i_queue_count: u32,
     i_hw: hw::HWDevice,
-    _marker: PhantomData<&'a libvk::Instance>,
+    _marker: PhantomData<*const libvk::Instance>,
 }
 
 /// As Vulkan API specification demands instance must outlive device (and any other object which created via instance)
 ///
 /// Hence lifetime requirements
-impl<'a> Device<'a> {
-    pub fn new(dev_type: &DeviceType) -> Result<Device<'a>, DeviceError> {
+impl Device {
+    pub fn new(dev_type: &DeviceType) -> Result<Device, DeviceError> {
         let dev_queue_info = vk::DeviceQueueCreateInfo {
             s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
             p_next: ptr::null(),
@@ -71,7 +71,7 @@ impl<'a> Device<'a> {
             DeviceError::Creating
         );
 
-        Ok(Device::<'a> {
+        Ok(Device {
             i_device: dev,
             i_queue_index: dev_type.queue_family_index,
             i_queue_count: dev_type.priorities.len() as u32,
@@ -101,7 +101,7 @@ impl<'a> Device<'a> {
     }
 }
 
-impl<'a> Drop for Device<'a> {
+impl Drop for Device {
     fn drop(&mut self) {
         unsafe { self.i_device.destroy_device(None) };
     }

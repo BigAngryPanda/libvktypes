@@ -141,7 +141,7 @@ pub fn get_surface_capabilities() -> &'static surface::Capabilities {
     }
 }
 
-pub fn get_graphics_device() -> &'static dev::Device<'static> {
+pub fn get_graphics_device() -> &'static dev::Device {
     unsafe {
         INIT_GRAPHICS_DEV.call_once(|| {
             let dev_type = dev::DeviceType {

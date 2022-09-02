@@ -12,7 +12,7 @@ use std::ptr;
 
 /// Note: only [memory](crate::memory::Memory) with memory::UsageFlags::STORAGE_BUFFER is allowed
 pub struct PipelineType<'a> {
-    pub device: &'a dev::Device<'a>,
+    pub device: &'a dev::Device,
     pub buffers: &'a [&'a memory::Memory<'a>],
     pub shader: &'a shader::Shader<'a>,
     pub push_constant_size : u32,
@@ -30,7 +30,7 @@ pub enum PipelineError {
 
 /// Represents compute pipeline
 pub struct Pipeline<'a> {
-    i_dev:             &'a dev::Device<'a>,
+    i_dev:             &'a dev::Device,
     i_pipeline_layout: vk::PipelineLayout,
     i_desc_set_layout: vk::DescriptorSetLayout,
     i_desc_set:        vk::DescriptorSet,
