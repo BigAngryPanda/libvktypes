@@ -22,6 +22,7 @@ use std::ptr;
 use std::fmt;
 use std::error::Error;
 use std::convert::Into;
+use std::boxed::Box;
 
 /// Specify how contents of an attachment are treated at the beginning of a subpass
 ///
@@ -251,11 +252,11 @@ impl fmt::Display for RenderPassError {
 impl Error for RenderPassError { }
 
 /// [`RenderPass`] configuration
-pub struct RenderPassType<'a> {
-    pub device: &'a dev::Device<'a>,
+pub struct RenderPassType<'a, 'b: 'a> {
+    pub device: &'b dev::Device<'b>,
     pub attachments: &'a [AttachmentInfo],
     pub sync_info: &'a [SubpassSync],
-    pub subpasses: &'a [SubpassInfo<'a>],
+    pub subpasses: &'a [SubpassInfo<'b>],
 }
 
 /// Context for executing graphics pipeline
@@ -309,6 +310,92 @@ impl<'a> RenderPass<'a> {
         Ok(
             RenderPass {
                 i_dev: rp_type.device,
+                i_rp: rp,
+            }
+        )
+    }
+
+    /// Create [`RenderPass`] with single subpass and single attachment
+    pub fn single_subpass(dev: &'a dev::Device<'a>, img_format: surface::ImageFormat)
+        -> Result<RenderPass<'a>, RenderPassError>
+    {
+        let dependencies:[vk::SubpassDependency; 2] = [
+            vk::SubpassDependency {
+                src_subpass: vk::SUBPASS_EXTERNAL,
+                dst_subpass: 0,
+                src_stage_mask: vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+                dst_stage_mask: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
+                src_access_mask: vk::AccessFlags::MEMORY_READ,
+                dst_access_mask: vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+                dependency_flags: vk::DependencyFlags::BY_REGION,
+            },
+            vk::SubpassDependency {
+                src_subpass: 0,
+                dst_subpass: vk::SUBPASS_EXTERNAL,
+                src_stage_mask: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
+                dst_stage_mask: vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+                src_access_mask: vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+                dst_access_mask: vk::AccessFlags::MEMORY_READ,
+                dependency_flags: vk::DependencyFlags::BY_REGION,
+            }
+        ];
+
+        let attachment_descriptions:[vk::AttachmentDescription; 1] = [
+            vk::AttachmentDescription {
+                flags: vk::AttachmentDescriptionFlags::empty(),
+                format: img_format,
+                samples: vk::SampleCountFlags::TYPE_1,
+                load_op: vk::AttachmentLoadOp::CLEAR,
+                store_op: vk::AttachmentStoreOp::STORE,
+                stencil_load_op: vk::AttachmentLoadOp::DONT_CARE,
+                stencil_store_op: vk::AttachmentStoreOp::DONT_CARE,
+                initial_layout: vk::ImageLayout::PRESENT_SRC_KHR,
+                final_layout: vk::ImageLayout::PRESENT_SRC_KHR,
+            }
+        ];
+
+        let color_attachment_references:[vk::AttachmentReference; 1] = [
+            vk::AttachmentReference {
+                attachment: 0,
+                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+            }
+        ];
+
+        let subpass_descriptions:[vk::SubpassDescription; 1] = [
+            vk::SubpassDescription {
+                flags: vk::SubpassDescriptionFlags::empty(),
+                pipeline_bind_point: vk::PipelineBindPoint::GRAPHICS,
+                input_attachment_count: 0,
+                p_input_attachments: ptr::null(),
+                color_attachment_count: 1,
+                p_color_attachments: &color_attachment_references[0],
+                p_resolve_attachments: ptr::null(),
+                p_depth_stencil_attachment: ptr::null(),
+                preserve_attachment_count: 0,
+                p_preserve_attachments: ptr::null(),
+            }
+        ];
+
+        let render_pass_create_info:vk::RenderPassCreateInfo = vk::RenderPassCreateInfo {
+            s_type: vk::StructureType::RENDER_PASS_CREATE_INFO,
+            p_next: ptr::null(),
+            flags: vk::RenderPassCreateFlags::empty(),
+            attachment_count: 1,
+            p_attachments: &attachment_descriptions[0],
+            subpass_count: 1,
+            p_subpasses: &subpass_descriptions[0],
+            dependency_count: 2,
+            p_dependencies: &dependencies[0],
+        };
+
+        let rp = on_error_ret!(
+            unsafe { dev.device().create_render_pass(&render_pass_create_info, None) },
+            RenderPassError::Creation
+        );
+
+        Ok(
+            RenderPass {
+                i_dev: dev,
                 i_rp: rp,
             }
         )
