@@ -22,7 +22,6 @@ use std::ptr;
 use std::fmt;
 use std::error::Error;
 use std::convert::Into;
-use std::boxed::Box;
 
 /// Specify how contents of an attachment are treated at the beginning of a subpass
 ///
