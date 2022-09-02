@@ -34,7 +34,7 @@ pub struct Shader<'a> {
 }
 
 impl<'a> Shader<'a> {
-    pub fn from_bytecode(shader_type: &'a ShaderType, bytecode: &[u32]) -> Result<Shader<'a>, ShaderError> {
+    pub fn from_bytecode<'b>(shader_type: &'b ShaderType<'a>, bytecode: &[u32]) -> Result<Shader<'a>, ShaderError> {
         let shader_info = vk::ShaderModuleCreateInfo {
             s_type: vk::StructureType::SHADER_MODULE_CREATE_INFO,
             p_next: ptr::null(),
@@ -57,7 +57,7 @@ impl<'a> Shader<'a> {
         )
     }
 
-    pub fn from_file(shader_type: &'a ShaderType) -> Result<Shader<'a>, ShaderError> {
+    pub fn from_file<'b>(shader_type: &'b ShaderType<'a>) -> Result<Shader<'a>, ShaderError> {
         let mut spv_file: File = on_error_ret!(
             File::open(Path::new(shader_type.path)),
             ShaderError::InvalidFile
