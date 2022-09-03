@@ -1,5 +1,16 @@
 #![allow(dead_code)]
-use libvktypes::{libvk, dev, extensions, hw, layers, surface, window, swapchain};
+use libvktypes::{
+    libvk,
+    dev,
+    extensions,
+    hw,
+    layers,
+    surface,
+    window,
+    swapchain,
+    shader,
+    graphics
+};
 
 use std::sync::Once;
 use std::mem::MaybeUninit;
@@ -37,6 +48,18 @@ static mut GRAPHICS_DEV: MaybeUninit<dev::Device> = MaybeUninit::<dev::Device>::
 static INIT_SWAPCHAIN: Once = Once::new();
 
 static mut SWAPCHAIN: MaybeUninit<swapchain::Swapchain> = MaybeUninit::<swapchain::Swapchain>::uninit();
+
+static INIT_VERT_SHADER: Once = Once::new();
+
+static mut VERT_SHADER: MaybeUninit<shader::Shader> = MaybeUninit::<shader::Shader>::uninit();
+
+static INIT_FRAG_SHADER: Once = Once::new();
+
+static mut FRAG_SHADER: MaybeUninit<shader::Shader> = MaybeUninit::<shader::Shader>::uninit();
+
+static INIT_RENDER_PASS: Once = Once::new();
+
+static mut RENDER_PASS: MaybeUninit<graphics::RenderPass> = MaybeUninit::<graphics::RenderPass>::uninit();
 
 pub fn get_window() -> &'static window::Window {
     unsafe {
@@ -191,5 +214,59 @@ pub fn get_swapchain() -> &'static swapchain::Swapchain {
         });
 
         SWAPCHAIN.assume_init_ref()
+    }
+}
+
+pub fn get_vert_shader() -> &'static shader::Shader<'static> {
+    unsafe {
+        INIT_VERT_SHADER.call_once(|| {
+            let dev = get_graphics_device();
+
+            let shader_type = shader::ShaderType {
+                device: dev,
+                path: "tests/compiled_shaders/single_dot.spv",
+                entry: std::ffi::CString::new("main").expect("Failed to allocate string"),
+            };
+
+            VERT_SHADER.write(shader::Shader::from_file(&shader_type).expect("Failed to create shader module"));
+        });
+
+        VERT_SHADER.assume_init_ref()
+    }
+}
+
+pub fn get_frag_shader() -> &'static shader::Shader<'static> {
+    unsafe {
+        INIT_FRAG_SHADER.call_once(|| {
+            let dev = get_graphics_device();
+
+            let shader_type = shader::ShaderType {
+                device: dev,
+                path: "tests/compiled_shaders/single_color.spv",
+                entry: std::ffi::CString::new("main").expect("Failed to allocate string"),
+            };
+
+            FRAG_SHADER.write(shader::Shader::from_file(&shader_type).expect("Failed to create shader module"));
+        });
+
+        FRAG_SHADER.assume_init_ref()
+    }
+}
+
+pub fn get_render_pass() -> &'static graphics::RenderPass<'static> {
+    unsafe {
+        INIT_RENDER_PASS.call_once(|| {
+            let capabilities = get_surface_capabilities();
+
+            let dev = get_graphics_device();
+
+            RENDER_PASS.write(
+                graphics::RenderPass::single_subpass(
+                    dev,
+                    capabilities.formats().next().expect("No available formats").format)
+                    .expect("Failed to create render pass"));
+        });
+
+        RENDER_PASS.assume_init_ref()
     }
 }
