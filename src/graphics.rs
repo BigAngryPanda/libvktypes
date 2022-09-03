@@ -493,7 +493,7 @@ impl From<&VertexInputCfg> for vk::VertexInputAttributeDescription {
 #[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.PrimitiveTopology.html>"]
 ///
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPrimitiveTopology.html>"]
-type Topology = vk::PrimitiveTopology;
+pub type Topology = vk::PrimitiveTopology;
 
 pub struct PipelineType<'a> {
     pub device: &'a dev::Device,
