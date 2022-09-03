@@ -476,13 +476,6 @@ impl Default for VertexInputCfg {
     }
 }
 
-/// Describe how vertices should be assembled into primitives
-///
-#[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.PrimitiveTopology.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPrimitiveTopology.html>"]
-type Topology = vk::PrimitiveTopology;
-
 #[doc(hidden)]
 impl From<&VertexInputCfg> for vk::VertexInputAttributeDescription {
     fn from(cfg: &VertexInputCfg) -> Self {
@@ -494,6 +487,13 @@ impl From<&VertexInputCfg> for vk::VertexInputAttributeDescription {
         }
     }
 }
+
+/// Describe how vertices should be assembled into primitives
+///
+#[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.PrimitiveTopology.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPrimitiveTopology.html>"]
+type Topology = vk::PrimitiveTopology;
 
 pub struct PipelineType<'a> {
     pub device: &'a dev::Device,
