@@ -4,10 +4,12 @@
 
 use ash::vk;
 
-use crate::{hw, dev, swapchain};
+use crate::{hw, dev, surface, swapchain, graphics};
 use crate::on_error_ret;
 
 use std::ptr;
+use std::fmt;
+use std::error::Error;
 use core::ffi::c_void;
 
 // TODO mb rewrite it with separate flags?
@@ -317,6 +319,10 @@ impl<'a> Image<'a> {
             }
         )
     }
+
+    pub fn view(&self) -> vk::ImageView {
+        self.i_image_view
+    }
 }
 
 impl<'a> Drop for Image<'a> {
@@ -335,7 +341,7 @@ pub struct ImageList<'a>(Vec::<Image<'a>>);
 
 impl<'a> ImageList<'a> {
     /// Retrieves [image handlers](Image) from [`Swapchain`](crate::swapchain::Swapchain)
-    pub fn from_swapchain(swp_type: &'a ImageListType) -> Result<ImageList<'a>, ImageError> {
+    pub fn from_swapchain<'b>(swp_type: &'b ImageListType<'a>) -> Result<ImageList<'a>, ImageError> {
         let swapchain_images = on_error_ret!(
             unsafe {
                 swp_type.swapchain.loader().get_swapchain_images(swp_type.swapchain.swapchain())
@@ -368,5 +374,89 @@ impl<'a> ImageList<'a> {
     /// Return iterator over images in list
     pub fn images(&self) -> impl Iterator<Item = &Image> {
         self.0.iter()
+    }
+}
+
+#[derive(Debug)]
+pub enum FramebufferError {
+    Framebuffer,
+}
+
+impl fmt::Display for FramebufferError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "vkCreateFramebuffer call failed")
+    }
+}
+
+impl Error for FramebufferError {}
+
+/// Framebuffer represents a collection of specific memory attachments that a render pass instance uses
+pub struct Framebuffer<'a> {
+    i_dev: &'a dev::Device,
+    i_frame: vk::Framebuffer,
+}
+
+impl<'a> Framebuffer<'a> {
+    #[doc(hidden)]
+    fn new(dev: &'a dev::Device, img: vk::ImageView, extent: vk::Extent2D, rp: vk::RenderPass)
+        -> Result<Framebuffer<'a>, FramebufferError>
+    {
+        let create_info = vk::FramebufferCreateInfo {
+            s_type: vk::StructureType::FRAMEBUFFER_CREATE_INFO,
+            p_next: ptr::null(),
+            flags: vk::FramebufferCreateFlags::empty(),
+            render_pass: rp,
+            attachment_count: 1,
+            p_attachments: &img,
+            width: extent.width,
+            height: extent.height,
+            layers: 1,
+        };
+
+        let framebuffer = on_error_ret!(
+            unsafe { dev.device().create_framebuffer(&create_info, None) },
+            FramebufferError::Framebuffer
+        );
+
+        Ok(
+            Framebuffer {
+                i_dev: dev,
+                i_frame: framebuffer,
+            }
+        )
+    }
+}
+
+impl<'a> Drop for Framebuffer<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            self.i_dev.device().destroy_framebuffer(self.i_frame, None);
+        }
+    }
+}
+
+pub struct FramebufferType<'a> {
+    pub device: &'a dev::Device,
+    pub render_pass: &'a graphics::RenderPass<'a>,
+    pub images: &'a ImageList<'a>,
+    pub extent: surface::Extent2D,
+}
+
+/// Collection of [`Framebuffers`](Framebuffer)
+pub struct FramebufferList<'a>(Vec::<Framebuffer<'a>>);
+
+impl<'a> FramebufferList<'a> {
+    pub fn new<'b>(cfg: &'b FramebufferType<'a>) -> Result<FramebufferList<'a>, FramebufferError> {
+        let mut list: Vec<Framebuffer<'a>> = Vec::new();
+
+        for img in cfg.images.images() {
+            list.push(
+                on_error_ret!(
+                    Framebuffer::new(cfg.device, img.view(), cfg.extent, cfg.render_pass.render_pass()),
+                    FramebufferError::Framebuffer)
+                );
+        }
+
+        Ok(FramebufferList(list))
     }
 }

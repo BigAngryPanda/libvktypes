@@ -401,7 +401,7 @@ impl<'a> RenderPass<'a> {
     }
 
     #[doc(hidden)]
-    fn render_pass(&self) -> vk::RenderPass {
+    pub fn render_pass(&self) -> vk::RenderPass {
         self.i_rp
     }
 }

@@ -107,3 +107,23 @@ fn images_allocation() {
 
     assert!(memory::ImageList::from_swapchain(&img_type).is_ok());
 }
+
+#[test]
+fn init_framebuffer() {
+    let dev = test_context::get_graphics_device();
+
+    let rp = test_context::get_render_pass();
+
+    let imgs = test_context::get_image_list();
+
+    let capabilities = test_context::get_surface_capabilities();
+
+    let framebuffer_cfg = memory::FramebufferType {
+        device: dev,
+        render_pass: rp,
+        images: imgs,
+        extent: capabilities.extent2d(),
+    };
+
+    assert!(memory::FramebufferList::new(&framebuffer_cfg).is_ok());
+}

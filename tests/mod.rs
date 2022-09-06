@@ -9,7 +9,8 @@ use libvktypes::{
     window,
     swapchain,
     shader,
-    graphics
+    graphics,
+    memory
 };
 
 use std::sync::Once;
@@ -60,6 +61,10 @@ static mut FRAG_SHADER: MaybeUninit<shader::Shader> = MaybeUninit::<shader::Shad
 static INIT_RENDER_PASS: Once = Once::new();
 
 static mut RENDER_PASS: MaybeUninit<graphics::RenderPass> = MaybeUninit::<graphics::RenderPass>::uninit();
+
+static INIT_IMAGE_LIST: Once = Once::new();
+
+static mut IMAGE_LIST: MaybeUninit<memory::ImageList> = MaybeUninit::<memory::ImageList>::uninit();
 
 pub fn get_window() -> &'static window::Window {
     unsafe {
@@ -268,5 +273,24 @@ pub fn get_render_pass() -> &'static graphics::RenderPass<'static> {
         });
 
         RENDER_PASS.assume_init_ref()
+    }
+}
+
+pub fn get_image_list() -> &'static memory::ImageList<'static> {
+    unsafe {
+        INIT_IMAGE_LIST.call_once(|| {
+            let dev = get_graphics_device();
+
+            let swp = get_swapchain();
+
+            let img_type = memory::ImageListType {
+                device: dev,
+                swapchain: swp,
+            };
+
+            IMAGE_LIST.write(memory::ImageList::from_swapchain(&img_type).expect("Failed to get image list"));
+        });
+
+        IMAGE_LIST.assume_init_ref()
     }
 }
