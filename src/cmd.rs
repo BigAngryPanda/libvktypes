@@ -89,13 +89,13 @@ impl<'a> Drop for CmdPool<'a> {
 }
 
 #[derive(Default)]
-pub struct CmdBufferType<'a> {
+pub struct CmdBuffer<'a> {
     i_cmds: Vec<Cmd<'a>>
 }
 
-impl<'a> CmdBufferType<'a> {
-    pub fn new() -> CmdBufferType<'a> {
-        CmdBufferType::default()
+impl<'a> CmdBuffer<'a> {
+    pub fn new() -> CmdBuffer<'a> {
+        CmdBuffer::default()
     }
 
     /// Dispatch work groups
@@ -150,12 +150,12 @@ impl<'a> CmdBufferType<'a> {
 
 pub struct ComputeQueueType<'a> {
     pub cmd_pool: &'a CmdPool<'a>,
-    pub cmd_buffer: &'a CmdBufferType<'a>,
+    pub cmd_buffer: &'a CmdBuffer<'a>,
     pub queue_index: u32,
 }
 
 #[derive(Debug)]
-pub enum ComputeQueueError {
+pub enum CompletedQueueError {
     CommandBuffers,
     BufferInit,
     Commit,
@@ -165,14 +165,14 @@ pub enum ComputeQueueError {
     Timeout
 }
 
-pub struct ComputeQueue<'a> {
+pub struct CompletedQueue<'a> {
     i_cmd_pool: &'a CmdPool<'a>,
     i_queue: vk::Queue,
     i_cmd_buffer: vk::CommandBuffer,
 }
 
-impl<'a> ComputeQueue<'a> {
-    pub fn commit(queue_type: &'a ComputeQueueType) -> Result<ComputeQueue<'a>, ComputeQueueError> {
+impl<'a> CompletedQueue<'a> {
+    pub fn commit(queue_type: &'a ComputeQueueType) -> Result<CompletedQueue<'a>, CompletedQueueError> {
         let dev = queue_type.cmd_pool.device();
 
         let cmd_buff_info = vk::CommandBufferAllocateInfo {
@@ -185,14 +185,14 @@ impl<'a> ComputeQueue<'a> {
 
         let cmd_buffers = on_error_ret!(
             unsafe { dev.device().allocate_command_buffers(&cmd_buff_info) },
-            ComputeQueueError::CommandBuffers
+            CompletedQueueError::CommandBuffers
         );
 
         let dev_queue: vk::Queue = unsafe {
             dev.device().get_device_queue(dev.queue_index(), queue_type.queue_index)
         };
 
-        let result = ComputeQueue {
+        let result = CompletedQueue {
             i_cmd_pool: queue_type.cmd_pool,
             i_queue: dev_queue,
             i_cmd_buffer: cmd_buffers[0],
@@ -202,11 +202,11 @@ impl<'a> ComputeQueue<'a> {
             Ok(result)
         }
         else {
-            Err(ComputeQueueError::Commit)
+            Err(CompletedQueueError::Commit)
         }
     }
 
-    pub fn exec(&self, wait_stage: PipelineStage, timeout: u64) -> Result<(), ComputeQueueError> {
+    pub fn exec(&self, wait_stage: PipelineStage, timeout: u64) -> Result<(), CompletedQueueError> {
         let dev = self.i_cmd_pool.device().device();
 
         let fence_info = vk::FenceCreateInfo {
@@ -217,7 +217,7 @@ impl<'a> ComputeQueue<'a> {
 
         let fence = on_error_ret!(
             unsafe { dev.create_fence(&fence_info, None) },
-            ComputeQueueError::Fence
+            CompletedQueueError::Fence
         );
 
         let submit_info = vk::SubmitInfo {
@@ -235,14 +235,14 @@ impl<'a> ComputeQueue<'a> {
         unsafe {
             if dev.queue_submit(self.i_queue, &[submit_info], fence).is_err() {
                dev.destroy_fence(fence, None);
-               return Err(ComputeQueueError::Queue);
+               return Err(CompletedQueueError::Queue);
             }
         }
 
         unsafe {
             if dev.wait_for_fences(&[fence], true, timeout).is_err() {
                dev.destroy_fence(fence, None);
-               return Err(ComputeQueueError::Timeout);
+               return Err(CompletedQueueError::Timeout);
             }
         }
 
@@ -251,8 +251,8 @@ impl<'a> ComputeQueue<'a> {
         Ok(())
     }
 
-    fn fill_buffer(&self, cmd_buffer: &CmdBufferType) -> Result<(), ComputeQueueError> {
-        on_error_ret!(self.begin_buffer(), ComputeQueueError::BufferInit);
+    fn fill_buffer(&self, cmd_buffer: &CmdBuffer) -> Result<(), CompletedQueueError> {
+        on_error_ret!(self.begin_buffer(), CompletedQueueError::BufferInit);
 
         for cmd in cmd_buffer.iter() {
             match cmd {
@@ -278,7 +278,7 @@ impl<'a> ComputeQueue<'a> {
         self.end_buffer()
     }
 
-    fn begin_buffer(&self) -> Result<(), ComputeQueueError> {
+    fn begin_buffer(&self) -> Result<(), CompletedQueueError> {
         let dev = self.i_cmd_pool.device().device();
 
         let cmd_begin_info = vk::CommandBufferBeginInfo {
@@ -290,7 +290,7 @@ impl<'a> ComputeQueue<'a> {
 
         on_error_ret!(
             unsafe { dev.begin_command_buffer(self.i_cmd_buffer, &cmd_begin_info) },
-            ComputeQueueError::BufferInit
+            CompletedQueueError::BufferInit
         );
 
         Ok(())
@@ -383,12 +383,12 @@ impl<'a> ComputeQueue<'a> {
         }
     }
 
-    fn end_buffer(&self) -> Result<(), ComputeQueueError> {
+    fn end_buffer(&self) -> Result<(), CompletedQueueError> {
         let dev = self.i_cmd_pool.device().device();
 
 		on_error_ret!(
 			unsafe { dev.end_command_buffer(self.i_cmd_buffer) },
-			ComputeQueueError::Commit
+			CompletedQueueError::Commit
 		);
 
 		Ok(())

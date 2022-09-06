@@ -113,7 +113,7 @@ fn cmd_buffer_exec() {
 
     let cmd_pool = cmd::CmdPool::new(&cmd_pool_type).expect("Failed to allocate command pool");
 
-    let mut cmd_buffer = cmd::CmdBufferType::default();
+    let mut cmd_buffer = cmd::CmdBuffer::default();
 
     cmd_buffer.bind_pipeline(&pipeline);
 
@@ -125,7 +125,7 @@ fn cmd_buffer_exec() {
         queue_index: 0,
     };
 
-    let cmd_queue = cmd::ComputeQueue::commit(&queue_type).expect("Failed to create command buffer");
+    let cmd_queue = cmd::CompletedQueue::commit(&queue_type).expect("Failed to create command buffer");
 
     assert!(cmd_queue.exec(cmd::PipelineStage::COMPUTE_SHADER, u64::MAX).is_ok())
 }
