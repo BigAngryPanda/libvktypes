@@ -436,6 +436,31 @@ impl<'a> CompletedQueue<'a> {
         unsafe {
             self.device().cmd_begin_render_pass(self.i_cmd_buffer, &render_pass_begin_info, vk::SubpassContents::INLINE)
         };
+
+        let viewport = vk::Viewport {
+            x: 0.0,
+            y: 0.0,
+            width: fb.extent().width as f32,
+            height: fb.extent().height as f32,
+            min_depth: 0.0,
+            max_depth: 1.0,
+        };
+
+        unsafe {
+            self.device().cmd_set_viewport(self.i_cmd_buffer, 0, &[viewport])
+        };
+
+        let scissor:vk::Rect2D = vk::Rect2D {
+            offset: vk::Offset2D {
+                x: 0,
+                y: 0,
+            },
+            extent: fb.extent(),
+        };
+
+        unsafe {
+            self.device().cmd_set_scissor(self.i_cmd_buffer, 0, &[scissor])
+        };
     }
 
     fn bind_graphics_pipeline<'b>(&self, pipe: &'b graphics::Pipeline<'a>) {
