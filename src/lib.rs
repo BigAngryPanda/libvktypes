@@ -21,3 +21,4 @@ pub mod surface;
 pub mod window;
 pub mod swapchain;
 pub mod graphics;
+pub mod sync;
