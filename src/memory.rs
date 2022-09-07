@@ -448,6 +448,7 @@ impl Error for FramebufferError {}
 pub struct Framebuffer<'a> {
     i_dev: &'a dev::Device,
     i_frame: vk::Framebuffer,
+    i_extent: vk::Extent2D,
 }
 
 impl<'a> Framebuffer<'a> {
@@ -478,7 +479,18 @@ impl<'a> Framebuffer<'a> {
         Ok(Framebuffer {
             i_dev: dev,
             i_frame: framebuffer,
+            i_extent: extent,
         })
+    }
+
+    #[doc(hidden)]
+    pub fn framebuffer(&self) -> vk::Framebuffer {
+        self.i_frame
+    }
+
+    #[doc(hidden)]
+    pub fn extent(&self) -> vk::Extent2D {
+        self.i_extent
     }
 }
 
@@ -517,5 +529,10 @@ impl<'a> FramebufferList<'a> {
         }
 
         Ok(FramebufferList(list))
+    }
+
+    /// Return iterator over framebuffers
+    pub fn framebuffers(&self) -> impl Iterator<Item = &Framebuffer> {
+        self.0.iter()
     }
 }

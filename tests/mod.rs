@@ -10,7 +10,8 @@ use libvktypes::{
     swapchain,
     shader,
     graphics,
-    memory
+    memory,
+    cmd
 };
 
 use std::sync::Once;
@@ -65,6 +66,18 @@ static mut RENDER_PASS: MaybeUninit<graphics::RenderPass> = MaybeUninit::<graphi
 static INIT_IMAGE_LIST: Once = Once::new();
 
 static mut IMAGE_LIST: MaybeUninit<memory::ImageList> = MaybeUninit::<memory::ImageList>::uninit();
+
+static INIT_CMD_POOL: Once = Once::new();
+
+static mut CMD_POOL: MaybeUninit<cmd::CmdPool> = MaybeUninit::<cmd::CmdPool>::uninit();
+
+static INIT_GRAPHICS_PIPELINE: Once = Once::new();
+
+static mut GRAPHICS_PIPELINE: MaybeUninit<graphics::Pipeline> = MaybeUninit::<graphics::Pipeline>::uninit();
+
+static INIT_FRAMEBUFFER: Once = Once::new();
+
+static mut FRAMEBUFFER: MaybeUninit<memory::FramebufferList> = MaybeUninit::<memory::FramebufferList>::uninit();
 
 pub fn get_window() -> &'static window::Window {
     unsafe {
@@ -292,5 +305,79 @@ pub fn get_image_list() -> &'static memory::ImageList<'static> {
         });
 
         IMAGE_LIST.assume_init_ref()
+    }
+}
+
+pub fn get_cmd_pool() -> &'static cmd::CmdPool<'static> {
+    unsafe {
+        INIT_CMD_POOL.call_once(|| {
+            let pool_type = cmd::CmdPoolType {
+                device: get_graphics_device(),
+            };
+
+            CMD_POOL.write(cmd::CmdPool::new(&pool_type).expect("Failed to allocate command pool"));
+        });
+
+        CMD_POOL.assume_init_ref()
+    }
+}
+
+pub fn get_graphics_pipeline() -> &'static graphics::Pipeline<'static> {
+    unsafe {
+        INIT_GRAPHICS_PIPELINE.call_once(|| {
+            let capabilities = get_surface_capabilities();
+
+            let vertex_cfg = graphics::VertexInputCfg {
+                location: 0,
+                binding: 0,
+                format: surface::ImageFormat::R32G32B32A32_SFLOAT,
+                offset: 0,
+            };
+
+            let pipe_type = graphics::PipelineType {
+                device: get_graphics_device(),
+                vertex_shader: get_vert_shader(),
+                vertex_size: std::mem::size_of::<[f32; 2]>() as u32,
+                vert_slots: 1,
+                vert_input: &[vertex_cfg],
+                frag_shader: get_frag_shader(),
+                topology: graphics::Topology::TRIANGLE_STRIP,
+                extent: capabilities.extent2d(),
+                push_constant_size: 0,
+                render_pass: get_render_pass(),
+                subpass_index: 0,
+            };
+
+            GRAPHICS_PIPELINE.write(graphics::Pipeline::new(&pipe_type).expect("Failed to create pipeline"));
+        });
+
+        GRAPHICS_PIPELINE.assume_init_ref()
+    }
+}
+
+pub fn get_framebuffers() -> &'static memory::FramebufferList<'static> {
+    unsafe {
+        INIT_FRAMEBUFFER.call_once(|| {
+            let dev = get_graphics_device();
+
+            let rp = get_render_pass();
+
+            let imgs = get_image_list();
+
+            let capabilities = get_surface_capabilities();
+
+            let framebuffer_cfg = memory::FramebufferType {
+                device: dev,
+                render_pass: rp,
+                images: imgs,
+                extent: capabilities.extent2d(),
+            };
+
+            FRAMEBUFFER.write(
+                memory::FramebufferList::new(&framebuffer_cfg).expect("Failed to create framebuffers")
+            );
+        });
+
+        FRAMEBUFFER.assume_init_ref()
     }
 }

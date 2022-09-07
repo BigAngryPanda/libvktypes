@@ -10,6 +10,9 @@ use libvktypes::{
     cmd
 };
 
+#[path = "./mod.rs"]
+mod test_context;
+
 use std::ffi::CString;
 
 #[test]
@@ -128,4 +131,31 @@ fn cmd_buffer_exec() {
     let cmd_queue = cmd::CompletedQueue::commit(&queue_type).expect("Failed to create command buffer");
 
     assert!(cmd_queue.exec(cmd::PipelineStage::COMPUTE_SHADER, u64::MAX).is_ok())
+}
+
+#[test]
+fn write_graphics_cmds() {
+    let render_pass = test_context::get_render_pass();
+
+    let pipeline = test_context::get_graphics_pipeline();
+
+    let framebuffer = test_context::get_framebuffers().framebuffers().next().expect("No available framebuffers");
+
+    let pool = test_context::get_cmd_pool();
+
+    let mut cmd_buffer = cmd::CmdBuffer::default();
+
+    cmd_buffer.begin_render_pass(render_pass, framebuffer);
+
+    cmd_buffer.bind_graphics_pipeline(pipeline);
+
+    cmd_buffer.end_render_pass();
+
+    let queue_type = cmd::ComputeQueueType {
+        cmd_pool: pool,
+        cmd_buffer: &cmd_buffer,
+        queue_index: 0,
+    };
+
+    assert!(cmd::CompletedQueue::commit(&queue_type).is_ok());
 }

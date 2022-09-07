@@ -495,19 +495,19 @@ impl From<&VertexInputCfg> for vk::VertexInputAttributeDescription {
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPrimitiveTopology.html>"]
 pub type Topology = vk::PrimitiveTopology;
 
-pub struct PipelineType<'a> {
+pub struct PipelineType<'a, 'b> {
     pub device: &'a dev::Device,
-    pub vertex_shader: &'a shader::Shader<'a>,
+    pub vertex_shader: &'b shader::Shader<'a>,
     /// Size of every vertex
     pub vertex_size: u32,
     /// Number of vertex binding slots
     pub vert_slots: u32,
-    pub vert_input: &'a [VertexInputCfg],
-    pub frag_shader: &'a shader::Shader<'a>,
+    pub vert_input: &'b [VertexInputCfg],
+    pub frag_shader: &'b shader::Shader<'a>,
     pub topology: Topology,
     pub extent: surface::Extent2D,
     pub push_constant_size: u32,
-    pub render_pass: &'a RenderPass<'a>,
+    pub render_pass: &'b RenderPass<'a>,
     /// Subpass index inside [`RenderPass`](PipelineType::render_pass)
     pub subpass_index: u32,
 }
@@ -538,7 +538,7 @@ pub struct Pipeline<'a> {
 }
 
 impl<'a> Pipeline<'a> {
-    pub fn new(pipe_cfg: &'a PipelineType) -> Result<Pipeline<'a>, PipelineError> {
+    pub fn new<'b>(pipe_cfg: &'b PipelineType<'a, 'b>) -> Result<Pipeline<'a>, PipelineError> {
         let shader_stage_create_infos = [
             vk::PipelineShaderStageCreateInfo {
                 s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -751,6 +751,11 @@ impl<'a> Pipeline<'a> {
                 i_pipeline: pipeline[0],
             }
         )
+    }
+
+    #[doc(hidden)]
+    pub fn pipeline(&self) -> vk::Pipeline {
+        self.i_pipeline
     }
 }
 

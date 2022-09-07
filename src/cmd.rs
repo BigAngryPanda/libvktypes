@@ -2,7 +2,7 @@
 
 use ash::vk;
 
-use crate::{dev, memory, compute};
+use crate::{dev, memory, compute, graphics};
 
 use crate::on_error_ret;
 
@@ -31,6 +31,10 @@ pub enum Cmd<'a> {
     SetBarrier(&'a memory::Memory<'a>, AccessType, AccessType, PipelineStage, PipelineStage),
     // x, y, z
     Dispatch(u32, u32, u32),
+    BeginRenderPass(&'a graphics::RenderPass<'a>, &'a memory::Framebuffer<'a>),
+    BindGraphicsPipeline(&'a graphics::Pipeline<'a>),
+    Draw(u32, u32, u32, u32),
+    EndRenderPass,
 }
 
 pub struct CmdPoolType<'a> {
@@ -48,7 +52,7 @@ pub struct CmdPool<'a> {
 }
 
 impl<'a> CmdPool<'a> {
-    pub fn new(pool_type: &'a CmdPoolType) -> Result<CmdPool<'a>, CmdPoolError> {
+    pub fn new<'b>(pool_type: &'b CmdPoolType<'a>) -> Result<CmdPool<'a>, CmdPoolError> {
         let device = pool_type.device.device();
 
         let pool_info = vk::CommandPoolCreateInfo {
@@ -142,6 +146,29 @@ impl<'a> CmdBuffer<'a> {
         self.i_cmds.push(Cmd::CopyMemory(src, dst));
     }
 
+    /// Begin render pass with selected framebuffer
+    ///
+    /// Must be ended with [`end_render_pass`]
+    pub fn begin_render_pass(&mut self, rp: &'a graphics::RenderPass<'a>, fb: &'a memory::Framebuffer<'a>) {
+        self.i_cmds.push(Cmd::BeginRenderPass(rp, fb));
+    }
+
+    /// Bind graphics pipeline
+    pub fn bind_graphics_pipeline(&mut self, pipe: &'a graphics::Pipeline) {
+        self.i_cmds.push(Cmd::BindGraphicsPipeline(pipe));
+    }
+
+    /// Add `vkCmdDraw` call to the buffer
+    ///
+    /// About args see [more](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCmdDraw.html)
+    pub fn draw(&mut self, vertex_count: u32, instance_count: u32, first_vert: u32, first_inst: u32) {
+        self.i_cmds.push(Cmd::Draw(vertex_count, instance_count, first_vert, first_inst));
+    }
+
+    pub fn end_render_pass(&mut self) {
+        self.i_cmds.push(Cmd::EndRenderPass);
+    }
+
     /// Return iterator over internal buffer
     pub fn iter(&self) -> impl Iterator<Item = &Cmd<'a>> {
         self.i_cmds.iter()
@@ -207,7 +234,7 @@ impl<'a> CompletedQueue<'a> {
     }
 
     pub fn exec(&self, wait_stage: PipelineStage, timeout: u64) -> Result<(), CompletedQueueError> {
-        let dev = self.i_cmd_pool.device().device();
+        let dev = self.device();
 
         let fence_info = vk::FenceCreateInfo {
             s_type: vk::StructureType::FENCE_CREATE_INFO,
@@ -272,6 +299,18 @@ impl<'a> CompletedQueue<'a> {
                 Cmd::UpdatePushConstants(pipe, data) => {
                     self.update_push_constants(pipe, data);
                 },
+                Cmd::BeginRenderPass(rp, fb) => {
+                    self.begin_render_pass(rp, fb);
+                },
+                Cmd::BindGraphicsPipeline(pipe) => {
+                    self.bind_graphics_pipeline(pipe);
+                },
+                Cmd::Draw(vc, ic, fv, fi) => {
+                    self.draw(*vc, *ic, *fv, *fi);
+                },
+                Cmd::EndRenderPass => {
+                    self.end_render_pass();
+                }
             }
         }
 
@@ -279,8 +318,6 @@ impl<'a> CompletedQueue<'a> {
     }
 
     fn begin_buffer(&self) -> Result<(), CompletedQueueError> {
-        let dev = self.i_cmd_pool.device().device();
-
         let cmd_begin_info = vk::CommandBufferBeginInfo {
             s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
             p_next: ptr::null(),
@@ -289,7 +326,7 @@ impl<'a> CompletedQueue<'a> {
         };
 
         on_error_ret!(
-            unsafe { dev.begin_command_buffer(self.i_cmd_buffer, &cmd_begin_info) },
+            unsafe { self.device().begin_command_buffer(self.i_cmd_buffer, &cmd_begin_info) },
             CompletedQueueError::BufferInit
         );
 
@@ -297,16 +334,14 @@ impl<'a> CompletedQueue<'a> {
     }
 
     fn bind_pipeline(&self, pipe: &'a compute::Pipeline<'a>) {
-        let dev = self.i_cmd_pool.device().device();
-
         unsafe {
-            dev.cmd_bind_pipeline(
+            self.device().cmd_bind_pipeline(
                 self.i_cmd_buffer,
                 vk::PipelineBindPoint::COMPUTE,
                 pipe.pipeline()
             );
 
-            dev.cmd_bind_descriptor_sets(
+            self.device().cmd_bind_descriptor_sets(
                 self.i_cmd_buffer,
                 vk::PipelineBindPoint::COMPUTE,
                 pipe.pipeline_layout(),
@@ -318,8 +353,6 @@ impl<'a> CompletedQueue<'a> {
     }
 
     fn copy_memory(&self, src: &memory::Memory, dst: &memory::Memory) {
-        let dev = self.i_cmd_pool.device().device();
-
         let copy_info = vk::BufferCopy {
             src_offset: 0,
             dst_offset: 0,
@@ -327,15 +360,13 @@ impl<'a> CompletedQueue<'a> {
         };
 
         unsafe {
-            dev.cmd_copy_buffer(self.i_cmd_buffer, src.buffer(), dst.buffer(), &[copy_info]);
+            self.device().cmd_copy_buffer(self.i_cmd_buffer, src.buffer(), dst.buffer(), &[copy_info]);
         }
     }
 
     fn dispatch(&self, x: u32, y: u32, z: u32) {
-        let dev = self.i_cmd_pool.device().device();
-
         unsafe {
-            dev.cmd_dispatch(self.i_cmd_buffer, x, y, z)
+            self.device().cmd_dispatch(self.i_cmd_buffer, x, y, z)
         }
     }
 
@@ -346,8 +377,6 @@ impl<'a> CompletedQueue<'a> {
         src_stage: PipelineStage,
         dst_stage: PipelineStage)
     {
-        let dev = self.i_cmd_pool.device().device();
-
         let mem_barrier = vk::BufferMemoryBarrier {
             s_type: vk::StructureType::BUFFER_MEMORY_BARRIER,
             p_next: ptr::null(),
@@ -361,7 +390,7 @@ impl<'a> CompletedQueue<'a> {
         };
 
         unsafe {
-            dev.cmd_pipeline_barrier(
+            self.device().cmd_pipeline_barrier(
                 self.i_cmd_buffer,
                 src_stage,
                 dst_stage,
@@ -374,23 +403,69 @@ impl<'a> CompletedQueue<'a> {
     }
 
     fn update_push_constants(&self, pipe: &'a compute::Pipeline<'a>, data: &'a [u8]) {
-        let dev = self.i_cmd_pool.device().device();
-
         unsafe {
-            dev.cmd_push_constants(
+            self.device().cmd_push_constants(
                 self.i_cmd_buffer, pipe.pipeline_layout(), vk::ShaderStageFlags::COMPUTE, 0, data
             )
         }
     }
 
-    fn end_buffer(&self) -> Result<(), CompletedQueueError> {
-        let dev = self.i_cmd_pool.device().device();
+    fn begin_render_pass<'b>(&self, rp: &'b graphics::RenderPass<'a>, fb: &'b memory::Framebuffer<'a>) {
+        let clear_value:vk::ClearValue = vk::ClearValue {
+            color: vk::ClearColorValue {
+                float32: [0.0, 0.0, 0.0, 0.0],
+            }
+        };
 
+        let render_pass_begin_info = vk::RenderPassBeginInfo {
+            s_type: vk::StructureType::RENDER_PASS_BEGIN_INFO,
+            p_next: ptr::null(),
+            render_pass: rp.render_pass(),
+            framebuffer: fb.framebuffer(),
+            render_area: vk::Rect2D {
+                offset: vk::Offset2D {
+                    x: 0,
+                    y: 0,
+                },
+                extent: fb.extent(),
+            },
+            clear_value_count: 1,
+            p_clear_values: &clear_value,
+        };
+
+        unsafe {
+            self.device().cmd_begin_render_pass(self.i_cmd_buffer, &render_pass_begin_info, vk::SubpassContents::INLINE)
+        };
+    }
+
+    fn bind_graphics_pipeline<'b>(&self, pipe: &'b graphics::Pipeline<'a>) {
+        unsafe {
+            self.device().cmd_bind_pipeline(self.i_cmd_buffer, vk::PipelineBindPoint::GRAPHICS, pipe.pipeline())
+        }
+    }
+
+    fn draw(&self, vc: u32, ic: u32, fv: u32, fi: u32) {
+        unsafe {
+            self.device().cmd_draw(self.i_cmd_buffer, vc, ic, fv, fi);
+        }
+    }
+
+    fn end_render_pass(&self) {
+        unsafe {
+            self.device().cmd_end_render_pass(self.i_cmd_buffer);
+        }
+    }
+
+    fn end_buffer(&self) -> Result<(), CompletedQueueError> {
 		on_error_ret!(
-			unsafe { dev.end_command_buffer(self.i_cmd_buffer) },
+			unsafe { self.device().end_command_buffer(self.i_cmd_buffer) },
 			CompletedQueueError::Commit
 		);
 
 		Ok(())
+    }
+
+    fn device(&self) -> &ash::Device {
+        self.i_cmd_pool.device().device()
     }
 }
