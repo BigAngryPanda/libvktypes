@@ -332,7 +332,7 @@ impl<'a> Image<'a> {
         img: vk::Image,
         img_format: vk::Format,
     ) -> Result<Image<'a>, ImageError> {
-        let image_info: vk::ImageViewCreateInfo = vk::ImageViewCreateInfo {
+        let image_info = vk::ImageViewCreateInfo {
             s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
             p_next: ptr::null(),
             flags: vk::ImageViewCreateFlags::empty(),
