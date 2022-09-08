@@ -113,6 +113,11 @@ impl<'a> Fence<'a> {
             i_fence: fence,
         })
     }
+
+    #[doc(hidden)]
+    pub fn fence(&self) -> vk::Fence {
+        self.i_fence
+    }
 }
 
 impl<'a> Drop for Fence<'a> {
