@@ -11,6 +11,7 @@ use core::ffi::c_void;
 use std::error::Error;
 use std::fmt;
 use std::ptr;
+use std::ops::Index;
 
 // TODO mb rewrite it with separate flags?
 
@@ -365,6 +366,7 @@ impl<'a> Image<'a> {
         })
     }
 
+    #[doc(hidden)]
     pub fn view(&self) -> vk::ImageView {
         self.i_image_view
     }
@@ -428,6 +430,14 @@ impl<'a> ImageList<'a> {
     /// Return iterator over images in list
     pub fn images(&self) -> impl Iterator<Item = &Image> {
         self.0.iter()
+    }
+}
+
+impl<'a> Index<usize> for ImageList<'a> {
+    type Output = Image<'a>;
+
+    fn index(&self, i: usize) -> &Self::Output {
+        &self.0[i]
     }
 }
 
@@ -534,5 +544,13 @@ impl<'a> FramebufferList<'a> {
     /// Return iterator over framebuffers
     pub fn framebuffers(&self) -> impl Iterator<Item = &Framebuffer> {
         self.0.iter()
+    }
+}
+
+impl<'a> Index<usize> for FramebufferList<'a> {
+    type Output = Framebuffer<'a>;
+
+    fn index(&self, i: usize) -> &Self::Output {
+        &self.0[i]
     }
 }
