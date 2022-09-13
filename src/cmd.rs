@@ -278,6 +278,11 @@ impl<'a> CompletedQueue<'a> {
         Ok(())
     }
 
+    #[doc(hidden)]
+    pub fn queue(&self) -> vk::Queue {
+        self.i_queue
+    }
+
     fn fill_buffer(&self, cmd_buffer: &CmdBuffer) -> Result<(), CompletedQueueError> {
         on_error_ret!(self.begin_buffer(), CompletedQueueError::BufferInit);
 
