@@ -6,13 +6,14 @@ use ash::extensions::khr;
 use ash::vk;
 
 use crate::on_error_ret;
-use crate::{dev, libvk, surface};
+use crate::{dev, libvk, surface, sync};
 
 use std::ptr;
 
 #[derive(Debug)]
 pub enum SwapchainError {
     Creating,
+    NextImage
 }
 
 /// Swapchain configuration struct
@@ -105,6 +106,32 @@ impl Swapchain {
                 i_format: swp_type.format,
             }
         )
+    }
+
+    pub fn next_image(&self, timeout: u64, sem: Option<sync::Semaphore>, fence: Option<sync::Fence>)
+        -> Result<u32, SwapchainError>
+    {
+        let (image_index, _) = on_error_ret!(
+            unsafe {
+                self.i_loader.acquire_next_image(
+                    self.i_swapchain,
+                    timeout,
+                    if let Some(s) = sem {
+                        s.semaphore()
+                    } else {
+                        vk::Semaphore::null()
+                    },
+                    if let Some(f) = fence {
+                        f.fence()
+                    } else {
+                        vk::Fence::null()
+                    }
+                )
+            },
+            SwapchainError::NextImage
+        );
+
+        Ok(image_index)
     }
 
     #[doc(hidden)]
