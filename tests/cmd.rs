@@ -130,7 +130,14 @@ fn cmd_buffer_exec() {
 
     let cmd_queue = cmd::CompletedQueue::commit(&queue_type).expect("Failed to create command buffer");
 
-    assert!(cmd_queue.exec(cmd::PipelineStage::COMPUTE_SHADER, u64::MAX).is_ok())
+    let exec_info = cmd::ExecInfo {
+        wait_stage: cmd::PipelineStage::COMPUTE_SHADER,
+        timeout: u64::MAX,
+        wait: &[],
+        signal: &[],
+    };
+
+    assert!(cmd_queue.exec(&exec_info).is_ok())
 }
 
 #[test]

@@ -2,9 +2,9 @@
 
 use ash::vk;
 
-use crate::{dev, memory, compute, graphics};
+use crate::{dev, memory, compute, graphics, sync};
 
-use crate::on_error_ret;
+use crate::{on_error_ret, data_ptr};
 
 use std::{ptr, cmp};
 use std::iter::Iterator;
@@ -75,7 +75,7 @@ impl<'a> CmdPool<'a> {
         )
     }
 
-    fn cmd_pool(&self) -> vk::CommandPool {
+    pub fn cmd_pool(&self) -> vk::CommandPool {
         self.i_pool
     }
 
@@ -175,6 +175,13 @@ impl<'a> CmdBuffer<'a> {
     }
 }
 
+pub struct ExecInfo<'a, 'b> {
+    pub wait_stage: PipelineStage,
+    pub timeout: u64,
+    pub wait: &'a [&'a sync::Semaphore<'b>],
+    pub signal: &'a [&'a sync::Semaphore<'b>],
+}
+
 pub struct ComputeQueueType<'a> {
     pub cmd_pool: &'a CmdPool<'a>,
     pub cmd_buffer: &'a CmdBuffer<'a>,
@@ -233,7 +240,7 @@ impl<'a> CompletedQueue<'a> {
         }
     }
 
-    pub fn exec(&self, wait_stage: PipelineStage, timeout: u64) -> Result<(), CompletedQueueError> {
+    pub fn exec(&self, info: &ExecInfo) -> Result<(), CompletedQueueError> {
         let dev = self.device();
 
         let fence_info = vk::FenceCreateInfo {
@@ -247,16 +254,19 @@ impl<'a> CompletedQueue<'a> {
             CompletedQueueError::Fence
         );
 
+        let wait_sems: Vec<vk::Semaphore> = info.wait.iter().map(|s| s.semaphore()).collect();
+        let sign_sems: Vec<vk::Semaphore> = info.signal.iter().map(|s| s.semaphore()).collect();
+
         let submit_info = vk::SubmitInfo {
             s_type: vk::StructureType::SUBMIT_INFO,
             p_next: ptr::null(),
-            wait_semaphore_count: 0,
-            p_wait_semaphores: ptr::null(),
-            p_wait_dst_stage_mask: &wait_stage,
+            wait_semaphore_count: wait_sems.len() as u32,
+            p_wait_semaphores: data_ptr!(wait_sems),
+            p_wait_dst_stage_mask: &info.wait_stage,
             command_buffer_count: 1,
             p_command_buffers: &self.i_cmd_buffer,
-            signal_semaphore_count: 0,
-            p_signal_semaphores: ptr::null(),
+            signal_semaphore_count: sign_sems.len() as u32,
+            p_signal_semaphores: data_ptr!(sign_sems),
         };
 
         unsafe {
@@ -267,7 +277,7 @@ impl<'a> CompletedQueue<'a> {
         }
 
         unsafe {
-            if dev.wait_for_fences(&[fence], true, timeout).is_err() {
+            if dev.wait_for_fences(&[fence], true, info.timeout).is_err() {
                dev.destroy_fence(fence, None);
                return Err(CompletedQueueError::Timeout);
             }
@@ -281,6 +291,11 @@ impl<'a> CompletedQueue<'a> {
     #[doc(hidden)]
     pub fn queue(&self) -> vk::Queue {
         self.i_queue
+    }
+
+    #[doc(hidden)]
+    pub fn buffer(&self) -> vk::CommandBuffer {
+        self.i_cmd_buffer
     }
 
     fn fill_buffer(&self, cmd_buffer: &CmdBuffer) -> Result<(), CompletedQueueError> {
@@ -440,31 +455,6 @@ impl<'a> CompletedQueue<'a> {
 
         unsafe {
             self.device().cmd_begin_render_pass(self.i_cmd_buffer, &render_pass_begin_info, vk::SubpassContents::INLINE)
-        };
-
-        let viewport = vk::Viewport {
-            x: 0.0,
-            y: 0.0,
-            width: fb.extent().width as f32,
-            height: fb.extent().height as f32,
-            min_depth: 0.0,
-            max_depth: 1.0,
-        };
-
-        unsafe {
-            self.device().cmd_set_viewport(self.i_cmd_buffer, 0, &[viewport])
-        };
-
-        let scissor:vk::Rect2D = vk::Rect2D {
-            offset: vk::Offset2D {
-                x: 0,
-                y: 0,
-            },
-            extent: fb.extent(),
-        };
-
-        unsafe {
-            self.device().cmd_set_scissor(self.i_cmd_buffer, 0, &[scissor])
         };
     }
 
