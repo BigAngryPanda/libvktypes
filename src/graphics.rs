@@ -348,7 +348,7 @@ impl<'a> RenderPass<'a> {
                 store_op: vk::AttachmentStoreOp::STORE,
                 stencil_load_op: vk::AttachmentLoadOp::DONT_CARE,
                 stencil_store_op: vk::AttachmentStoreOp::DONT_CARE,
-                initial_layout: vk::ImageLayout::PRESENT_SRC_KHR,
+                initial_layout: vk::ImageLayout::UNDEFINED,
                 final_layout: vk::ImageLayout::PRESENT_SRC_KHR,
             }
         ];
