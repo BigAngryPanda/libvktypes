@@ -109,7 +109,7 @@ impl Swapchain {
         )
     }
 
-    pub fn next_image(&self, timeout: u64, sem: Option<sync::Semaphore>, fence: Option<sync::Fence>)
+    pub fn next_image(&self, timeout: u64, sem: Option<&sync::Semaphore>, fence: Option<&sync::Fence>)
         -> Result<u32, SwapchainError>
     {
         let (image_index, _) = on_error_ret!(
@@ -135,7 +135,7 @@ impl Swapchain {
         Ok(image_index)
     }
 
-    pub fn present(&self, queue: &cmd::CompletedQueue, image_index: u32, wait: &[sync::Semaphore])
+    pub fn present(&self, queue: &cmd::CompletedQueue, image_index: u32, wait: &[&sync::Semaphore])
         -> Result<(), SwapchainError>
     {
         let semaphores: Vec<vk::Semaphore> = wait.iter().map(|s| s.semaphore()).collect();
