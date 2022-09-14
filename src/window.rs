@@ -31,11 +31,11 @@ impl Window {
         )
     }
 
-    /// Return reference to internal event loop
+    /// Consume window and return internal event loop
     ///
     #[doc = "See more <https://docs.rs/winit/latest/winit/window/struct.Window.html>"]
-    pub fn event_loop(&mut self) -> &mut EventLoop {
-        &mut self.i_evloop
+    pub fn event_loop(self) -> EventLoop {
+        self.i_evloop
     }
 
     #[doc(hidden)]
