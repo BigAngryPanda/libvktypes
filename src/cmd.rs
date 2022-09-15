@@ -154,6 +154,9 @@ impl<'a, 'b> CmdBuffer<'a, 'b> {
         self.i_cmds.push(Cmd::BeginRenderPass(rp, fb));
     }
 
+    /// Update vertex bindings
+    ///
+    /// Updating starts from **first** binding
     pub fn bind_vertex_buffers(&mut self, buffers: &'a [&'a memory::Memory<'b>]) {
         self.i_cmds.push(Cmd::BindVertexBuffers(buffers));
     }
