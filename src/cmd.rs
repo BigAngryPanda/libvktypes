@@ -149,7 +149,7 @@ impl<'a, 'b> CmdBuffer<'a, 'b> {
 
     /// Begin render pass with selected framebuffer
     ///
-    /// Must be ended with [`end_render_pass`]
+    /// Must be ended with [`end_render_pass`](crate::cmd::CmdBuffer::end_render_pass)
     pub fn begin_render_pass(&mut self, rp: &'a graphics::RenderPass<'b>, fb: &'a memory::Framebuffer<'b>) {
         self.i_cmds.push(Cmd::BeginRenderPass(rp, fb));
     }
