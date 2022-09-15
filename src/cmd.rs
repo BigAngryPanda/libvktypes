@@ -34,6 +34,7 @@ pub enum Cmd<'a, 'b : 'a> {
     BeginRenderPass(&'a graphics::RenderPass<'b>, &'a memory::Framebuffer<'b>),
     BindGraphicsPipeline(&'a graphics::Pipeline<'b>),
     Draw(u32, u32, u32, u32),
+    BindVertexBuffers(&'a [&'a memory::Memory<'b>]),
     EndRenderPass,
 }
 
@@ -151,6 +152,10 @@ impl<'a, 'b> CmdBuffer<'a, 'b> {
     /// Must be ended with [`end_render_pass`]
     pub fn begin_render_pass(&mut self, rp: &'a graphics::RenderPass<'b>, fb: &'a memory::Framebuffer<'b>) {
         self.i_cmds.push(Cmd::BeginRenderPass(rp, fb));
+    }
+
+    pub fn bind_vertex_buffers(&mut self, buffers: &'a [&'a memory::Memory<'b>]) {
+        self.i_cmds.push(Cmd::BindVertexBuffers(buffers));
     }
 
     /// Bind graphics pipeline
@@ -325,6 +330,9 @@ impl<'a, 'b> CompletedQueue<'a, 'b> {
                 Cmd::BindGraphicsPipeline(pipe) => {
                     self.bind_graphics_pipeline(pipe);
                 },
+                Cmd::BindVertexBuffers(vb) => {
+                    self.bind_vertex_buffers(vb);
+                },
                 Cmd::Draw(vc, ic, fv, fi) => {
                     self.draw(*vc, *ic, *fv, *fi);
                 },
@@ -456,6 +464,15 @@ impl<'a, 'b> CompletedQueue<'a, 'b> {
         unsafe {
             self.device().cmd_begin_render_pass(self.i_cmd_buffer, &render_pass_begin_info, vk::SubpassContents::INLINE)
         };
+    }
+
+    fn bind_vertex_buffers<'c>(&self, buffers: &'c [&'c memory::Memory<'b>]) {
+        let vertex_buffers: Vec<vk::Buffer> = buffers.iter().map(|x| x.buffer()).collect();
+        let offsets: Vec<vk::DeviceSize> = vec![0; vertex_buffers.len()];
+
+        unsafe {
+            self.device().cmd_bind_vertex_buffers(self.i_cmd_buffer, 0, vertex_buffers.as_slice(), offsets.as_slice())
+        }
     }
 
     fn bind_graphics_pipeline<'c>(&self, pipe: &'c graphics::Pipeline<'a>) {
