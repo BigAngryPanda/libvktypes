@@ -23,16 +23,16 @@ pub type AccessType = vk::AccessFlags;
 #[doc = "Vulkan documentation <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkPipelineStageFlagBits.html>"]
 pub type PipelineStage = vk::PipelineStageFlags;
 
-pub enum Cmd<'a> {
-    BindPipeline(&'a compute::Pipeline<'a>),
-    UpdatePushConstants(&'a compute::Pipeline<'a>, &'a [u8]),
-    CopyMemory(&'a memory::Memory<'a>, &'a memory::Memory<'a>),
+pub enum Cmd<'a, 'b : 'a> {
+    BindPipeline(&'a compute::Pipeline<'b>),
+    UpdatePushConstants(&'a compute::Pipeline<'b>, &'a [u8]),
+    CopyMemory(&'a memory::Memory<'b>, &'a memory::Memory<'b>),
     // memory, src_type, dst_type, src_stage, src_stage
-    SetBarrier(&'a memory::Memory<'a>, AccessType, AccessType, PipelineStage, PipelineStage),
+    SetBarrier(&'a memory::Memory<'b>, AccessType, AccessType, PipelineStage, PipelineStage),
     // x, y, z
     Dispatch(u32, u32, u32),
-    BeginRenderPass(&'a graphics::RenderPass<'a>, &'a memory::Framebuffer<'a>),
-    BindGraphicsPipeline(&'a graphics::Pipeline<'a>),
+    BeginRenderPass(&'a graphics::RenderPass<'b>, &'a memory::Framebuffer<'b>),
+    BindGraphicsPipeline(&'a graphics::Pipeline<'b>),
     Draw(u32, u32, u32, u32),
     EndRenderPass,
 }
@@ -93,12 +93,12 @@ impl<'a> Drop for CmdPool<'a> {
 }
 
 #[derive(Default)]
-pub struct CmdBuffer<'a> {
-    i_cmds: Vec<Cmd<'a>>
+pub struct CmdBuffer<'a, 'b> {
+    i_cmds: Vec<Cmd<'a, 'b>>
 }
 
-impl<'a> CmdBuffer<'a> {
-    pub fn new() -> CmdBuffer<'a> {
+impl<'a, 'b> CmdBuffer<'a, 'b> {
+    pub fn new() -> CmdBuffer<'a, 'b> {
         CmdBuffer::default()
     }
 
@@ -107,11 +107,11 @@ impl<'a> CmdBuffer<'a> {
         self.i_cmds.push(Cmd::Dispatch(x, y, z));
     }
 
-    pub fn bind_pipeline(&mut self, pipe: &'a compute::Pipeline) {
+    pub fn bind_pipeline(&mut self, pipe: &'a compute::Pipeline<'b>) {
         self.i_cmds.push(Cmd::BindPipeline(pipe));
     }
 
-    pub fn update_push_constants(&mut self, pipe: &'a compute::Pipeline, data: &'a [u8]) {
+    pub fn update_push_constants(&mut self, pipe: &'a compute::Pipeline<'b>, data: &'a [u8]) {
         self.i_cmds.push(Cmd::UpdatePushConstants(pipe, data));
     }
 
@@ -128,7 +128,7 @@ impl<'a> CmdBuffer<'a> {
     ///
     /// For more types see [AccessType]
     pub fn set_barrier(&mut self,
-        mem: &'a memory::Memory,
+        mem: &'a memory::Memory<'b>,
         src_type: AccessType,
         dst_type: AccessType,
         src_stage: PipelineStage,
@@ -142,19 +142,19 @@ impl<'a> CmdBuffer<'a> {
     /// If `dst` has less capacity then copy only first [crate::memory::Memory::size()] bytes
     ///
     /// If `src` has less capacity then rest of the `dst` memory will be left intact
-    pub fn copy(&mut self, src: &'a memory::Memory, dst: &'a memory::Memory)  {
+    pub fn copy(&mut self, src: &'a memory::Memory<'b>, dst: &'a memory::Memory<'b>)  {
         self.i_cmds.push(Cmd::CopyMemory(src, dst));
     }
 
     /// Begin render pass with selected framebuffer
     ///
     /// Must be ended with [`end_render_pass`]
-    pub fn begin_render_pass(&mut self, rp: &'a graphics::RenderPass<'a>, fb: &'a memory::Framebuffer<'a>) {
+    pub fn begin_render_pass(&mut self, rp: &'a graphics::RenderPass<'b>, fb: &'a memory::Framebuffer<'b>) {
         self.i_cmds.push(Cmd::BeginRenderPass(rp, fb));
     }
 
     /// Bind graphics pipeline
-    pub fn bind_graphics_pipeline(&mut self, pipe: &'a graphics::Pipeline) {
+    pub fn bind_graphics_pipeline(&mut self, pipe: &'a graphics::Pipeline<'b>) {
         self.i_cmds.push(Cmd::BindGraphicsPipeline(pipe));
     }
 
@@ -170,7 +170,7 @@ impl<'a> CmdBuffer<'a> {
     }
 
     /// Return iterator over internal buffer
-    pub fn iter(&self) -> impl Iterator<Item = &Cmd<'a>> {
+    pub fn iter(&self) -> impl Iterator<Item = &Cmd<'a, 'b>> {
         self.i_cmds.iter()
     }
 }
@@ -182,9 +182,9 @@ pub struct ExecInfo<'a, 'b> {
     pub signal: &'a [&'a sync::Semaphore<'b>],
 }
 
-pub struct ComputeQueueType<'a> {
-    pub cmd_pool: &'a CmdPool<'a>,
-    pub cmd_buffer: &'a CmdBuffer<'a>,
+pub struct ComputeQueueType<'a, 'b : 'a> {
+    pub cmd_pool: &'a CmdPool<'b>,
+    pub cmd_buffer: &'a CmdBuffer<'a, 'b>,
     pub queue_index: u32,
 }
 
@@ -199,14 +199,14 @@ pub enum CompletedQueueError {
     Timeout
 }
 
-pub struct CompletedQueue<'a> {
-    i_cmd_pool: &'a CmdPool<'a>,
+pub struct CompletedQueue<'a, 'b : 'a> {
+    i_cmd_pool: &'a CmdPool<'b>,
     i_queue: vk::Queue,
     i_cmd_buffer: vk::CommandBuffer,
 }
 
-impl<'a> CompletedQueue<'a> {
-    pub fn commit(queue_type: &'a ComputeQueueType) -> Result<CompletedQueue<'a>, CompletedQueueError> {
+impl<'a, 'b> CompletedQueue<'a, 'b> {
+    pub fn commit(queue_type: &'a ComputeQueueType<'a, 'b>) -> Result<CompletedQueue<'a, 'b>, CompletedQueueError> {
         let dev = queue_type.cmd_pool.device();
 
         let cmd_buff_info = vk::CommandBufferAllocateInfo {
@@ -430,7 +430,7 @@ impl<'a> CompletedQueue<'a> {
         }
     }
 
-    fn begin_render_pass<'b>(&self, rp: &'b graphics::RenderPass<'a>, fb: &'b memory::Framebuffer<'a>) {
+    fn begin_render_pass<'c>(&self, rp: &'c graphics::RenderPass<'a>, fb: &'c memory::Framebuffer<'a>) {
         let clear_value:vk::ClearValue = vk::ClearValue {
             color: vk::ClearColorValue {
                 float32: [0.0, 0.0, 0.0, 0.0],
@@ -458,7 +458,7 @@ impl<'a> CompletedQueue<'a> {
         };
     }
 
-    fn bind_graphics_pipeline<'b>(&self, pipe: &'b graphics::Pipeline<'a>) {
+    fn bind_graphics_pipeline<'c>(&self, pipe: &'c graphics::Pipeline<'a>) {
         unsafe {
             self.device().cmd_bind_pipeline(self.i_cmd_buffer, vk::PipelineBindPoint::GRAPHICS, pipe.pipeline())
         }
