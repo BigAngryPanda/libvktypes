@@ -32,6 +32,7 @@ fn cmd_pool_allocation() {
             hw::HWDevice::is_discrete_gpu,
             hw::QueueFamilyDescription::is_compute,
             |_| true,
+            None
         )
         .expect("Failed to find suitable hardware device");
 
@@ -69,6 +70,7 @@ fn cmd_buffer_exec() {
             hw::HWDevice::is_discrete_gpu,
             hw::QueueFamilyDescription::is_compute,
             |_| true,
+            None
         )
         .expect("Failed to find suitable hardware device");
 

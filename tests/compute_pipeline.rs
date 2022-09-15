@@ -28,6 +28,7 @@ fn create_pipeline() {
             hw::HWDevice::is_discrete_gpu,
             hw::QueueFamilyDescription::is_compute,
             |_| true,
+            None
         )
         .expect("Failed to find suitable hardware device");
 

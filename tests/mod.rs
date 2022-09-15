@@ -129,12 +129,14 @@ pub fn get_graphics_hw() -> &'static hw::HWDevice {
     unsafe {
         INIT_GRAPHICS_HW.call_once(|| {
             let hw_list = hw::Description::poll(get_graphics_instance()).expect("Failed to list hardware");
+            let surface = get_surface();
 
             let (hw_dev, qf, _) = hw_list
                 .find_first(
                     hw::HWDevice::is_discrete_gpu,
                     hw::QueueFamilyDescription::is_graphics,
                     |_| true,
+                    Some(surface)
                 )
                 .expect("Failed to find suitable hardware device");
 
@@ -208,9 +210,6 @@ pub fn get_swapchain() -> &'static swapchain::Swapchain {
             let surface_ref = get_surface();
 
             let device = get_graphics_device();
-
-            // Look at tests/swapchain.rs to understand why we have to do this
-            let _ = get_present_queue();
 
             let capabilities = get_surface_capabilities();
 

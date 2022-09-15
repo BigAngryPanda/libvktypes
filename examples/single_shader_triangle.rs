@@ -15,11 +15,21 @@ fn main() {
 
     let hw_list = hw::Description::poll(&lib).expect("Failed to list hardware");
 
+    let wnd = window::Window::new().expect("Failed to create window");
+
+    let surface_cfg = surface::SurfaceType {
+        lib: &lib,
+        window: &wnd,
+    };
+
+    let surface = surface::Surface::new(&surface_cfg).expect("Failed to create surface");
+
     let (hw_dev, queue, _) = hw_list
         .find_first(
             |dev| hw::HWDevice::is_discrete_gpu(dev) || hw::HWDevice::is_integrated_gpu(dev),
             hw::QueueFamilyDescription::is_compute,
             |_| true,
+            Some(&surface)
         )
         .expect("Failed to find suitable hardware device");
 
@@ -32,18 +42,6 @@ fn main() {
     };
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
-
-    let wnd = window::Window::new().expect("Failed to create window");
-
-    let surface_cfg = surface::SurfaceType {
-        lib: &lib,
-        window: &wnd,
-    };
-
-    let surface = surface::Surface::new(&surface_cfg).expect("Failed to create surface");
-
-    // We have to do this to prevent validation layer error
-    let _ = hw_dev.find_first_queue(|q| q.support_surface(hw_dev, &surface));
 
     let cap_type = surface::CapabilitiesType {
         hw: hw_dev,

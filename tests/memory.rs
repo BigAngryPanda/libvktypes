@@ -27,6 +27,7 @@ fn compute_memory_allocation() {
             hw::HWDevice::is_discrete_gpu,
             hw::QueueFamilyDescription::is_compute,
             |_| true,
+            None
         )
         .expect("Failed to find suitable hardware device");
 
@@ -69,6 +70,7 @@ fn zero_allocation() {
             hw::HWDevice::is_discrete_gpu,
             hw::QueueFamilyDescription::is_compute,
             |_| true,
+            None
         )
         .expect("Failed to find suitable hardware device");
 

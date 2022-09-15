@@ -566,6 +566,7 @@ impl Description {
         dev: T,
         queue: U,
         mem: S,
+        surface: Option<&surface::Surface>
     ) -> Option<(&HWDevice, &QueueFamilyDescription, &MemoryDescription)>
     where
         T: Fn(&HWDevice) -> bool,
@@ -574,7 +575,16 @@ impl Description {
     {
         for hw in self.filter_hw(dev) {
             if let (Some(q), Some(m)) = (hw.find_first_queue(&queue), hw.find_first_memory(&mem)) {
-                return Some((hw, q, m));
+                match surface {
+                    Some(s) => {
+                        if q.support_surface(hw, s) {
+                            return Some((hw, q, m));
+                        }
+                    },
+                    None => {
+                        return Some((hw, q, m));
+                    }
+                }
             }
         }
 

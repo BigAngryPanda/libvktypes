@@ -45,20 +45,21 @@ fn get_capabilities() {
 
     let hw_list = hw::Description::poll(&lib).expect("Failed to list hardware");
 
-    let (hw_dev, _, _) = hw_list
-        .find_first(
-            hw::HWDevice::is_discrete_gpu,
-            hw::QueueFamilyDescription::is_graphics,
-            |_| true,
-        )
-        .expect("Failed to find suitable hardware device");
-
     let surface_cfg = surface::SurfaceType {
         lib: &lib,
         window: window_ref,
     };
 
     let surface = surface::Surface::new(&surface_cfg).expect("Failed to create surface");
+
+    let (hw_dev, _, _) = hw_list
+        .find_first(
+            hw::HWDevice::is_discrete_gpu,
+            hw::QueueFamilyDescription::is_graphics,
+            |_| true,
+            Some(&surface)
+        )
+        .expect("Failed to find suitable hardware device");
 
     let cap_type = surface::CapabilitiesType {
         hw: hw_dev,
