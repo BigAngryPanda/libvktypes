@@ -1,4 +1,4 @@
-// glslangValidator -V examples/shaders/single_dot.vert -o examples/compiled_shaders/single_dot.spv
+// glslangValidator -V examples/shaders/single_triangle.vert -o examples/compiled_shaders/single_triangle.spv
 #version 450
 
 vec4 positions[3] = vec4[](

@@ -76,7 +76,7 @@ fn main() {
 
     let vert_shader_type = shader::ShaderType {
         device: &device,
-        path: "examples/compiled_shaders/single_dot.spv",
+        path: "examples/compiled_shaders/single_triangle.spv",
         entry: CString::new("main").expect("Failed to allocate string"),
     };
 
