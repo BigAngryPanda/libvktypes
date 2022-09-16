@@ -193,9 +193,9 @@ impl<'a> Memory<'a> {
     /// [vkFlushMappedMemoryRanges](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkFlushMappedMemoryRanges.html)
     ///
     /// In other words makes host memory changes available to device
-    pub fn write<F>(&self, f: &mut F) -> Result<(), MemoryError>
+    pub fn write<T, F>(&self, f: &mut F) -> Result<(), MemoryError>
     where
-        F: FnMut(&mut [u8]),
+        F: FnMut(&mut [T]),
     {
         let data: *mut c_void = on_error_ret!(
             unsafe {
@@ -209,7 +209,7 @@ impl<'a> Memory<'a> {
             MemoryError::MapAccess
         );
 
-        f(unsafe { std::slice::from_raw_parts_mut(data as *mut u8, self.i_size as usize) });
+        f(unsafe { std::slice::from_raw_parts_mut(data as *mut T, (self.i_size as usize)/std::mem::size_of::<T>()) });
 
         if !self
             .i_flags
