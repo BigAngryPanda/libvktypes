@@ -1,0 +1,205 @@
+use libvktypes::*;
+
+use std::ffi::CString;
+
+fn main() {
+    let lib_type = libvk::InstanceType {
+        debug_layer: Some(layers::DebugLayer::default()),
+        extensions: &[extensions::DEBUG_EXT_NAME,
+            extensions::SURFACE_EXT_NAME,
+            extensions::XLIB_SURFACE_EXT_NAME],
+        ..libvk::InstanceType::default()
+    };
+
+    let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
+
+    let hw_list = hw::Description::poll(&lib).expect("Failed to list hardware");
+
+    let wnd = window::Window::new().expect("Failed to create window");
+
+    let surface_cfg = surface::SurfaceType {
+        lib: &lib,
+        window: &wnd,
+    };
+
+    let surface = surface::Surface::new(&surface_cfg).expect("Failed to create surface");
+
+    let (hw_dev, queue, _) = hw_list
+        .find_first(
+            |dev| hw::HWDevice::is_discrete_gpu(dev) || hw::HWDevice::is_integrated_gpu(dev),
+            hw::QueueFamilyDescription::is_compute,
+            |_| true,
+            Some(&surface)
+        )
+        .expect("Failed to find suitable hardware device");
+
+    let dev_type = dev::DeviceType {
+        lib: &lib,
+        hw: hw_dev,
+        queue_family_index: queue.index(),
+        priorities: &[1.0_f32],
+        extensions: &[extensions::SWAPCHAIN_EXT_NAME],
+    };
+
+    let device = dev::Device::new(&dev_type).expect("Failed to create device");
+
+    let cap_type = surface::CapabilitiesType {
+        hw: hw_dev,
+        surface: &surface
+    };
+
+    let capabilities = surface::Capabilities::get(&cap_type).expect("Failed to get capabilities");
+
+    assert!(capabilities.is_img_count_supported(2));
+    assert!(capabilities.is_format_supported(surface::SurfaceFormat {
+        format: surface::ImageFormat::B8G8R8A8_UNORM,
+        color_space: surface::ColorSpace::SRGB_NONLINEAR,
+    }));
+    assert!(capabilities.is_mode_supported(surface::PresentMode::FIFO));
+    assert!(capabilities.is_flags_supported(surface::UsageFlags::COLOR_ATTACHMENT));
+
+    let swp_type = swapchain::SwapchainType {
+        lib: &lib,
+        dev: &device,
+        surface: &surface,
+        num_of_images: 2,
+        format: surface::ImageFormat::B8G8R8A8_UNORM,
+        color: surface::ColorSpace::SRGB_NONLINEAR,
+        present_mode: surface::PresentMode::FIFO,
+        flags: surface::UsageFlags::COLOR_ATTACHMENT,
+        extent: capabilities.extent2d(),
+        transform: capabilities.pre_transformation(),
+        alpha: capabilities.alpha_composition(),
+    };
+
+    let swapchain = swapchain::Swapchain::new(&swp_type).expect("Failed to create swapchain");
+
+    let vert_shader_type = shader::ShaderType {
+        device: &device,
+        path: "examples/compiled_shaders/vertex_input.spv",
+        entry: CString::new("main").expect("Failed to allocate string"),
+    };
+
+    let vert_shader = shader::Shader::from_file(&vert_shader_type).expect("Failed to create vertex shader module");
+
+    let frag_shader_type = shader::ShaderType {
+        device: &device,
+        path: "examples/compiled_shaders/color_from_vertex.spv",
+        entry: CString::new("main").expect("Failed to allocate string"),
+    };
+
+    let frag_shader = shader::Shader::from_file(&frag_shader_type).expect("Failed to create fragment shader module");
+
+    let surf_format = capabilities.formats().next().expect("No available formats").format;
+
+    let mem_type = memory::MemoryType {
+        device: &device,
+        size: 16*4,
+        properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
+        usage: memory::UsageFlags::VERTEX_BUFFER | memory::UsageFlags::TRANSFER_SRC | memory::UsageFlags::TRANSFER_DST,
+        sharing_mode: memory::SharingMode::EXCLUSIVE,
+        queue_families: &[device.queue_index()],
+    };
+
+    let vertex_data = memory::Memory::allocate(&mem_type).expect("Failed to allocate memory");
+
+    let mut set_vrtx_buffer = |bytes: &mut [f32]| {
+        bytes.clone_from_slice(&[0.5f32, 0.5f32, 0.0f32, 1.0f32,
+                     0.5f32, -0.5f32, 0.0f32, 1.0f32,
+                     -0.5f32, 0.5f32, 0.0f32, 1.0f32,
+                     -0.5f32, -0.5f32, 0.0f32, 1.0f32,]);
+    };
+
+    vertex_data.write(&mut set_vrtx_buffer).expect("Failed to fill the buffer");
+
+    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
+        .expect("Failed to create render pass");
+
+    let pipe_type = graphics::PipelineType {
+        device: &device,
+        vertex_shader: &vert_shader,
+        vertex_size: std::mem::size_of::<[f32; 4]>() as u32,
+        vert_slots: 1,
+        vert_input: &[graphics::VertexInputCfg {
+            location: 0,
+            binding: 0,
+            format: surface::ImageFormat::R32G32B32A32_SFLOAT,
+            offset: 0,
+        }],
+        frag_shader: &frag_shader,
+        topology: graphics::Topology::TRIANGLE_STRIP,
+        extent: capabilities.extent2d(),
+        push_constant_size: 0,
+        render_pass: &render_pass,
+        subpass_index: 0,
+    };
+
+    let pipeline = graphics::Pipeline::new(&pipe_type).expect("Failed to create pipeline");
+
+    let sem_type = sync::SemaphoreType {
+        device: &device,
+    };
+
+    let img_sem = sync::Semaphore::new(&sem_type).expect("Failed to create semaphore");
+    let render_sem = sync::Semaphore::new(&sem_type).expect("Failed to create semaphore");
+
+    let cmd_pool_type = cmd::CmdPoolType {
+        device: &device,
+    };
+
+    let cmd_pool = cmd::CmdPool::new(&cmd_pool_type).expect("Failed to allocate command pool");
+
+    let mut cmd_buffer = cmd::CmdBuffer::default();
+
+    let img_cfg = memory::ImageListType {
+        device: &device,
+        swapchain: &swapchain,
+    };
+
+    let images = memory::ImageList::from_swapchain(&img_cfg).expect("Failed to get images");
+
+    let img_index = swapchain.next_image(u64::MAX, Some(&img_sem), None).expect("Failed to get image index");
+
+    let frames_cfg = memory::FramebufferType {
+        device: &device,
+        render_pass: &render_pass,
+        images: &images,
+        extent: capabilities.extent2d(),
+    };
+
+    let frames = memory::FramebufferList::new(&frames_cfg).expect("Failed to create framebuffers");
+
+    cmd_buffer.begin_render_pass(&render_pass, &frames[img_index as usize]);
+
+    cmd_buffer.bind_graphics_pipeline(&pipeline);
+
+    let vrtx_stage_data = [&vertex_data];
+
+    cmd_buffer.bind_vertex_buffers(&vrtx_stage_data);
+
+    cmd_buffer.draw(4, 1, 0, 0);
+
+    cmd_buffer.end_render_pass();
+
+    let queue_cfg = cmd::ComputeQueueType {
+        cmd_pool: &cmd_pool,
+        cmd_buffer: &cmd_buffer,
+        queue_index: queue.index(),
+    };
+
+    let cmd_queue = cmd::CompletedQueue::commit(&queue_cfg).expect("Failed to create cmd queue");
+
+    let exec_info = cmd::ExecInfo {
+        wait_stage: cmd::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+        timeout: u64::MAX,
+        wait: &[&img_sem],
+        signal: &[&render_sem],
+    };
+
+    cmd_queue.exec(&exec_info).expect("Failed to execute queue");
+
+    swapchain.present(&cmd_queue, img_index, &[&render_sem]).expect("Failed to present frame");
+
+    #[allow(clippy::empty_loop)]
+    loop { }
+}
