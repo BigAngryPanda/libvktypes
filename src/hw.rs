@@ -288,9 +288,12 @@ impl fmt::Display for MemoryDescription {
     }
 }
 
+pub type Features = vk::PhysicalDeviceFeatures;
+
 #[derive(Clone)]
 pub struct HWDevice {
     i_device: vk::PhysicalDevice,
+    i_features: Features,
     i_name: String,
     i_hw_type: HWType,
     i_hw_id: u32,
@@ -330,6 +333,7 @@ impl HWDevice {
 
         HWDevice {
             i_device: hw,
+            i_features: unsafe { lib.instance().get_physical_device_features(hw) },
             i_name: unsafe {
                 CStr::from_ptr(&properties.device_name[0])
                     .to_str()
@@ -354,6 +358,11 @@ impl HWDevice {
 
     pub fn device(&self) -> vk::PhysicalDevice {
         self.i_device
+    }
+
+    /// Features information
+    pub fn features(&self) -> &Features {
+        &self.i_features
     }
 
     /// Device name
@@ -486,6 +495,17 @@ impl fmt::Display for HWDevice {
             self.version_major(),
             self.version_minor(),
             self.version_patch()
+        )
+        .unwrap();
+
+        write!(
+            f,
+            "*****************************\n\
+            Features\n\
+            *****************************\n\
+            {:#?}\n\
+            *****************************\n",
+            self.i_features
         )
         .unwrap();
 

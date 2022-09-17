@@ -63,7 +63,7 @@ impl Device {
             pp_enabled_layer_names: ptr::null(),
             enabled_extension_count: dev_type.extensions.len() as u32,
             pp_enabled_extension_names: dev_type.extensions.as_ptr(),
-            p_enabled_features: ptr::null(),
+            p_enabled_features: dev_type.hw.features(),
         };
 
         let dev: ash::Device = on_error_ret!(
