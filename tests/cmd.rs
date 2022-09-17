@@ -88,7 +88,9 @@ fn cmd_buffer_exec() {
         device: &device,
         size: 4,
         properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT | hw::MemoryProperty::HOST_CACHED,
-        usage: memory::UsageFlags::STORAGE_BUFFER | memory::UsageFlags::TRANSFER_SRC | memory::UsageFlags::TRANSFER_DST,
+        usage: memory::BufferUsageFlags::STORAGE_BUFFER |
+               memory::BufferUsageFlags::TRANSFER_SRC   |
+               memory::BufferUsageFlags::TRANSFER_DST,
         sharing_mode: memory::SharingMode::EXCLUSIVE,
         queue_families: &[device.queue_index()],
     };

@@ -96,7 +96,9 @@ fn main() {
         device: &device,
         size: 16*4,
         properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
-        usage: memory::UsageFlags::VERTEX_BUFFER | memory::UsageFlags::TRANSFER_SRC | memory::UsageFlags::TRANSFER_DST,
+        usage: memory::BufferUsageFlags::VERTEX_BUFFER |
+               memory::BufferUsageFlags::TRANSFER_SRC  |
+               memory::BufferUsageFlags::TRANSFER_DST,
         sharing_mode: memory::SharingMode::EXCLUSIVE,
         queue_families: &[device.queue_index()],
     };

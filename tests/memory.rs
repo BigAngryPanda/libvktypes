@@ -45,7 +45,9 @@ fn compute_memory_allocation() {
         device: &device,
         size: 1,
         properties: hw::MemoryProperty::HOST_VISIBLE,
-        usage: memory::UsageFlags::STORAGE_BUFFER | memory::UsageFlags::TRANSFER_SRC | memory::UsageFlags::TRANSFER_DST,
+        usage: memory::BufferUsageFlags::STORAGE_BUFFER |
+               memory::BufferUsageFlags::TRANSFER_SRC   |
+               memory::BufferUsageFlags::TRANSFER_DST,
         sharing_mode: memory::SharingMode::EXCLUSIVE,
         queue_families: &[device.queue_index()],
     };
@@ -88,7 +90,9 @@ fn zero_allocation() {
         device: &device,
         size: 0,
         properties: hw::MemoryProperty::HOST_VISIBLE,
-        usage: memory::UsageFlags::STORAGE_BUFFER | memory::UsageFlags::TRANSFER_SRC | memory::UsageFlags::TRANSFER_DST,
+        usage: memory::BufferUsageFlags::STORAGE_BUFFER |
+               memory::BufferUsageFlags::TRANSFER_SRC   |
+               memory::BufferUsageFlags::TRANSFER_DST,
         sharing_mode: memory::SharingMode::EXCLUSIVE,
         queue_families: &[device.queue_index()],
     };

@@ -20,7 +20,7 @@ use std::ops::Index;
 #[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.BufferUsageFlags.html>"]
 ///
 #[doc = "Vulkan documentation: <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkBufferUsageFlagBits.html>"]
-pub type UsageFlags = vk::BufferUsageFlags;
+pub type BufferUsageFlags = vk::BufferUsageFlags;
 
 /// Represents buffer access type
 ///
@@ -34,7 +34,7 @@ pub struct MemoryType<'a> {
     pub device: &'a dev::Device,
     pub size: u64,
     pub properties: hw::MemoryProperty,
-    pub usage: UsageFlags,
+    pub usage: BufferUsageFlags,
     pub sharing_mode: SharingMode,
     pub queue_families: &'a [u32],
 }
