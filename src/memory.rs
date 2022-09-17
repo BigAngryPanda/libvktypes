@@ -318,12 +318,22 @@ impl<'a> Drop for Memory<'a> {
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkImageUsageFlagBits.html>"]
 pub type ImageUsageFlags = vk::ImageUsageFlags;
 
+/// Represents which aspects of an image will be used
+///
+#[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.ImageAspectFlags.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkImageAspectFlagBits.html>"]
+pub type ImageAspect = vk::ImageAspectFlags;
+
 /// Errors during [`Image`] initialization and access
 #[derive(Debug)]
 pub enum ImageError {
     GetImages,
     Creating,
     ImageView,
+    NoMemoryType,
+    DeviceMemory,
+    Bind,
 }
 
 pub struct ImageType<'a> {
@@ -333,6 +343,8 @@ pub struct ImageType<'a> {
     pub extent: surface::Extent3D,
     pub usage: ImageUsageFlags,
     pub layout: graphics::ImageLayout,
+    pub aspect: ImageAspect,
+    pub properties: hw::MemoryProperty,
 }
 
 /// Images represent multidimensional - up to 3 - arrays of data
@@ -342,6 +354,7 @@ pub struct Image<'a> {
     i_dev: &'a dev::Device,
     i_image: vk::Image,
     i_image_view: vk::ImageView,
+    i_image_memory: vk::DeviceMemory,
 }
 
 impl<'a> Image<'a> {
@@ -369,6 +382,50 @@ impl<'a> Image<'a> {
             ImageError::Creating
         );
 
+        let requirements: vk::MemoryRequirements = unsafe {
+            cfg
+                .device
+                .device()
+                .get_image_memory_requirements(img)
+        };
+
+        let memory_filter = |m: &hw::MemoryDescription| -> Option<u32> {
+            if ((requirements.memory_type_bits >> m.index()) & 1) == 1
+                && m.is_compatible(cfg.properties)
+            {
+                Some(m.index())
+            } else {
+                None
+            }
+        };
+
+        let mem_index: u32 = match cfg.device.hw().memory().find_map(memory_filter) {
+            Some(val) => val,
+            None => return Err(ImageError::NoMemoryType),
+        };
+
+        let memory_info = vk::MemoryAllocateInfo {
+            s_type: vk::StructureType::MEMORY_ALLOCATE_INFO,
+            p_next: ptr::null(),
+            allocation_size: requirements.size,
+            memory_type_index: mem_index,
+        };
+
+        let img_memory: vk::DeviceMemory = on_error_ret!(
+            unsafe { cfg.device.device().allocate_memory(&memory_info, None) },
+            ImageError::DeviceMemory
+        );
+
+        on_error_ret!(
+            unsafe {
+                cfg
+                    .device
+                    .device()
+                    .bind_image_memory(img, img_memory, 0)
+            },
+            ImageError::Bind
+        );
+
         let iv_info = vk::ImageViewCreateInfo {
             s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
             p_next: ptr::null(),
@@ -382,7 +439,7 @@ impl<'a> Image<'a> {
                 a: vk::ComponentSwizzle::A,
             },
             subresource_range: vk::ImageSubresourceRange {
-                aspect_mask: vk::ImageAspectFlags::COLOR,
+                aspect_mask: cfg.aspect,
                 base_mip_level: 0,
                 level_count: 1,
                 base_array_layer: 0,
@@ -401,6 +458,7 @@ impl<'a> Image<'a> {
                 i_dev: cfg.device,
                 i_image: img,
                 i_image_view: img_view,
+                i_image_memory: img_memory,
             }
         )
     }
@@ -442,6 +500,7 @@ impl<'a> Image<'a> {
             i_dev: device,
             i_image: img,
             i_image_view: img_view,
+            i_image_memory: vk::DeviceMemory::null(),
         })
     }
 
@@ -461,6 +520,12 @@ impl<'a> Drop for Image<'a> {
             self.i_dev
                 .device()
                 .destroy_image(self.i_image, None);
+
+            if self.i_image_memory != vk::DeviceMemory::null() {
+                self.i_dev
+                    .device()
+                    .free_memory(self.i_image_memory, None);
+            }
         };
     }
 }

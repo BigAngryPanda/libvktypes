@@ -128,7 +128,9 @@ fn depth_buffer() {
         format: surface::ImageFormat::D32_SFLOAT,
         extent: caps.extent3d(1),
         usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-        layout: graphics::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        layout: graphics::ImageLayout::UNDEFINED,
+        aspect: memory::ImageAspect::DEPTH,
+        properties: hw::MemoryProperty::DEVICE_LOCAL,
     };
 
     assert!(memory::Image::new(&img_type).is_ok());
