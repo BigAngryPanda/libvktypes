@@ -149,6 +149,25 @@ pub type UsageFlags = vk::ImageUsageFlags;
 /// ```
 pub type Extent2D = vk::Extent2D;
 
+/// Structure specifying a three-dimensional extent
+///
+#[doc = "Ash documentation: <https://docs.rs/ash/latest/ash/vk/struct.Extent3D.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkExtent3D.html>"]
+///
+/// # Example
+///
+/// ```
+/// use libvktypes::surface::Extent3D;
+///
+/// Extent3D {
+///     width: 1920,
+///     height: 1080,
+///     depth: 1,
+/// };
+/// ```
+pub type Extent3D = vk::Extent3D;
+
 /// Value describing the transform, relative to the presentation engine’s natural orientation
 ///
 /// It is applied to the image content prior to presentation
@@ -269,6 +288,15 @@ impl Capabilities {
     /// Return 2d extent supported by surface
     pub fn extent2d(&self) -> Extent2D {
         self.i_capabilities.current_extent
+    }
+
+    /// Return 3d extent from supported 2d extent and selected depth
+    pub fn extent3d(&self, ext_depth: u32) -> Extent3D {
+        Extent3D {
+            width: self.i_capabilities.current_extent.width,
+            height: self.i_capabilities.current_extent.height,
+            depth: ext_depth,
+        }
     }
 
     /// Return current transformation

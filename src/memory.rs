@@ -311,11 +311,28 @@ impl<'a> Drop for Memory<'a> {
     }
 }
 
+/// Represents image usage flags
+///
+#[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.ImageUsageFlags.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkImageUsageFlagBits.html>"]
+pub type ImageUsageFlags = vk::ImageUsageFlags;
+
 /// Errors during [`Image`] initialization and access
 #[derive(Debug)]
 pub enum ImageError {
     GetImages,
+    Creating,
     ImageView,
+}
+
+pub struct ImageType<'a> {
+    pub device: &'a dev::Device,
+    pub queue_families: &'a [u32],
+    pub format: surface::ImageFormat,
+    pub extent: surface::Extent3D,
+    pub usage: ImageUsageFlags,
+    pub layout: graphics::ImageLayout,
 }
 
 /// Images represent multidimensional - up to 3 - arrays of data
@@ -323,12 +340,73 @@ pub enum ImageError {
 /// Instead of [`Memory`] `Image` are more specified
 pub struct Image<'a> {
     i_dev: &'a dev::Device,
+    i_image: vk::Image,
     i_image_view: vk::ImageView,
 }
 
 impl<'a> Image<'a> {
+    pub fn new(cfg: &ImageType<'a>) -> Result<Image<'a>, ImageError> {
+        let image_info = vk::ImageCreateInfo {
+            s_type: vk::StructureType::IMAGE_CREATE_INFO,
+            p_next: ptr::null(),
+            flags: vk::ImageCreateFlags::empty(),
+            image_type: vk::ImageType::TYPE_2D,
+            format: cfg.format,
+            extent: cfg.extent,
+            mip_levels: 1,
+            array_layers: 1,
+            samples: vk::SampleCountFlags::TYPE_1,
+            tiling: vk::ImageTiling::OPTIMAL,
+            usage: cfg.usage,
+            sharing_mode: vk::SharingMode::EXCLUSIVE,
+            queue_family_index_count: cfg.queue_families.len() as u32,
+            p_queue_family_indices: cfg.queue_families.as_ptr(),
+            initial_layout: cfg.layout,
+        };
+
+        let img = on_error_ret!(
+            unsafe { cfg.device.device().create_image(&image_info, None) },
+            ImageError::Creating
+        );
+
+        let iv_info = vk::ImageViewCreateInfo {
+            s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
+            p_next: ptr::null(),
+            flags: vk::ImageViewCreateFlags::empty(),
+            view_type: vk::ImageViewType::TYPE_2D,
+            format: cfg.format,
+            components: vk::ComponentMapping {
+                r: vk::ComponentSwizzle::R,
+                g: vk::ComponentSwizzle::G,
+                b: vk::ComponentSwizzle::B,
+                a: vk::ComponentSwizzle::A,
+            },
+            subresource_range: vk::ImageSubresourceRange {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            image: img,
+        };
+
+        let img_view = on_error_ret!(
+            unsafe { cfg.device.device().create_image_view(&iv_info, None) },
+            ImageError::ImageView
+        );
+
+        Ok(
+            Image {
+                i_dev: cfg.device,
+                i_image: img,
+                i_image_view: img_view,
+            }
+        )
+    }
+
     #[doc(hidden)]
-    fn new(
+    fn from_raw(
         device: &'a dev::Device,
         img: vk::Image,
         img_format: vk::Format,
@@ -362,6 +440,7 @@ impl<'a> Image<'a> {
 
         Ok(Image {
             i_dev: device,
+            i_image: img,
             i_image_view: img_view,
         })
     }
@@ -377,7 +456,11 @@ impl<'a> Drop for Image<'a> {
         unsafe {
             self.i_dev
                 .device()
-                .destroy_image_view(self.i_image_view, None)
+                .destroy_image_view(self.i_image_view, None);
+
+            self.i_dev
+                .device()
+                .destroy_image(self.i_image, None);
         };
     }
 }
@@ -408,7 +491,7 @@ impl<'a> ImageList<'a> {
         let mut img_view = Vec::<Image<'a>>::new();
 
         for img in swapchain_images {
-            match Image::new(swp_type.device, img, swp_type.swapchain.format()) {
+            match Image::from_raw(swp_type.device, img, swp_type.swapchain.format()) {
                 Ok(val) => img_view.push(val),
                 Err(e) => return Err(e),
             }

@@ -8,6 +8,8 @@ use libvktypes::{
     layers,
     libvk,
     memory,
+    surface,
+    graphics,
 };
 
 #[test]
@@ -112,6 +114,24 @@ fn images_allocation() {
     };
 
     assert!(memory::ImageList::from_swapchain(&img_type).is_ok());
+}
+
+#[test]
+fn depth_buffer() {
+    let dev = test_context::get_graphics_device();
+
+    let caps = test_context::get_surface_capabilities();
+
+    let img_type = memory::ImageType {
+        device: dev,
+        queue_families: &[dev.queue_index()],
+        format: surface::ImageFormat::D32_SFLOAT,
+        extent: caps.extent3d(1),
+        usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+        layout: graphics::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
+
+    assert!(memory::Image::new(&img_type).is_ok());
 }
 
 #[test]
