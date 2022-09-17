@@ -464,7 +464,7 @@ impl<'a> Image<'a> {
     }
 
     #[doc(hidden)]
-    fn from_raw(
+    fn preallocated(
         device: &'a dev::Device,
         img: vk::Image,
         img_format: vk::Format,
@@ -556,7 +556,7 @@ impl<'a> ImageList<'a> {
         let mut img_view = Vec::<Image<'a>>::new();
 
         for img in swapchain_images {
-            match Image::from_raw(swp_type.device, img, swp_type.swapchain.format()) {
+            match Image::preallocated(swp_type.device, img, swp_type.swapchain.format()) {
                 Ok(val) => img_view.push(val),
                 Err(e) => return Err(e),
             }
