@@ -602,6 +602,13 @@ impl fmt::Display for FramebufferError {
 
 impl Error for FramebufferError {}
 
+pub struct FramebufferType<'a, 'b : 'a> {
+    pub device: &'b dev::Device,
+    pub image: &'a Image<'b>,
+    pub extent: surface::Extent2D,
+    pub render_pass: graphics::RenderPass<'b>,
+}
+
 /// Framebuffer represents a collection of specific memory attachments that a render pass instance uses
 pub struct Framebuffer<'a> {
     i_dev: &'a dev::Device,
@@ -610,8 +617,13 @@ pub struct Framebuffer<'a> {
 }
 
 impl<'a> Framebuffer<'a> {
+    /// Create new framebuffer from existing [image](crate::memory::Image)
+    pub fn new<'b>(cfg: &FramebufferType<'b, 'a>) -> Result<Framebuffer<'a>, FramebufferError> {
+        Self::from_raw(cfg.device, cfg.image.view(), cfg.extent, cfg.render_pass.render_pass())
+    }
+
     #[doc(hidden)]
-    fn new(
+    fn from_raw(
         dev: &'a dev::Device,
         img: vk::ImageView,
         extent: vk::Extent2D,
@@ -660,10 +672,10 @@ impl<'a> Drop for Framebuffer<'a> {
     }
 }
 
-pub struct FramebufferType<'a> {
-    pub device: &'a dev::Device,
-    pub render_pass: &'a graphics::RenderPass<'a>,
-    pub images: &'a ImageList<'a>,
+pub struct FramebufferListType<'a, 'b : 'a> {
+    pub device: &'b dev::Device,
+    pub render_pass: &'a graphics::RenderPass<'b>,
+    pub images: &'a ImageList<'b>,
     pub extent: surface::Extent2D,
 }
 
@@ -671,12 +683,12 @@ pub struct FramebufferType<'a> {
 pub struct FramebufferList<'a>(Vec<Framebuffer<'a>>);
 
 impl<'a> FramebufferList<'a> {
-    pub fn new<'b>(cfg: &'b FramebufferType<'a>) -> Result<FramebufferList<'a>, FramebufferError> {
+    pub fn new<'b>(cfg: &FramebufferListType<'b, 'a>) -> Result<FramebufferList<'a>, FramebufferError> {
         let mut list: Vec<Framebuffer<'a>> = Vec::new();
 
         for img in cfg.images.images() {
             list.push(on_error_ret!(
-                Framebuffer::new(
+                Framebuffer::from_raw(
                     cfg.device,
                     img.view(),
                     cfg.extent,

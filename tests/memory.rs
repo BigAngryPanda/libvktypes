@@ -146,7 +146,7 @@ fn init_framebuffer() {
 
     let capabilities = test_context::get_surface_capabilities();
 
-    let framebuffer_cfg = memory::FramebufferType {
+    let framebuffer_cfg = memory::FramebufferListType {
         device: dev,
         render_pass: rp,
         images: imgs,

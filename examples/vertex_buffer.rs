@@ -162,7 +162,7 @@ fn main() {
 
     let img_index = swapchain.next_image(u64::MAX, Some(&img_sem), None).expect("Failed to get image index");
 
-    let frames_cfg = memory::FramebufferType {
+    let frames_cfg = memory::FramebufferListType {
         device: &device,
         render_pass: &render_pass,
         images: &images,
