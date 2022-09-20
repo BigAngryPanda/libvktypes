@@ -76,7 +76,7 @@ fn main() {
 
     let vert_shader_type = shader::ShaderType {
         device: &device,
-        path: "examples/compiled_shaders/vertex_input.spv",
+        path: "examples/compiled_shaders/depth_buffer.vert.spv",
         entry: CString::new("main").expect("Failed to allocate string"),
     };
 
@@ -84,7 +84,7 @@ fn main() {
 
     let frag_shader_type = shader::ShaderType {
         device: &device,
-        path: "examples/compiled_shaders/color_from_vertex.spv",
+        path: "examples/compiled_shaders/depth_buffer.frag.spv",
         entry: CString::new("main").expect("Failed to allocate string"),
     };
 
@@ -94,7 +94,7 @@ fn main() {
 
     let mem_type = memory::MemoryType {
         device: &device,
-        size: 16*4,
+        size: 16*7,
         properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
         usage: memory::BufferUsageFlags::VERTEX_BUFFER |
                memory::BufferUsageFlags::TRANSFER_SRC  |
@@ -109,12 +109,85 @@ fn main() {
         bytes.clone_from_slice(&[0.5f32, 0.5f32, 0.0f32, 1.0f32,
                      0.5f32, -0.5f32, 0.0f32, 1.0f32,
                      -0.5f32, 0.5f32, 0.0f32, 1.0f32,
-                     -0.5f32, -0.5f32, 0.0f32, 1.0f32,]);
+                     1.0f32, 0.0f32, 1.0f32, 1.0f32,
+                     -1.0f32, 0.0f32, 1.0f32, 1.0f32,
+                     1.0f32, 1.0f32, 1.0f32, 1.0f32,
+                     -1.0f32, 1.0f32, 1.0f32, 1.0f32,]);
     };
 
     vertex_data.write(&mut set_vrtx_buffer).expect("Failed to fill the buffer");
 
-    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
+    let depth_type = memory::ImageType {
+        device: &device,
+        queue_families: &[device.queue_index()],
+        format: surface::ImageFormat::D32_SFLOAT,
+        extent: capabilities.extent3d(1),
+        usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+        layout: graphics::ImageLayout::UNDEFINED,
+        aspect: memory::ImageAspect::DEPTH,
+        properties: hw::MemoryProperty::DEVICE_LOCAL,
+    };
+
+    let depth_buffer = memory::Image::new(&depth_type).expect("Failed to allocate depth buffer");
+
+    let subpass_info = [
+        graphics::SubpassInfo {
+            input_attachments: &[],
+            color_attachments: &[0],
+            resolve_attachments: &[],
+            depth_stencil_attachment: 1,
+            preserve_attachments: &[],
+        }
+    ];
+
+    let attachments = [
+        graphics::AttachmentInfo {
+            format: surf_format,
+            load_op: graphics::AttachmentLoadOp::CLEAR,
+            store_op: graphics::AttachmentStoreOp::STORE,
+            stencil_load_op: graphics::AttachmentLoadOp::DONT_CARE,
+            stencil_store_op: graphics::AttachmentStoreOp::DONT_CARE,
+            initial_layout: graphics::ImageLayout::UNDEFINED,
+            final_layout: graphics::ImageLayout::PRESENT_SRC_KHR,
+        },
+        graphics::AttachmentInfo {
+            format: surface::ImageFormat::D32_SFLOAT,
+            load_op: graphics::AttachmentLoadOp::CLEAR,
+            store_op: graphics::AttachmentStoreOp::DONT_CARE,
+            stencil_load_op: graphics::AttachmentLoadOp::DONT_CARE,
+            stencil_store_op: graphics::AttachmentStoreOp::DONT_CARE,
+            initial_layout: graphics::ImageLayout::UNDEFINED,
+            final_layout: graphics::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        }
+    ];
+
+    let subpass_sync_info = [
+        graphics::SubpassSync {
+            src_subpass: graphics::SUBPASS_EXTERNAL,
+            dst_subpass: 0,
+            src_stage: graphics::PipelineStage::BOTTOM_OF_PIPE,
+            dst_stage: graphics::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+            src_access: graphics::AccessFlags::MEMORY_READ,
+            dst_access: graphics::AccessFlags::COLOR_ATTACHMENT_WRITE | graphics::AccessFlags::COLOR_ATTACHMENT_READ,
+        },
+        graphics::SubpassSync {
+            src_subpass: 0,
+            dst_subpass: graphics::SUBPASS_EXTERNAL,
+            src_stage: graphics::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+            dst_stage: graphics::PipelineStage::BOTTOM_OF_PIPE,
+            src_access: graphics::AccessFlags::COLOR_ATTACHMENT_WRITE | graphics::AccessFlags::COLOR_ATTACHMENT_READ,
+            dst_access: graphics::AccessFlags::MEMORY_READ,
+        }
+    ];
+
+    let rp_cfg = graphics::RenderPassType {
+        device: &device,
+        attachments: &attachments,
+        sync_info: &subpass_sync_info,
+        subpasses: &subpass_info,
+    };
+
+    let render_pass = graphics::RenderPass::new(&rp_cfg)
         .expect("Failed to create render pass");
 
     let pipe_type = graphics::PipelineType {
@@ -134,7 +207,7 @@ fn main() {
         push_constant_size: 0,
         render_pass: &render_pass,
         subpass_index: 0,
-        enable_depth: false,
+        enable_depth: true,
     };
 
     let pipeline = graphics::Pipeline::new(&pipe_type).expect("Failed to create pipeline");
@@ -163,16 +236,16 @@ fn main() {
 
     let img_index = swapchain.next_image(u64::MAX, Some(&img_sem), None).expect("Failed to get image index");
 
-    let frames_cfg = memory::FramebufferListType {
+    let framebuffer_cfg = memory::FramebufferType {
         device: &device,
-        render_pass: &render_pass,
-        images: &images,
+        images: &[&images[img_index as usize] ,&depth_buffer],
         extent: capabilities.extent2d(),
+        render_pass: &render_pass,
     };
 
-    let frames = memory::FramebufferList::new(&frames_cfg).expect("Failed to create framebuffers");
+    let framebuffer = memory::Framebuffer::new(&framebuffer_cfg).expect("Failed to create framebuffer");
 
-    cmd_buffer.begin_render_pass(&render_pass, &frames[img_index as usize]);
+    cmd_buffer.begin_render_pass(&render_pass, &framebuffer);
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
@@ -180,7 +253,7 @@ fn main() {
 
     cmd_buffer.bind_vertex_buffers(&vrtx_stage_data);
 
-    cmd_buffer.draw(4, 1, 0, 0);
+    cmd_buffer.draw(7, 1, 0, 0);
 
     cmd_buffer.end_render_pass();
 

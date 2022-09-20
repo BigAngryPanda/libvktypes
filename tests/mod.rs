@@ -345,6 +345,7 @@ pub fn get_graphics_pipeline() -> &'static graphics::Pipeline<'static> {
                 push_constant_size: 0,
                 render_pass: get_render_pass(),
                 subpass_index: 0,
+                enable_depth: false,
             };
 
             GRAPHICS_PIPELINE.write(graphics::Pipeline::new(&pipe_type).expect("Failed to create pipeline"));

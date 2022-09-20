@@ -510,6 +510,7 @@ pub struct PipelineType<'a, 'b> {
     pub render_pass: &'b RenderPass<'a>,
     /// Subpass index inside [`RenderPass`](PipelineType::render_pass)
     pub subpass_index: u32,
+    pub enable_depth: bool,
 }
 
 #[derive(Debug)]
@@ -707,6 +708,21 @@ impl<'a> Pipeline<'a> {
             PipelineError::Layout
         );
 
+        let depth_cfg = vk::PipelineDepthStencilStateCreateInfo {
+            s_type: vk::StructureType::PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+            p_next: ptr::null(),
+            flags: vk::PipelineDepthStencilStateCreateFlags::empty(),
+            depth_test_enable: 1,
+            depth_write_enable: 1,
+            depth_compare_op: vk::CompareOp::LESS_OR_EQUAL,
+            depth_bounds_test_enable: 0,
+            stencil_test_enable: 0,
+            front: vk::StencilOpState::default(),
+            back: vk::StencilOpState::default(),
+            min_depth_bounds: f32::default(),
+            max_depth_bounds: f32::default(),
+        };
+
         let pipeline_create_info:vk::GraphicsPipelineCreateInfo = vk::GraphicsPipelineCreateInfo {
             s_type: vk::StructureType::GRAPHICS_PIPELINE_CREATE_INFO,
             p_next: ptr::null(),
@@ -719,7 +735,11 @@ impl<'a> Pipeline<'a> {
             p_viewport_state: &viewport_state_create_info,
             p_rasterization_state: &rasterization_state_create_info,
             p_multisample_state: &multisample_state_create_info,
-            p_depth_stencil_state: ptr::null(),
+            p_depth_stencil_state: if pipe_cfg.enable_depth {
+                &depth_cfg
+            } else {
+                ptr::null()
+            },
             p_color_blend_state: &color_blend_state_create_info,
             p_dynamic_state: ptr::null(),
             layout: pipeline_layout,

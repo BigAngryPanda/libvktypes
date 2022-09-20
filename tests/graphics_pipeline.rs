@@ -26,6 +26,7 @@ fn create_pipeline() {
         push_constant_size: 0,
         render_pass: test_context::get_render_pass(),
         subpass_index: 0,
+        enable_depth: false,
     };
 
     assert!(graphics::Pipeline::new(&pipe_type).is_ok());

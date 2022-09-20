@@ -442,11 +442,19 @@ impl<'a, 'b> CompletedQueue<'a, 'b> {
     }
 
     fn begin_render_pass<'c>(&self, rp: &'c graphics::RenderPass<'a>, fb: &'c memory::Framebuffer<'a>) {
-        let clear_value:vk::ClearValue = vk::ClearValue {
-            color: vk::ClearColorValue {
-                float32: [0.0, 0.0, 0.0, 0.0],
+        let clear_value = [
+            vk::ClearValue {
+                color: vk::ClearColorValue {
+                    float32: [0.0, 0.0, 0.0, 0.0],
+                }
+            },
+            vk::ClearValue {
+                depth_stencil: vk::ClearDepthStencilValue {
+                    depth: 1.0,
+                    stencil: 0,
+                }
             }
-        };
+        ];
 
         let render_pass_begin_info = vk::RenderPassBeginInfo {
             s_type: vk::StructureType::RENDER_PASS_BEGIN_INFO,
@@ -460,8 +468,8 @@ impl<'a, 'b> CompletedQueue<'a, 'b> {
                 },
                 extent: fb.extent(),
             },
-            clear_value_count: 1,
-            p_clear_values: &clear_value,
+            clear_value_count: clear_value.len() as u32,
+            p_clear_values: clear_value.as_ptr(),
         };
 
         unsafe {

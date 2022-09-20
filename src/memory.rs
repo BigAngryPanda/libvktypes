@@ -604,9 +604,9 @@ impl Error for FramebufferError {}
 
 pub struct FramebufferType<'a, 'b : 'a> {
     pub device: &'b dev::Device,
-    pub image: &'a Image<'b>,
+    pub images: &'a [&'a Image<'b>],
     pub extent: surface::Extent2D,
-    pub render_pass: graphics::RenderPass<'b>,
+    pub render_pass: &'a graphics::RenderPass<'b>,
 }
 
 /// Framebuffer represents a collection of specific memory attachments that a render pass instance uses
@@ -619,13 +619,15 @@ pub struct Framebuffer<'a> {
 impl<'a> Framebuffer<'a> {
     /// Create new framebuffer from existing [image](crate::memory::Image)
     pub fn new<'b>(cfg: &FramebufferType<'b, 'a>) -> Result<Framebuffer<'a>, FramebufferError> {
-        Self::from_raw(cfg.device, cfg.image.view(), cfg.extent, cfg.render_pass.render_pass())
+        let img_views: Vec<vk::ImageView> = cfg.images.iter().map(|img| img.view()).collect();
+
+        Self::from_raw(cfg.device, &img_views, cfg.extent, cfg.render_pass.render_pass())
     }
 
     #[doc(hidden)]
     fn from_raw(
         dev: &'a dev::Device,
-        img: vk::ImageView,
+        imgs: &[vk::ImageView],
         extent: vk::Extent2D,
         rp: vk::RenderPass,
     ) -> Result<Framebuffer<'a>, FramebufferError> {
@@ -634,8 +636,8 @@ impl<'a> Framebuffer<'a> {
             p_next: ptr::null(),
             flags: vk::FramebufferCreateFlags::empty(),
             render_pass: rp,
-            attachment_count: 1,
-            p_attachments: &img,
+            attachment_count: imgs.len() as u32,
+            p_attachments: imgs.as_ptr(),
             width: extent.width,
             height: extent.height,
             layers: 1,
@@ -690,7 +692,7 @@ impl<'a> FramebufferList<'a> {
             list.push(on_error_ret!(
                 Framebuffer::from_raw(
                     cfg.device,
-                    img.view(),
+                    &[img.view()],
                     cfg.extent,
                     cfg.render_pass.render_pass()
                 ),

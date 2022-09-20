@@ -107,6 +107,7 @@ fn main() {
         push_constant_size: 0,
         render_pass: &render_pass,
         subpass_index: 0,
+        enable_depth: false,
     };
 
     let pipeline = graphics::Pipeline::new(&pipe_type).expect("Failed to create pipeline");
