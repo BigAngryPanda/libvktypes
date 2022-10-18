@@ -117,6 +117,11 @@ impl Device {
         })
     }
 
+    /// Call this method to manually destroy library object
+    pub fn destroy<T: Destroy>(&self, value: T) {
+        value.destroy(&self.i_core);
+    }
+
     #[doc(hidden)]
     pub fn core(&self) -> &Arc<Core> {
         &self.i_core
@@ -150,6 +155,60 @@ impl Device {
 
 impl Drop for Device {
     fn drop(&mut self) {
-        unsafe { self.i_device.destroy_device(None) };
+        unsafe { self.i_core.device().destroy_device(None) };
+    }
+}
+
+/// Marks that objects can be destroyed by [`Device`]
+pub trait Destroy {
+    #[doc(hidden)]
+    fn destroy(&self, core: &Core);
+}
+
+/// Provides smart ponter-like behaviour by destroying Vulkan object in [`Drop`]
+#[derive(Debug)]
+pub struct DeviceCtx<T: Destroy + fmt::Debug> {
+    i_core: ManuallyDrop<Arc<Core>>,
+    i_value: ManuallyDrop<T>,
+}
+
+impl <T: Destroy + fmt::Debug> DeviceCtx<T> {
+    /// Consume `value` and return [`DeviceCtx`]
+    pub fn new(device: &Device, value: T) -> DeviceCtx<T> {
+        DeviceCtx {
+            i_core: ManuallyDrop::new(device.core().clone()),
+            i_value: ManuallyDrop::new(value),
+        }
+    }
+
+    /// Consume [`DeviceCtx`] and return value
+    ///
+    /// Note: after calling this method it becomes your responsibility to destroy value
+    ///
+    /// Destructor will *not* be called
+    pub fn leak(mut self) -> T {
+        unsafe { ManuallyDrop::drop(&mut self.i_core) };
+
+        let val: T = unsafe { ManuallyDrop::take(&mut self.i_value) };
+
+        std::mem::forget(self);
+
+        val
+    }
+}
+
+impl<T: Destroy + fmt::Debug> Drop for DeviceCtx<T> {
+    fn drop(&mut self) {
+        self.i_value.destroy(self.i_core.as_ref());
+        unsafe { ManuallyDrop::drop(&mut self.i_value) };
+        unsafe { ManuallyDrop::drop(&mut self.i_core) };
+    }
+}
+
+impl<T: Destroy + fmt::Debug> Deref for DeviceCtx<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.i_value
     }
 }
