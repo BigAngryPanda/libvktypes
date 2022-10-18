@@ -27,6 +27,7 @@ fn device_creation() {
         queue_family_index: queue.index(),
         priorities: &[1.0_f32],
         extensions: &[],
+        allocator: None,
     };
 
     assert!(dev::Device::new(&dev_type).is_ok());
@@ -59,6 +60,7 @@ fn with_ext() {
         queue_family_index: queue.index(),
         priorities: &[1.0_f32],
         extensions: &[extensions::SWAPCHAIN_EXT_NAME],
+        allocator: None,
     };
 
     assert!(dev::Device::new(&dev_type).is_ok());

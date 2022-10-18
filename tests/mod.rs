@@ -193,6 +193,7 @@ pub fn get_graphics_device() -> &'static dev::Device {
                 queue_family_index: get_graphics_queue().index(),
                 priorities: &[1.0_f32],
                 extensions: &[extensions::SWAPCHAIN_EXT_NAME],
+                allocator: None,
             };
 
             GRAPHICS_DEV.write(dev::Device::new(&dev_type).expect("Failed to create device"));

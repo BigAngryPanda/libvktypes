@@ -39,6 +39,7 @@ fn main() {
         queue_family_index: queue.index(),
         priorities: &[1.0_f32],
         extensions: &[extensions::SWAPCHAIN_EXT_NAME],
+        allocator: None,
     };
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");

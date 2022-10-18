@@ -4,11 +4,47 @@
 
 use ash::vk;
 
-use crate::{libvk, hw};
+use crate::{libvk, hw, alloc};
 use crate::on_error_ret;
 
 use std::marker::PhantomData;
 use std::ptr;
+use std::sync::Arc;
+use std::ops::Deref;
+use std::fmt;
+use std::mem::ManuallyDrop;
+
+#[doc(hidden)]
+pub struct Core {
+    i_device: ash::Device,
+    i_callback: Option<alloc::Callback>,
+}
+
+impl Core {
+    fn new(device: ash::Device, callback: Option<alloc::Callback>) -> Core {
+        Core {
+            i_device: device,
+            i_callback: callback,
+        }
+    }
+
+    pub fn device(&self) -> &ash::Device {
+        &self.i_device
+    }
+
+    pub fn callback(&self) -> Option<&alloc::Callback> {
+        self.i_callback.as_ref()
+    }
+}
+
+impl fmt::Debug for Core {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Core")
+        .field("i_device", &(&self.i_device as *const ash::Device))
+        .field("i_callback", &self.i_callback)
+        .finish()
+    }
+}
 
 /// Device configuration structure
 ///
@@ -21,6 +57,7 @@ pub struct DeviceType<'a> {
     pub queue_family_index: u32,
     pub priorities: &'a [f32],
     pub extensions: &'a [*const i8],
+    pub allocator: Option<alloc::Callback>,
 }
 
 #[derive(Debug)]
@@ -32,7 +69,7 @@ pub enum DeviceError {
 ///
 /// `Device` represents logical device and provide API to the selected GPU
 pub struct Device {
-    i_device: ash::Device,
+    i_core: Arc<Core>,
     i_queue_index: u32,
     i_queue_count: u32,
     i_hw: hw::HWDevice,
@@ -72,12 +109,17 @@ impl Device {
         );
 
         Ok(Device {
-            i_device: dev,
+            i_core: Arc::new(Core::new(dev, dev_type.allocator)),
             i_queue_index: dev_type.queue_family_index,
             i_queue_count: dev_type.priorities.len() as u32,
             i_hw: dev_type.hw.clone(),
             _marker: PhantomData,
         })
+    }
+
+    #[doc(hidden)]
+    pub fn core(&self) -> &Arc<Core> {
+        &self.i_core
     }
 
     #[doc(hidden)]
@@ -92,7 +134,12 @@ impl Device {
 
     #[doc(hidden)]
     pub fn device(&self) -> &ash::Device {
-        &self.i_device
+        self.i_core.device()
+    }
+
+    #[doc(hidden)]
+    pub fn allocator(&self) -> Option<&alloc::Callback> {
+        self.i_core.callback()
     }
 
     #[doc(hidden)]

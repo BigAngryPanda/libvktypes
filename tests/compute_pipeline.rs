@@ -38,6 +38,7 @@ fn create_pipeline() {
         queue_family_index: queue.index(),
         priorities: &[1.0_f32],
         extensions: &[],
+        allocator: None,
     };
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");

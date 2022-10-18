@@ -42,6 +42,7 @@ fn cmd_pool_allocation() {
         queue_family_index: queue.index(),
         priorities: &[1.0_f32],
         extensions: &[],
+        allocator: None,
     };
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
@@ -80,6 +81,7 @@ fn cmd_buffer_exec() {
         queue_family_index: queue.index(),
         priorities: &[1.0_f32],
         extensions: &[],
+        allocator: None,
     };
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
