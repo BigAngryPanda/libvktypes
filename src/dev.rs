@@ -200,8 +200,10 @@ impl <T: Destroy + fmt::Debug> DeviceCtx<T> {
 impl<T: Destroy + fmt::Debug> Drop for DeviceCtx<T> {
     fn drop(&mut self) {
         self.i_value.destroy(self.i_core.as_ref());
-        unsafe { ManuallyDrop::drop(&mut self.i_value) };
-        unsafe { ManuallyDrop::drop(&mut self.i_core) };
+        unsafe {
+            ManuallyDrop::drop(&mut self.i_value);
+            ManuallyDrop::drop(&mut self.i_core);
+        };
     }
 }
 
