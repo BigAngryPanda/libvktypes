@@ -43,8 +43,6 @@ fn get_capabilities() {
 
     let lib = libvk::Instance::new(&lib_type).expect("Failed to create instance");
 
-    let hw_list = hw::Description::poll(&lib).expect("Failed to list hardware");
-
     let surface_cfg = surface::SurfaceType {
         lib: &lib,
         window: window_ref,
@@ -52,12 +50,13 @@ fn get_capabilities() {
 
     let surface = surface::Surface::new(&surface_cfg).expect("Failed to create surface");
 
+    let hw_list = hw::Description::poll(&lib, Some(&surface)).expect("Failed to list hardware");
+
     let (hw_dev, _, _) = hw_list
         .find_first(
             hw::HWDevice::is_discrete_gpu,
             hw::QueueFamilyDescription::is_graphics,
-            |_| true,
-            Some(&surface)
+            |_| true
         )
         .expect("Failed to find suitable hardware device");
 

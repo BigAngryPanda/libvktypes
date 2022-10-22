@@ -13,8 +13,6 @@ fn main() {
 
     let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
 
-    let hw_list = hw::Description::poll(&lib).expect("Failed to list hardware");
-
     let wnd = window::Window::new().expect("Failed to create window");
 
     let surface_cfg = surface::SurfaceType {
@@ -24,12 +22,13 @@ fn main() {
 
     let surface = surface::Surface::new(&surface_cfg).expect("Failed to create surface");
 
+    let hw_list = hw::Description::poll(&lib, Some(&surface)).expect("Failed to list hardware");
+
     let (hw_dev, queue, _) = hw_list
         .find_first(
             |dev| hw::HWDevice::is_discrete_gpu(dev) || hw::HWDevice::is_integrated_gpu(dev),
             hw::QueueFamilyDescription::is_compute,
-            |_| true,
-            Some(&surface)
+            |_| true
         )
         .expect("Failed to find suitable hardware device");
 

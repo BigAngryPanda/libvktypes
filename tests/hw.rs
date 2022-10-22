@@ -14,7 +14,7 @@ fn hardware_inspection() {
     };
 
     let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
-    let hw_list = hw::Description::poll(&lib).expect("Failed to list hardware");
+    let hw_list = hw::Description::poll(&lib, None).expect("Failed to list hardware");
 
     // To enable stdout in tests run cargo test -- --nocapture
     // https://stackoverflow.com/questions/25106554/why-doesnt-println-work-in-rust-unit-tests

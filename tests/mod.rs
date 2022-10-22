@@ -128,15 +128,14 @@ pub fn get_surface() -> &'static surface::Surface {
 pub fn get_graphics_hw() -> &'static hw::HWDevice {
     unsafe {
         INIT_GRAPHICS_HW.call_once(|| {
-            let hw_list = hw::Description::poll(get_graphics_instance()).expect("Failed to list hardware");
             let surface = get_surface();
+            let hw_list = hw::Description::poll(get_graphics_instance(), Some(surface)).expect("Failed to list hardware");
 
             let (hw_dev, qf, _) = hw_list
                 .find_first(
                     hw::HWDevice::is_discrete_gpu,
                     hw::QueueFamilyDescription::is_graphics,
-                    |_| true,
-                    Some(surface)
+                    |_| true
                 )
                 .expect("Failed to find suitable hardware device");
 

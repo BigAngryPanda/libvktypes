@@ -64,15 +64,34 @@ pub struct QueueFamilyDescription {
     i_index: u32,
     i_count: u32,
     i_property: vk::QueueFlags,
+    i_surface_support: bool,
 }
 
 impl QueueFamilyDescription {
     #[doc(hidden)]
-    fn new(property: &vk::QueueFamilyProperties, index: u32) -> QueueFamilyDescription {
+    fn new(property: &vk::QueueFamilyProperties, index: u32, hw: vk::PhysicalDevice, surface: Option<&surface::Surface>)
+        -> QueueFamilyDescription
+    {
+        let surface_support = if let Some(val) = surface {
+            matches!(
+                unsafe {
+                    val.loader().get_physical_device_surface_support(
+                        hw,
+                        index,
+                        val.surface(),
+                    )
+                },
+                Ok(true)
+            )
+        } else {
+            false
+        };
+
         QueueFamilyDescription {
             i_index: index,
             i_count: property.queue_count,
             i_property: property.queue_flags,
+            i_surface_support: surface_support,
         }
     }
 
@@ -104,6 +123,14 @@ impl QueueFamilyDescription {
     /// Is VK_QUEUE_SPARSE_BINDING_BIT set for queue family
     pub fn is_sparce_binding(&self) -> bool {
         self.i_property.contains(vk::QueueFlags::SPARSE_BINDING)
+    }
+
+    /// If [`surface`](crate::surface::Surface) was provided in [`poll`](crate::hw::Description::poll)
+    /// returns does selected queue family support `surface`
+    ///
+    /// Otherwise returns default value: [`false`]
+    pub fn is_surface_supported(&self) -> bool {
+        self.i_surface_support
     }
 
     /// Does selected queue family within hw device supports surface
@@ -143,16 +170,22 @@ impl fmt::Display for QueueFamilyDescription {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Number of queues:       {}\n\
+            "Number of queues:      {}\n\
             Support graphics:       {}\n\
             Support compute:        {}\n\
             Support transfer:       {}\n\
-            Support sparce binding: {}\n",
+            Support sparce binding: {}\n\
+            Support surface:        {}\n",
             self.count(),
             if self.is_graphics() { "yes" } else { "no" },
             if self.is_compute()  { "yes" } else { "no" },
             if self.is_transfer() { "yes" } else { "no" },
             if self.is_sparce_binding() {
+                "yes"
+            } else {
+                "no"
+            },
+            if self.is_surface_supported() {
                 "yes"
             } else {
                 "no"
@@ -304,7 +337,9 @@ pub struct HWDevice {
 }
 
 impl HWDevice {
-    fn new(lib: &libvk::Instance, hw: vk::PhysicalDevice) -> HWDevice {
+    fn new(lib: &libvk::Instance, hw: vk::PhysicalDevice, surface: Option<&surface::Surface>)
+        -> HWDevice
+    {
         let properties: vk::PhysicalDeviceProperties =
             unsafe { lib.instance().get_physical_device_properties(hw) };
 
@@ -331,6 +366,16 @@ impl HWDevice {
                 .collect()
         };
 
+        let queue_desc: Vec<QueueFamilyDescription> =
+            queue_properties
+            .iter()
+            .enumerate()
+            .map(|(i, prop)| QueueFamilyDescription::new(prop, i as u32, hw, surface))
+            .filter(|q| {
+                q.is_compute() || q.is_graphics() || q.is_transfer() || q.is_sparce_binding()
+            })
+            .collect();
+
         HWDevice {
             i_device: hw,
             i_features: unsafe { lib.instance().get_physical_device_features(hw) },
@@ -344,14 +389,7 @@ impl HWDevice {
             i_hw_id: properties.device_id,
             i_version: properties.api_version,
             i_vendor_id: properties.vendor_id,
-            i_queues: queue_properties
-                .iter()
-                .enumerate()
-                .map(|(i, prop)| QueueFamilyDescription::new(prop, i as u32))
-                .filter(|q| {
-                    q.is_compute() || q.is_graphics() || q.is_transfer() || q.is_sparce_binding()
-                })
-                .collect(),
+            i_queues: queue_desc,
             i_heap_info: memory_desc,
         }
     }
@@ -557,14 +595,20 @@ pub struct Description(Vec<HWDevice>);
 
 impl Description {
     /// Try to retrieve information about hardware
-    pub fn poll(lib: &libvk::Instance) -> Result<Description, HWError> {
+    ///
+    /// Pass [`surface`](crate::surface::Surface) to query surface support for each queue family
+    ///
+    /// If [`None`] was passed no checks will be done and support will be set to default
+    ///
+    /// See [`is_surface_supported`](crate::hw::QueueFamilyDescription::is_surface_supported)
+    pub fn poll(lib: &libvk::Instance, surface: Option<&surface::Surface>) -> Result<Description, HWError> {
         let hw: Vec<vk::PhysicalDevice> = on_error_ret!(
             unsafe { lib.instance().enumerate_physical_devices() },
             HWError::Enumerate
         );
 
         Ok(Description(
-            hw.into_iter().map(|dev| HWDevice::new(lib, dev)).collect(),
+            hw.into_iter().map(|dev| HWDevice::new(lib, dev, surface)).collect(),
         ))
     }
 
@@ -585,8 +629,7 @@ impl Description {
         &self,
         dev: T,
         queue: U,
-        mem: S,
-        surface: Option<&surface::Surface>
+        mem: S
     ) -> Option<(&HWDevice, &QueueFamilyDescription, &MemoryDescription)>
     where
         T: Fn(&HWDevice) -> bool,
@@ -595,16 +638,7 @@ impl Description {
     {
         for hw in self.filter_hw(dev) {
             if let (Some(q), Some(m)) = (hw.find_first_queue(&queue), hw.find_first_memory(&mem)) {
-                match surface {
-                    Some(s) => {
-                        if q.support_surface(hw, s) {
-                            return Some((hw, q, m));
-                        }
-                    },
-                    None => {
-                        return Some((hw, q, m));
-                    }
-                }
+                return Some((hw, q, m));
             }
         }
 

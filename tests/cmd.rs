@@ -24,15 +24,14 @@ fn cmd_pool_allocation() {
     };
 
     let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
-    let hw_list = hw::Description::poll(&lib).expect("Failed to list hardware");
+    let hw_list = hw::Description::poll(&lib, None).expect("Failed to list hardware");
 
     let (hw_dev, queue, _) = hw_list
         .find_first(
             //|dev| hw::HWDevice::is_discrete_gpu(dev) || hw::HWDevice::is_integrated_gpu(dev),
             hw::HWDevice::is_discrete_gpu,
             hw::QueueFamilyDescription::is_compute,
-            |_| true,
-            None
+            |_| true
         )
         .expect("Failed to find suitable hardware device");
 
@@ -63,15 +62,14 @@ fn cmd_buffer_exec() {
     };
 
     let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
-    let hw_list = hw::Description::poll(&lib).expect("Failed to list hardware");
+    let hw_list = hw::Description::poll(&lib, None).expect("Failed to list hardware");
 
     let (hw_dev, queue, _) = hw_list
         .find_first(
             //|dev| hw::HWDevice::is_discrete_gpu(dev) || hw::HWDevice::is_integrated_gpu(dev),
             hw::HWDevice::is_discrete_gpu,
             hw::QueueFamilyDescription::is_compute,
-            |_| true,
-            None
+            |_| true
         )
         .expect("Failed to find suitable hardware device");
 
