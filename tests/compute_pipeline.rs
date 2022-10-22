@@ -24,8 +24,7 @@ fn create_pipeline() {
 
     let (hw_dev, queue, _) = hw_list
         .find_first(
-            //|dev| hw::HWDevice::is_discrete_gpu(dev) || hw::HWDevice::is_integrated_gpu(dev),
-            hw::HWDevice::is_discrete_gpu,
+            hw::HWDevice::is_dedicated_gpu,
             hw::QueueFamilyDescription::is_compute,
             |_| true
         )

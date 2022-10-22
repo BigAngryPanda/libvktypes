@@ -133,7 +133,7 @@ pub fn get_graphics_hw() -> &'static hw::HWDevice {
 
             let (hw_dev, qf, _) = hw_list
                 .find_first(
-                    hw::HWDevice::is_discrete_gpu,
+                    hw::HWDevice::is_dedicated_gpu,
                     hw::QueueFamilyDescription::is_graphics,
                     |_| true
                 )

@@ -469,6 +469,15 @@ impl HWDevice {
         self.i_hw_type == HWType::Integrated
     }
 
+    /// Return true if GPU type is `Integrated` or `Discrete`
+    ///
+    /// Otherwise false
+    ///
+    /// See [`HWType`]
+    pub fn is_dedicated_gpu(&self) -> bool {
+        self.is_discrete_gpu() || self.is_integrated_gpu()
+    }
+
     /// Return iterator over available queues
     pub fn queues(&self) -> impl Iterator<Item = &QueueFamilyDescription> {
         self.i_queues.iter()

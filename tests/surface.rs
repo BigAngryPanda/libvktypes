@@ -54,7 +54,7 @@ fn get_capabilities() {
 
     let (hw_dev, _, _) = hw_list
         .find_first(
-            hw::HWDevice::is_discrete_gpu,
+            hw::HWDevice::is_dedicated_gpu,
             hw::QueueFamilyDescription::is_graphics,
             |_| true
         )
