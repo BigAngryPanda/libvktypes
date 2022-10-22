@@ -20,7 +20,7 @@ fn device_creation() {
         )
         .expect("Failed to find suitable hardware device");
 
-    let dev_type = dev::DeviceType {
+    let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
         queue_family_index: queue.index(),
@@ -52,7 +52,7 @@ fn with_ext() {
         )
         .expect("Failed to find suitable hardware device");
 
-    let dev_type = dev::DeviceType {
+    let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
         queue_family_index: queue.index(),

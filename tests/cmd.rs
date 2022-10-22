@@ -35,7 +35,7 @@ fn cmd_pool_allocation() {
         )
         .expect("Failed to find suitable hardware device");
 
-    let dev_type = dev::DeviceType {
+    let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
         queue_family_index: queue.index(),
@@ -73,7 +73,7 @@ fn cmd_buffer_exec() {
         )
         .expect("Failed to find suitable hardware device");
 
-    let dev_type = dev::DeviceType {
+    let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
         queue_family_index: queue.index(),

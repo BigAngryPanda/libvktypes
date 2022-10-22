@@ -51,7 +51,7 @@ impl fmt::Debug for Core {
 /// Note: to prevent lifetime bounds [HWDevice](crate::hw::HWDevice) will be cloned
 ///
 /// It is not optimal but maybe in the future it will be fixed
-pub struct DeviceType<'a> {
+pub struct DeviceCfg<'a> {
     pub lib: &'a libvk::Instance,
     pub hw: &'a hw::HWDevice,
     pub queue_family_index: u32,
@@ -80,7 +80,7 @@ pub struct Device {
 ///
 /// Hence lifetime requirements
 impl Device {
-    pub fn new(dev_type: &DeviceType) -> Result<Device, DeviceError> {
+    pub fn new(dev_type: &DeviceCfg) -> Result<Device, DeviceError> {
         let dev_queue_info = vk::DeviceQueueCreateInfo {
             s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
             p_next: ptr::null(),
