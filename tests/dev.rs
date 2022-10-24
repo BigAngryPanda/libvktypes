@@ -22,8 +22,12 @@ fn device_creation() {
     let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
-        queue_family_index: queue.index(),
-        priorities: &[1.0_f32],
+        queues_cfg: &[
+            dev::QueueFamilyCfg {
+                queue_family_index: queue.index(),
+                priorities: &[1.0_f32],
+            }
+        ],
         extensions: &[],
         allocator: None,
     };
@@ -53,8 +57,12 @@ fn with_ext() {
     let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
-        queue_family_index: queue.index(),
-        priorities: &[1.0_f32],
+        queues_cfg: &[
+            dev::QueueFamilyCfg {
+                queue_family_index: queue.index(),
+                priorities: &[1.0_f32],
+            }
+        ],
         extensions: &[extensions::SWAPCHAIN_EXT_NAME],
         allocator: None,
     };

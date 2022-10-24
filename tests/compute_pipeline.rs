@@ -33,8 +33,12 @@ fn create_pipeline() {
     let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
-        queue_family_index: queue.index(),
-        priorities: &[1.0_f32],
+        queues_cfg: &[
+            dev::QueueFamilyCfg {
+                queue_family_index: queue.index(),
+                priorities: &[1.0_f32],
+            }
+        ],
         extensions: &[],
         allocator: None,
     };
@@ -49,7 +53,7 @@ fn create_pipeline() {
                memory::BufferUsageFlags::TRANSFER_SRC   |
                memory::BufferUsageFlags::TRANSFER_DST,
         sharing_mode: memory::SharingMode::EXCLUSIVE,
-        queue_families: &[device.queue_index()],
+        queue_families: &[device.queue(0).index()],
     };
 
     let buff = memory::Memory::allocate(&mem_type).expect("Failed to allocate memory");

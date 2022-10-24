@@ -39,7 +39,8 @@ pub enum Cmd<'a, 'b : 'a> {
 }
 
 pub struct CmdPoolType<'a> {
-    pub device: &'a dev::Device
+    pub device: &'a dev::Device,
+    pub queue_index: u32,
 }
 
 #[derive(Debug)]
@@ -60,7 +61,7 @@ impl<'a> CmdPool<'a> {
             s_type: vk::StructureType::COMMAND_POOL_CREATE_INFO,
             p_next: ptr::null(),
             flags:  vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER,
-            queue_family_index: pool_type.device.queue_index()
+            queue_family_index: pool_type.queue_index,
         };
 
         let cmd_pool = on_error_ret!(
@@ -193,6 +194,7 @@ pub struct ExecInfo<'a, 'b> {
 pub struct ComputeQueueType<'a, 'b : 'a> {
     pub cmd_pool: &'a CmdPool<'b>,
     pub cmd_buffer: &'a CmdBuffer<'a, 'b>,
+    pub queue_family_index: u32,
     pub queue_index: u32,
 }
 
@@ -231,7 +233,7 @@ impl<'a, 'b> CompletedQueue<'a, 'b> {
         );
 
         let dev_queue: vk::Queue = unsafe {
-            dev.device().get_device_queue(dev.queue_index(), queue_type.queue_index)
+            dev.device().get_device_queue(queue_type.queue_family_index, queue_type.queue_index)
         };
 
         let result = CompletedQueue {
