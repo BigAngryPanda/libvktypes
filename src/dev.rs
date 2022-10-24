@@ -46,6 +46,12 @@ impl fmt::Debug for Core {
     }
 }
 
+impl Drop for Core {
+    fn drop(&mut self) {
+        unsafe { self.i_device.destroy_device(self.i_callback.as_ref()) };
+    }
+}
+
 /// Requested queue configuration
 ///
 /// Example
@@ -213,12 +219,6 @@ impl Device {
     #[doc(hidden)]
     pub fn hw(&self) -> &hw::HWDevice {
         &self.i_hw
-    }
-}
-
-impl Drop for Device {
-    fn drop(&mut self) {
-        unsafe { self.i_core.device().destroy_device(None) };
     }
 }
 
