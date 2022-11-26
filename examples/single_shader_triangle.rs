@@ -26,8 +26,8 @@ fn main() {
 
     let (hw_dev, queue, _) = hw_list
         .find_first(
-            |dev| hw::HWDevice::is_discrete_gpu(dev) || hw::HWDevice::is_integrated_gpu(dev),
-            hw::QueueFamilyDescription::is_compute,
+            hw::HWDevice::is_dedicated_gpu,
+            hw::QueueFamilyDescription::is_graphics,
             |_| true
         )
         .expect("Failed to find suitable hardware device");
@@ -54,26 +54,23 @@ fn main() {
 
     let capabilities = surface::Capabilities::get(&cap_type).expect("Failed to get capabilities");
 
-    assert!(capabilities.is_img_count_supported(2));
-    assert!(capabilities.is_format_supported(surface::SurfaceFormat {
-        format: surface::ImageFormat::B8G8R8A8_UNORM,
-        color_space: surface::ColorSpace::SRGB_NONLINEAR,
-    }));
     assert!(capabilities.is_mode_supported(surface::PresentMode::FIFO));
     assert!(capabilities.is_flags_supported(surface::UsageFlags::COLOR_ATTACHMENT));
+
+    let surf_format = capabilities.formats().next().expect("No available formats").format;
 
     let swp_type = swapchain::SwapchainType {
         lib: &lib,
         dev: &device,
         surface: &surface,
-        num_of_images: 2,
-        format: surface::ImageFormat::B8G8R8A8_UNORM,
+        num_of_images: capabilities.min_img_count(),
+        format: surf_format,
         color: surface::ColorSpace::SRGB_NONLINEAR,
         present_mode: surface::PresentMode::FIFO,
         flags: surface::UsageFlags::COLOR_ATTACHMENT,
         extent: capabilities.extent2d(),
         transform: capabilities.pre_transformation(),
-        alpha: capabilities.alpha_composition(),
+        alpha: surface::CompositeAlphaFlags::INHERIT,
     };
 
     let swapchain = swapchain::Swapchain::new(&swp_type).expect("Failed to create swapchain");
@@ -93,8 +90,6 @@ fn main() {
     };
 
     let frag_shader = shader::Shader::from_file(&frag_shader_type).expect("Failed to create fragment shader module");
-
-    let surf_format = capabilities.formats().next().expect("No available formats").format;
 
     let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");

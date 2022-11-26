@@ -54,7 +54,7 @@ fn main() {
 
     let capabilities = surface::Capabilities::get(&cap_type).expect("Failed to get capabilities");
 
-    assert!(capabilities.is_img_count_supported(2));
+    //assert!(capabilities.is_img_count_supported(2));
     assert!(capabilities.is_format_supported(surface::SurfaceFormat {
         format: surface::ImageFormat::B8G8R8A8_UNORM,
         color_space: surface::ColorSpace::SRGB_NONLINEAR,
