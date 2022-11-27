@@ -201,6 +201,11 @@ impl Device {
         self.i_queues.len() as u32
     }
 
+    /// Manually destroy library object
+    pub fn manually_destroy<T: Destroy>(&self, obj: T) {
+        obj.destroy(&self.i_core);
+    }
+
     #[doc(hidden)]
     pub fn core(&self) -> &Arc<Core> {
         &self.i_core
