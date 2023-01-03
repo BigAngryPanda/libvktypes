@@ -134,7 +134,7 @@ pub fn get_graphics_hw() -> &'static hw::HWDevice {
             let (hw_dev, qf, _) = hw_list
                 .find_first(
                     hw::HWDevice::is_dedicated_gpu,
-                    hw::QueueFamilyDescription::is_graphics,
+                    |q| q.is_graphics() && q.is_surface_supported(),
                     |_| true
                 )
                 .expect("Failed to find suitable hardware device");

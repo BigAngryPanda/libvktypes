@@ -26,8 +26,8 @@ fn main() {
 
     let (hw_dev, queue, _) = hw_list
         .find_first(
-            |dev| hw::HWDevice::is_discrete_gpu(dev) || hw::HWDevice::is_integrated_gpu(dev),
-            hw::QueueFamilyDescription::is_compute,
+            hw::HWDevice::is_dedicated_gpu,
+            |q| q.is_graphics() && q.is_surface_supported(),
             |_| true
         )
         .expect("Failed to find suitable hardware device");
