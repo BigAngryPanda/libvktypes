@@ -189,12 +189,6 @@ pub fn get_graphics_device() -> &'static dev::Device {
             let dev_type = dev::DeviceCfg {
                 lib: get_graphics_instance(),
                 hw: get_graphics_hw(),
-                queues_cfg: &[
-                    dev::QueueFamilyCfg {
-                        queue_family_index: get_graphics_queue().index(),
-                        priorities: &[1.0_f32],
-                    }
-                ],
                 extensions: &[extensions::SWAPCHAIN_EXT_NAME],
                 allocator: None,
             };
@@ -314,11 +308,12 @@ pub fn get_image_list() -> &'static memory::ImageList<'static> {
 pub fn get_cmd_pool() -> &'static cmd::CmdPool<'static> {
     unsafe {
         INIT_CMD_POOL.call_once(|| {
+            let queue = get_graphics_queue();
             let dev = get_graphics_device();
 
             let pool_type = cmd::CmdPoolType {
                 device: dev,
-                queue_index: dev.queue(0).index(),
+                queue_index: queue.index(),
             };
 
             CMD_POOL.write(cmd::CmdPool::new(&pool_type).expect("Failed to allocate command pool"));

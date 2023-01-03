@@ -35,12 +35,6 @@ fn main() {
     let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
-        queues_cfg: &[
-            dev::QueueFamilyCfg {
-                queue_family_index: queue.index(),
-                priorities: &[1.0_f32],
-            }
-        ],
         extensions: &[extensions::SWAPCHAIN_EXT_NAME],
         allocator: None,
     };
@@ -104,7 +98,7 @@ fn main() {
                memory::BufferUsageFlags::TRANSFER_SRC  |
                memory::BufferUsageFlags::TRANSFER_DST,
         sharing_mode: memory::SharingMode::EXCLUSIVE,
-        queue_families: &[device.queue(0).index()],
+        queue_families: &[queue.index()],
     };
 
     let vertex_data = memory::Memory::allocate(&mem_type).expect("Failed to allocate memory");
@@ -123,7 +117,7 @@ fn main() {
 
     let depth_type = memory::ImageType {
         device: &device,
-        queue_families: &[device.queue(0).index()],
+        queue_families: &[queue.index()],
         format: surface::ImageFormat::D32_SFLOAT,
         extent: capabilities.extent3d(1),
         usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
@@ -225,7 +219,7 @@ fn main() {
 
     let cmd_pool_type = cmd::CmdPoolType {
         device: &device,
-        queue_index: device.queue(0).index(),
+        queue_index: queue.index(),
     };
 
     let cmd_pool = cmd::CmdPool::new(&cmd_pool_type).expect("Failed to allocate command pool");
@@ -265,7 +259,7 @@ fn main() {
     let queue_cfg = cmd::ComputeQueueType {
         cmd_pool: &cmd_pool,
         cmd_buffer: &cmd_buffer,
-        queue_family_index: device.queue(0).index(),
+        queue_family_index: queue.index(),
         queue_index: 0,
     };
 

@@ -11,6 +11,7 @@ pub mod alloc;
 pub mod libvk;
 pub mod hw;
 pub mod dev;
+pub mod queue;
 pub mod layers;
 pub mod extensions;
 pub mod debug;

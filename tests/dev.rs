@@ -11,7 +11,7 @@ fn device_creation() {
     let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
     let hw_list = hw::Description::poll(&lib, None).expect("Failed to list hardware");
 
-    let (hw_dev, queue, _) = hw_list
+    let (hw_dev, _, _) = hw_list
         .find_first(
             hw::HWDevice::is_dedicated_gpu,
             hw::QueueFamilyDescription::is_compute,
@@ -22,12 +22,6 @@ fn device_creation() {
     let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
-        queues_cfg: &[
-            dev::QueueFamilyCfg {
-                queue_family_index: queue.index(),
-                priorities: &[1.0_f32],
-            }
-        ],
         extensions: &[],
         allocator: None,
     };
@@ -46,7 +40,7 @@ fn with_ext() {
     let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
     let hw_list = hw::Description::poll(&lib, None).expect("Failed to list hardware");
 
-    let (hw_dev, queue, _) = hw_list
+    let (hw_dev, _, _) = hw_list
         .find_first(
             hw::HWDevice::is_dedicated_gpu,
             hw::QueueFamilyDescription::is_compute,
@@ -57,12 +51,6 @@ fn with_ext() {
     let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
-        queues_cfg: &[
-            dev::QueueFamilyCfg {
-                queue_family_index: queue.index(),
-                priorities: &[1.0_f32],
-            }
-        ],
         extensions: &[extensions::SWAPCHAIN_EXT_NAME],
         allocator: None,
     };

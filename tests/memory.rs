@@ -34,12 +34,6 @@ fn compute_memory_allocation() {
     let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
-        queues_cfg: &[
-            dev::QueueFamilyCfg {
-                queue_family_index: queue.index(),
-                priorities: &[1.0_f32],
-            }
-        ],
         extensions: &[],
         allocator: None,
     };
@@ -54,7 +48,7 @@ fn compute_memory_allocation() {
                memory::BufferUsageFlags::TRANSFER_SRC   |
                memory::BufferUsageFlags::TRANSFER_DST,
         sharing_mode: memory::SharingMode::EXCLUSIVE,
-        queue_families: &[device.queue(0).index()],
+        queue_families: &[queue.index()],
     };
 
     assert!(memory::Memory::allocate(&mem_type).is_ok());
@@ -82,12 +76,6 @@ fn zero_allocation() {
     let dev_type = dev::DeviceCfg {
         lib: &lib,
         hw: hw_dev,
-        queues_cfg: &[
-            dev::QueueFamilyCfg {
-                queue_family_index: queue.index(),
-                priorities: &[1.0_f32],
-            }
-        ],
         extensions: &[],
         allocator: None,
     };
@@ -102,7 +90,7 @@ fn zero_allocation() {
                memory::BufferUsageFlags::TRANSFER_SRC   |
                memory::BufferUsageFlags::TRANSFER_DST,
         sharing_mode: memory::SharingMode::EXCLUSIVE,
-        queue_families: &[device.queue(0).index()],
+        queue_families: &[queue.index()],
     };
 
     assert!(memory::Memory::allocate(&mem_type).is_err());
@@ -124,13 +112,15 @@ fn images_allocation() {
 
 #[test]
 fn depth_buffer() {
+    let queue = test_context::get_graphics_queue();
+
     let dev = test_context::get_graphics_device();
 
     let caps = test_context::get_surface_capabilities();
 
     let img_type = memory::ImageType {
         device: dev,
-        queue_families: &[dev.queue(0).index()],
+        queue_families: &[queue.index()],
         format: surface::ImageFormat::D32_SFLOAT,
         extent: caps.extent3d(1),
         usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
