@@ -18,6 +18,7 @@ use std::mem::ManuallyDrop;
 pub struct Core {
     i_device: ash::Device,
     i_callback: Option<alloc::Callback>,
+    _marker: PhantomData<*const libvk::Instance>
 }
 
 impl Core {
@@ -25,6 +26,7 @@ impl Core {
         Core {
             i_device: device,
             i_callback: callback,
+            _marker: PhantomData
         }
     }
 
@@ -78,7 +80,6 @@ pub enum DeviceError {
 pub struct Device {
     i_core: Arc<Core>,
     i_hw: hw::HWDevice,
-    _marker: PhantomData<*const libvk::Instance>,
 }
 
 /// As Vulkan API specification demands instance must outlive device (and any other object which created via instance)
@@ -126,8 +127,7 @@ impl Device {
 
         Ok(Device {
             i_core: Arc::new(Core::new(dev, dev_type.allocator)),
-            i_hw: dev_type.hw.clone(),
-            _marker: PhantomData,
+            i_hw: dev_type.hw.clone()
         })
     }
 
