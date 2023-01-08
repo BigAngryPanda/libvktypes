@@ -64,7 +64,7 @@ fn main() {
         flags: surface::UsageFlags::COLOR_ATTACHMENT,
         extent: capabilities.extent2d(),
         transform: capabilities.pre_transformation(),
-        alpha: surface::CompositeAlphaFlags::INHERIT,
+        alpha: capabilities.first_alpha_composition().expect("No alpha composition")
     };
 
     let swapchain = swapchain::Swapchain::new(&swp_type).expect("Failed to create swapchain");

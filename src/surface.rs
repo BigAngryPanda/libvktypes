@@ -308,4 +308,23 @@ impl Capabilities {
     pub fn alpha_composition(&self) -> CompositeAlphaFlags {
         self.i_capabilities.supported_composite_alpha
     }
+
+    /// Does surface support provided alpha composition flag(s)
+    pub fn is_alpha_supported(&self, alpha: CompositeAlphaFlags) -> bool {
+        self.i_capabilities.supported_composite_alpha.contains(alpha)
+    }
+
+    pub fn first_alpha_composition(&self) -> Option<CompositeAlphaFlags> {
+        for i in 0..4 {
+            if self
+                .i_capabilities
+                .supported_composite_alpha
+                .contains(vk::CompositeAlphaFlagsKHR::from_raw(1 << i))
+            {
+                return Some(vk::CompositeAlphaFlagsKHR::from_raw(1 << i));
+            }
+        }
+
+        None
+    }
 }
