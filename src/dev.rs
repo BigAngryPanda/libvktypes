@@ -82,9 +82,6 @@ pub struct Device {
     i_hw: hw::HWDevice,
 }
 
-/// As Vulkan API specification demands instance must outlive device (and any other object which created via instance)
-///
-/// Hence lifetime requirements
 impl Device {
     /// Create new [`Device`](self::Device) object according to [`DeviceCfg`](self::DeviceCfg)
     pub fn new(dev_type: &DeviceCfg) -> Result<Device, DeviceError> {
