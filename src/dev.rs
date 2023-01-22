@@ -10,9 +10,7 @@ use crate::on_error_ret;
 use std::marker::PhantomData;
 use std::ptr;
 use std::sync::Arc;
-use std::ops::Deref;
 use std::fmt;
-use std::mem::ManuallyDrop;
 
 #[doc(hidden)]
 pub struct Core {
@@ -34,7 +32,7 @@ impl Core {
         &self.i_device
     }
 
-    pub fn callback(&self) -> Option<&alloc::Callback> {
+    pub fn allocator(&self) -> Option<&alloc::Callback> {
         self.i_callback.as_ref()
     }
 }
@@ -128,21 +126,11 @@ impl Device {
         })
     }
 
-    /// Call this method to manually destroy library object
-    pub fn destroy<T: Destroy>(&self, value: T) {
-        value.destroy(&self.i_core);
-    }
-
     /// Create new queue
     ///
     /// For more information see [queue crate](crate::queue)
     pub fn get_queue(&self, cfg: &queue::QueueCfg) -> queue::Queue {
         queue::Queue::new(self, cfg)
-    }
-
-    /// Manually destroy library object
-    pub fn manually_destroy<T: Destroy>(&self, obj: T) {
-        obj.destroy(&self.i_core);
     }
 
     #[doc(hidden)]
@@ -157,67 +145,11 @@ impl Device {
 
     #[doc(hidden)]
     pub fn allocator(&self) -> Option<&alloc::Callback> {
-        self.i_core.callback()
+        self.i_core.allocator()
     }
 
     #[doc(hidden)]
     pub fn hw(&self) -> &hw::HWDevice {
         &self.i_hw
-    }
-}
-
-/// Marks that objects can be destroyed by [`Device`]
-pub trait Destroy {
-    #[doc(hidden)]
-    fn destroy(&self, core: &Core);
-}
-
-/// Provides smart ponter-like behaviour by destroying Vulkan object in [`Drop`]
-#[derive(Debug)]
-pub struct DeviceCtx<T: Destroy + fmt::Debug> {
-    i_core: ManuallyDrop<Arc<Core>>,
-    i_value: ManuallyDrop<T>,
-}
-
-impl <T: Destroy + fmt::Debug> DeviceCtx<T> {
-    /// Consume `value` and return [`DeviceCtx`]
-    pub fn new(device: &Device, value: T) -> DeviceCtx<T> {
-        DeviceCtx {
-            i_core: ManuallyDrop::new(device.core().clone()),
-            i_value: ManuallyDrop::new(value),
-        }
-    }
-
-    /// Consume [`DeviceCtx`] and return value
-    ///
-    /// Note: after calling this method it becomes your responsibility to destroy value
-    ///
-    /// Destructor will *not* be called
-    pub fn leak(mut self) -> T {
-        unsafe { ManuallyDrop::drop(&mut self.i_core) };
-
-        let val: T = unsafe { ManuallyDrop::take(&mut self.i_value) };
-
-        std::mem::forget(self);
-
-        val
-    }
-}
-
-impl<T: Destroy + fmt::Debug> Drop for DeviceCtx<T> {
-    fn drop(&mut self) {
-        self.i_value.destroy(self.i_core.as_ref());
-        unsafe {
-            ManuallyDrop::drop(&mut self.i_value);
-            ManuallyDrop::drop(&mut self.i_core);
-        };
-    }
-}
-
-impl<T: Destroy + fmt::Debug> Deref for DeviceCtx<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.i_value
     }
 }
