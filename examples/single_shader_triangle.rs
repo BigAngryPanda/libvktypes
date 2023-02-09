@@ -112,14 +112,13 @@ fn main() {
     let img_sem = sync::Semaphore::new(&sem_type).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&sem_type).expect("Failed to create semaphore");
 
-    let cmd_pool_type = cmd::CmdPoolType {
-        device: &device,
+    let cmd_pool_type = cmd::PoolCfg {
         queue_index: queue.index(),
     };
 
-    let cmd_pool = cmd::CmdPool::new(&cmd_pool_type).expect("Failed to allocate command pool");
+    let cmd_pool = cmd::Pool::new(&device, &cmd_pool_type).expect("Failed to allocate command pool");
 
-    let mut cmd_buffer = cmd::CmdBuffer::default();
+    let cmd_buffer = cmd_pool.allocate().expect("Failed to allocate command pool");
 
     let img_cfg = memory::ImageListType {
         device: &device,
@@ -147,16 +146,17 @@ fn main() {
 
     cmd_buffer.end_render_pass();
 
-    let queue_cfg = cmd::ComputeQueueType {
-        cmd_pool: &cmd_pool,
-        cmd_buffer: &cmd_buffer,
-        queue_family_index: queue.index(),
-        queue_index: 0,
+    let exec_buffer = cmd_buffer.commit().expect("Failed to commit buffer");
+
+    let queue_cfg = queue::QueueCfg {
+        family_index: queue.index(),
+        queue_index: 0
     };
 
-    let cmd_queue = cmd::CompletedQueue::commit(&queue_cfg).expect("Failed to create cmd queue");
+    let cmd_queue = queue::Queue::new(&device, &queue_cfg);
 
-    let exec_info = cmd::ExecInfo {
+    let exec_info = queue::ExecInfo {
+        buffer: &exec_buffer,
         wait_stage: cmd::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
         timeout: u64::MAX,
         wait: &[&img_sem],
@@ -165,7 +165,13 @@ fn main() {
 
     cmd_queue.exec(&exec_info).expect("Failed to execute queue");
 
-    swapchain.present(&cmd_queue, img_index, &[&render_sem]).expect("Failed to present frame");
+    let present_info = queue::PresentInfo {
+        swapchain: &swapchain,
+        image_index: img_index,
+        wait: &[&render_sem]
+    };
+
+    cmd_queue.present(&present_info).expect("Failed to present frame");
 
     #[allow(clippy::empty_loop)]
     loop { }

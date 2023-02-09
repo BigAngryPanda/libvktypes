@@ -5,8 +5,8 @@
 use ash::extensions::khr;
 use ash::vk;
 
-use crate::{on_error_ret, data_ptr};
-use crate::{dev, libvk, surface, sync, cmd};
+use crate::{on_error_ret};
+use crate::{dev, libvk, surface, sync};
 
 use std::ptr;
 
@@ -133,27 +133,6 @@ impl Swapchain {
         );
 
         Ok(image_index)
-    }
-
-    pub fn present(&self, queue: &cmd::CompletedQueue, image_index: u32, wait: &[&sync::Semaphore])
-        -> Result<(), SwapchainError>
-    {
-        let semaphores: Vec<vk::Semaphore> = wait.iter().map(|s| s.semaphore()).collect();
-
-        let present_info:vk::PresentInfoKHR = vk::PresentInfoKHR {
-            s_type: vk::StructureType::PRESENT_INFO_KHR,
-            p_next: ptr::null(),
-            wait_semaphore_count: semaphores.len() as u32,
-            p_wait_semaphores: data_ptr!(semaphores),
-            swapchain_count: 1,
-            p_swapchains: &self.i_swapchain,
-            p_image_indices: &image_index,
-            p_results: ptr::null_mut(),
-        };
-
-        on_error_ret!(unsafe { self.i_loader.queue_present(queue.queue(), &present_info) }, SwapchainError::Present);
-
-        Ok(())
     }
 
     #[doc(hidden)]

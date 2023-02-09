@@ -69,7 +69,7 @@ static mut IMAGE_LIST: MaybeUninit<memory::ImageList> = MaybeUninit::<memory::Im
 
 static INIT_CMD_POOL: Once = Once::new();
 
-static mut CMD_POOL: MaybeUninit<cmd::CmdPool> = MaybeUninit::<cmd::CmdPool>::uninit();
+static mut CMD_POOL: MaybeUninit<cmd::Pool> = MaybeUninit::<cmd::Pool>::uninit();
 
 static INIT_GRAPHICS_PIPELINE: Once = Once::new();
 
@@ -305,18 +305,17 @@ pub fn get_image_list() -> &'static memory::ImageList<'static> {
     }
 }
 
-pub fn get_cmd_pool() -> &'static cmd::CmdPool<'static> {
+pub fn get_cmd_pool() -> &'static cmd::Pool {
     unsafe {
         INIT_CMD_POOL.call_once(|| {
             let queue = get_graphics_queue();
             let dev = get_graphics_device();
 
-            let pool_type = cmd::CmdPoolType {
-                device: dev,
+            let pool_type = cmd::PoolCfg {
                 queue_index: queue.index(),
             };
 
-            CMD_POOL.write(cmd::CmdPool::new(&pool_type).expect("Failed to allocate command pool"));
+            CMD_POOL.write(cmd::Pool::new(dev, &pool_type).expect("Failed to allocate command pool"));
         });
 
         CMD_POOL.assume_init_ref()

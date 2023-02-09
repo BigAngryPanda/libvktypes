@@ -1,3 +1,6 @@
+#[path = "./mod.rs"]
+pub mod test_context;
+
 use libvktypes::{
     dev,
     extensions,
@@ -7,11 +10,9 @@ use libvktypes::{
     memory,
     shader,
     compute,
-    cmd
+    cmd,
+    queue
 };
-
-#[path = "./mod.rs"]
-mod test_context;
 
 use std::ffi::CString;
 
@@ -43,12 +44,11 @@ fn cmd_pool_allocation() {
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-    let cmd_pool_type = cmd::CmdPoolType {
-        device: &device,
+    let cmd_pool_type = cmd::PoolCfg {
         queue_index: 0,
     };
 
-    assert!(cmd::CmdPool::new(&cmd_pool_type).is_ok());
+    assert!(cmd::Pool::new(&device, &cmd_pool_type).is_ok());
 }
 
 #[test]
@@ -84,8 +84,8 @@ fn cmd_buffer_exec() {
         size: 4,
         properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT | hw::MemoryProperty::HOST_CACHED,
         usage: memory::BufferUsageFlags::STORAGE_BUFFER |
-               memory::BufferUsageFlags::TRANSFER_SRC   |
-               memory::BufferUsageFlags::TRANSFER_DST,
+            memory::BufferUsageFlags::TRANSFER_SRC   |
+            memory::BufferUsageFlags::TRANSFER_DST,
         sharing_mode: memory::SharingMode::EXCLUSIVE,
         queue_families: &[queue.index()],
     };
@@ -109,42 +109,40 @@ fn cmd_buffer_exec() {
 
     let pipeline = compute::Pipeline::new(&pipe_type).expect("Failed to create pipeline");
 
-    let cmd_pool_type = cmd::CmdPoolType {
-        device: &device,
+    let cmd_pool_type = cmd::PoolCfg {
         queue_index: queue.index(),
     };
 
-    let cmd_pool = cmd::CmdPool::new(&cmd_pool_type).expect("Failed to allocate command pool");
+    let cmd_pool = cmd::Pool::new(&device, &cmd_pool_type).expect("Failed to allocate command pool");
 
-    let mut cmd_buffer = cmd::CmdBuffer::default();
+    let cmd_buffer = cmd_pool.allocate().expect("Failed to allocate command buffer");
 
-    cmd_buffer.bind_pipeline(&pipeline);
+    cmd_buffer.bind_compute_pipeline(&pipeline);
 
     cmd_buffer.dispatch(1, 1, 1);
 
-    let queue_type = cmd::ComputeQueueType {
-        cmd_pool: &cmd_pool,
-        cmd_buffer: &cmd_buffer,
-        queue_family_index: queue.index(),
+    let exec_buffer = cmd_buffer.commit().expect("Failed to commit command buffer");
+
+    let queue_type = queue::QueueCfg {
+        family_index: queue.index(),
         queue_index: 0,
     };
 
-    let cmd_queue = cmd::CompletedQueue::commit(&queue_type).expect("Failed to create command buffer");
+    let queue = queue::Queue::new(&device, &queue_type);
 
-    let exec_info = cmd::ExecInfo {
+    let exec_info = queue::ExecInfo {
         wait_stage: cmd::PipelineStage::COMPUTE_SHADER,
+        buffer: &exec_buffer,
         timeout: u64::MAX,
         wait: &[],
         signal: &[],
     };
 
-    assert!(cmd_queue.exec(&exec_info).is_ok())
+    assert!(queue.exec(&exec_info).is_ok())
 }
 
 #[test]
 fn write_graphics_cmds() {
-    let queue = test_context::get_graphics_queue();
-
     let render_pass = test_context::get_render_pass();
 
     let pipeline = test_context::get_graphics_pipeline();
@@ -153,7 +151,7 @@ fn write_graphics_cmds() {
 
     let pool = test_context::get_cmd_pool();
 
-    let mut cmd_buffer = cmd::CmdBuffer::default();
+    let cmd_buffer = pool.allocate().expect("Failed to allocate cmd buffer");
 
     cmd_buffer.begin_render_pass(render_pass, framebuffer);
 
@@ -161,12 +159,5 @@ fn write_graphics_cmds() {
 
     cmd_buffer.end_render_pass();
 
-    let queue_type = cmd::ComputeQueueType {
-        cmd_pool: pool,
-        cmd_buffer: &cmd_buffer,
-        queue_family_index: queue.index(),
-        queue_index: 0,
-    };
-
-    assert!(cmd::CompletedQueue::commit(&queue_type).is_ok());
+    assert!(cmd_buffer.commit().is_ok());
 }
