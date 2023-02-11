@@ -1,6 +1,6 @@
 //! Array of presentable images
 //!
-//! See [more](https://registry.khronos.org/vulkan/specs/1.2-extensions/html/chap33.html#_wsi_swapchain)
+//! See [more](https://registry.khronos.org/vulkan/specs/1.2-extensions/html/chap34.html#_wsi_swapchain)
 
 use ash::extensions::khr;
 use ash::vk;
