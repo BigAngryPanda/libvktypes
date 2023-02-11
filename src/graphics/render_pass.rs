@@ -1,3 +1,10 @@
+//! [`RenderPass`] represents context within graphics pipeline is executed
+//!
+//! It is defined by 3 components:
+//! 1) [subpasses](SubpassInfo)
+//! 2) [synchronization between subpasses](SubpassSync)
+//! 3) [attachments](AttachmentInfo) which defines what for *all* images are used for
+
 use ash::vk;
 
 use crate::{
@@ -9,6 +16,7 @@ use crate::{
 
 use std::ptr;
 use std::fmt;
+use std::sync::Arc;
 use std::error::Error;
 use std::convert::Into;
 
@@ -141,33 +149,6 @@ impl From<&SubpassSync> for vk::SubpassDependency {
     }
 }
 
-#[derive(Debug)]
-struct SubpassView {
-    pub depth_attachment: vk::AttachmentReference,
-    pub resolve_attachment: Vec<vk::AttachmentReference>,
-    pub color_attachment: Vec<vk::AttachmentReference>,
-    pub input_attachment: Vec<vk::AttachmentReference>,
-    pub preserve_attachments: Vec<u32>,
-}
-
-#[doc(hidden)]
-impl From<&SubpassView> for vk::SubpassDescription {
-    fn from(view: &SubpassView) -> Self {
-        vk::SubpassDescription {
-            flags: vk::SubpassDescriptionFlags::empty(),
-            pipeline_bind_point: vk::PipelineBindPoint::GRAPHICS,
-            input_attachment_count: view.input_attachment.len() as u32,
-            p_input_attachments: data_ptr!(view.input_attachment),
-            color_attachment_count: view.color_attachment.len() as u32,
-            p_color_attachments: data_ptr!(view.color_attachment),
-            p_resolve_attachments: data_ptr!(view.resolve_attachment),
-            p_depth_stencil_attachment: &view.depth_attachment,
-            preserve_attachment_count: view.preserve_attachments.len() as u32,
-            p_preserve_attachments: data_ptr!(view.preserve_attachments),
-        }
-    }
-}
-
 /// `Subpass` configuration
 ///
 /// All information about [valid usage](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSubpassDescription.html)
@@ -194,89 +175,95 @@ impl<'a> Default for SubpassInfo<'a> {
     }
 }
 
-#[doc(hidden)]
-impl From<&SubpassInfo<'_>> for SubpassView {
-    fn from(info: &SubpassInfo) -> Self {
-        let input_attch: Vec<vk::AttachmentReference> = info
-            .input_attachments
-            .iter()
-            .map(|&i| vk::AttachmentReference {
-                attachment: i,
-                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-            })
-            .collect();
-
-        let color_attch: Vec<vk::AttachmentReference> = info
-            .color_attachments
-            .iter()
-            .map(|&i| vk::AttachmentReference {
-                attachment: i,
-                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-            })
-            .collect();
-
-        let resolve_attch: Vec<vk::AttachmentReference> = info
-            .resolve_attachments
-            .iter()
-            .map(|&i| vk::AttachmentReference {
-                attachment: i,
-                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-            })
-            .collect();
-
-        let depth_attch = vk::AttachmentReference {
-            attachment: info.depth_stencil_attachment,
-            layout: vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        };
-
-        SubpassView {
-            depth_attachment: depth_attch,
-            resolve_attachment: resolve_attch,
-            color_attachment: color_attch,
-            input_attachment: input_attch,
-            preserve_attachments: info.preserve_attachments.to_vec(),
-        }
-    }
-}
-
 /// [`RenderPass`] configuration
-pub struct RenderPassType<'a, 'b: 'a> {
-    pub device: &'b dev::Device,
+pub struct RenderPassCfg<'a, 'b: 'a> {
     pub attachments: &'a [AttachmentInfo],
     pub sync_info: &'a [SubpassSync],
     pub subpasses: &'a [SubpassInfo<'b>],
 }
 
 /// Context for executing graphics pipeline
-pub struct RenderPass<'a> {
-    i_dev: &'a dev::Device,
-    i_rp: vk::RenderPass,
+pub struct RenderPass {
+    i_core: Arc<dev::Core>,
+    i_rp: vk::RenderPass
 }
 
-impl<'a> RenderPass<'a> {
-    pub fn new(rp_type: &'a RenderPassType) -> Result<RenderPass<'a>, RenderPassError> {
-        let dependencies: Vec<vk::SubpassDependency> = rp_type
+impl RenderPass {
+    pub fn new(dev: &dev::Device, cfg: &RenderPassCfg) -> Result<RenderPass, RenderPassError> {
+        let dependencies: Vec<vk::SubpassDependency> = cfg
             .sync_info
             .iter()
             .map(|x| x.into())
             .collect();
 
-        let attachments: Vec<vk::AttachmentDescription> = rp_type
+        let attachments: Vec<vk::AttachmentDescription> = cfg
             .attachments
             .iter()
             .map(|x| x.into())
             .collect();
 
-        let subpasses_slice: Vec<SubpassView> = rp_type
+        let input_attch: Vec<Vec<vk::AttachmentReference>> = cfg
             .subpasses
             .iter()
-            .map(|x| x.into())
+            .map(|x| {
+                x.input_attachments.iter().map(|&i| vk::AttachmentReference {
+                    attachment: i,
+                    layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                })
+                .collect()
+            })
             .collect();
 
-        let subpasses: Vec<vk::SubpassDescription> = subpasses_slice
+        let color_attch: Vec<Vec<vk::AttachmentReference>> = cfg
+            .subpasses
             .iter()
-            .map(|x| x.into())
+            .map(|x| {
+                x.color_attachments.iter().map(|&i| vk::AttachmentReference {
+                    attachment: i,
+                    layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                })
+                .collect()
+            })
             .collect();
+
+        let resolve_attch: Vec<Vec<vk::AttachmentReference>> = cfg
+            .subpasses
+            .iter()
+            .map(|x| {
+                x.resolve_attachments.iter().map(|&i| vk::AttachmentReference {
+                    attachment: i,
+                    layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                })
+                .collect()
+            })
+            .collect();
+
+        let depth_attch: Vec<vk::AttachmentReference> = cfg
+            .subpasses
+            .iter()
+            .map(|x| vk::AttachmentReference {
+                attachment: x.depth_stencil_attachment,
+                layout: vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            })
+            .collect();
+
+            let subpasses: Vec<vk::SubpassDescription> = cfg
+                .subpasses
+                .iter()
+                .enumerate()
+                .map(|(i, x)| vk::SubpassDescription {
+                    flags: vk::SubpassDescriptionFlags::empty(),
+                    pipeline_bind_point: vk::PipelineBindPoint::GRAPHICS,
+                    input_attachment_count: input_attch[i].len() as u32,
+                    p_input_attachments: data_ptr!(input_attch[i]),
+                    color_attachment_count: color_attch[i].len() as u32,
+                    p_color_attachments: data_ptr!(color_attch[i]),
+                    p_resolve_attachments: data_ptr!(resolve_attch[i]),
+                    p_depth_stencil_attachment: &depth_attch[i],
+                    preserve_attachment_count: x.preserve_attachments.len() as u32,
+                    p_preserve_attachments: data_ptr!(x.preserve_attachments),
+                })
+                .collect();
 
         let render_pass_create_info:vk::RenderPassCreateInfo = vk::RenderPassCreateInfo {
             s_type: vk::StructureType::RENDER_PASS_CREATE_INFO,
@@ -291,102 +278,70 @@ impl<'a> RenderPass<'a> {
         };
 
         let rp = on_error_ret!(
-            unsafe { rp_type.device.device().create_render_pass(&render_pass_create_info, None) },
+            unsafe { dev.device().create_render_pass(&render_pass_create_info, dev.core().allocator()) },
             RenderPassError::Creation
         );
 
         Ok(
             RenderPass {
-                i_dev: rp_type.device,
-                i_rp: rp,
+                i_core: dev.core().clone(),
+                i_rp: rp
             }
         )
     }
 
     /// Create [`RenderPass`] with single subpass and single attachment
-    pub fn single_subpass(dev: &'a dev::Device, img_format: surface::ImageFormat)
-        -> Result<RenderPass<'a>, RenderPassError>
+    pub fn single_subpass(device: &dev::Device, img_format: surface::ImageFormat)
+        -> Result<RenderPass, RenderPassError>
     {
-        let dependencies:[vk::SubpassDependency; 2] = [
-            vk::SubpassDependency {
-                src_subpass: vk::SUBPASS_EXTERNAL,
-                dst_subpass: 0,
-                src_stage_mask: vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-                dst_stage_mask: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-                src_access_mask: vk::AccessFlags::MEMORY_READ,
-                dst_access_mask: vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-                dependency_flags: vk::DependencyFlags::BY_REGION,
-            },
-            vk::SubpassDependency {
-                src_subpass: 0,
-                dst_subpass: vk::SUBPASS_EXTERNAL,
-                src_stage_mask: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-                dst_stage_mask: vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-                src_access_mask: vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-                dst_access_mask: vk::AccessFlags::MEMORY_READ,
-                dependency_flags: vk::DependencyFlags::BY_REGION,
+        let subpass_info = [
+            SubpassInfo {
+                input_attachments: &[],
+                color_attachments: &[0],
+                resolve_attachments: &[],
+                depth_stencil_attachment: NO_ATTACHMENT,
+                preserve_attachments: &[],
             }
         ];
 
-        let attachment_descriptions:[vk::AttachmentDescription; 1] = [
-            vk::AttachmentDescription {
-                flags: vk::AttachmentDescriptionFlags::empty(),
+        let attachments = [
+            AttachmentInfo {
                 format: img_format,
-                samples: vk::SampleCountFlags::TYPE_1,
-                load_op: vk::AttachmentLoadOp::CLEAR,
-                store_op: vk::AttachmentStoreOp::STORE,
-                stencil_load_op: vk::AttachmentLoadOp::DONT_CARE,
-                stencil_store_op: vk::AttachmentStoreOp::DONT_CARE,
-                initial_layout: vk::ImageLayout::UNDEFINED,
-                final_layout: vk::ImageLayout::PRESENT_SRC_KHR,
+                load_op: AttachmentLoadOp::CLEAR,
+                store_op: AttachmentStoreOp::STORE,
+                stencil_load_op: AttachmentLoadOp::DONT_CARE,
+                stencil_store_op: AttachmentStoreOp::DONT_CARE,
+                initial_layout: ImageLayout::UNDEFINED,
+                final_layout: ImageLayout::PRESENT_SRC_KHR,
             }
         ];
 
-        let color_attachment_references:[vk::AttachmentReference; 1] = [
-            vk::AttachmentReference {
-                attachment: 0,
-                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+        let subpass_sync_info = [
+            SubpassSync {
+                src_subpass: SUBPASS_EXTERNAL,
+                dst_subpass: 0,
+                src_stage: PipelineStage::BOTTOM_OF_PIPE,
+                dst_stage: PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+                src_access: AccessFlags::MEMORY_READ,
+                dst_access: AccessFlags::COLOR_ATTACHMENT_WRITE | AccessFlags::COLOR_ATTACHMENT_READ,
+            },
+            SubpassSync {
+                src_subpass: 0,
+                dst_subpass: SUBPASS_EXTERNAL,
+                src_stage: PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+                dst_stage: PipelineStage::BOTTOM_OF_PIPE,
+                src_access: AccessFlags::COLOR_ATTACHMENT_WRITE | AccessFlags::COLOR_ATTACHMENT_READ,
+                dst_access: AccessFlags::MEMORY_READ,
             }
         ];
 
-        let subpass_descriptions:[vk::SubpassDescription; 1] = [
-            vk::SubpassDescription {
-                flags: vk::SubpassDescriptionFlags::empty(),
-                pipeline_bind_point: vk::PipelineBindPoint::GRAPHICS,
-                input_attachment_count: 0,
-                p_input_attachments: ptr::null(),
-                color_attachment_count: 1,
-                p_color_attachments: &color_attachment_references[0],
-                p_resolve_attachments: ptr::null(),
-                p_depth_stencil_attachment: ptr::null(),
-                preserve_attachment_count: 0,
-                p_preserve_attachments: ptr::null(),
-            }
-        ];
-
-        let render_pass_create_info:vk::RenderPassCreateInfo = vk::RenderPassCreateInfo {
-            s_type: vk::StructureType::RENDER_PASS_CREATE_INFO,
-            p_next: ptr::null(),
-            flags: vk::RenderPassCreateFlags::empty(),
-            attachment_count: 1,
-            p_attachments: &attachment_descriptions[0],
-            subpass_count: 1,
-            p_subpasses: &subpass_descriptions[0],
-            dependency_count: 2,
-            p_dependencies: &dependencies[0],
+        let rp_cfg = RenderPassCfg {
+            attachments: &attachments,
+            sync_info: &subpass_sync_info,
+            subpasses: &subpass_info,
         };
 
-        let rp = on_error_ret!(
-            unsafe { dev.device().create_render_pass(&render_pass_create_info, None) },
-            RenderPassError::Creation
-        );
-
-        Ok(
-            RenderPass {
-                i_dev: dev,
-                i_rp: rp,
-            }
-        )
+        RenderPass::new(&device, &rp_cfg)
     }
 
     #[doc(hidden)]
@@ -395,10 +350,10 @@ impl<'a> RenderPass<'a> {
     }
 }
 
-impl<'a> Drop for RenderPass<'a> {
+impl Drop for RenderPass {
     fn drop(&mut self) {
         unsafe {
-            self.i_dev.device().destroy_render_pass(self.i_rp, None);
+            self.i_core.device().destroy_render_pass(self.i_rp, self.i_core.allocator());
         }
     }
 }

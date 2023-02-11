@@ -268,7 +268,7 @@ pub fn get_frag_shader() -> &'static shader::Shader<'static> {
     }
 }
 
-pub fn get_render_pass() -> &'static graphics::RenderPass<'static> {
+pub fn get_render_pass() -> &'static graphics::RenderPass {
     unsafe {
         INIT_RENDER_PASS.call_once(|| {
             let capabilities = get_surface_capabilities();

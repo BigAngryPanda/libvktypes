@@ -47,12 +47,11 @@ fn render_pass_init() {
         }
     ];
 
-    let rp_type = graphics::RenderPassType {
-        device: dev,
+    let rp_cfg = graphics::RenderPassCfg {
         attachments: &attachment,
         sync_info: &subpass_sync,
         subpasses: &subpass_info,
     };
 
-    assert!(graphics::RenderPass::new(&rp_type).is_ok());
+    assert!(graphics::RenderPass::new(dev, &rp_cfg).is_ok());
 }

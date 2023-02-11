@@ -106,7 +106,7 @@ pub struct PipelineType<'a, 'b> {
     pub topology: Topology,
     pub extent: surface::Extent2D,
     pub push_constant_size: u32,
-    pub render_pass: &'b graphics::RenderPass<'a>,
+    pub render_pass: &'b graphics::RenderPass,
     /// Subpass index inside [`RenderPass`](PipelineType::render_pass)
     pub subpass_index: u32,
     pub enable_depth: bool,

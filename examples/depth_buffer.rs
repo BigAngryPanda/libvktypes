@@ -178,14 +178,13 @@ fn main() {
         }
     ];
 
-    let rp_cfg = graphics::RenderPassType {
-        device: &device,
+    let rp_cfg = graphics::RenderPassCfg {
         attachments: &attachments,
         sync_info: &subpass_sync_info,
         subpasses: &subpass_info,
     };
 
-    let render_pass = graphics::RenderPass::new(&rp_cfg)
+    let render_pass = graphics::RenderPass::new(&device, &rp_cfg)
         .expect("Failed to create render pass");
 
     let pipe_type = graphics::PipelineType {

@@ -606,7 +606,7 @@ pub struct FramebufferType<'a, 'b : 'a> {
     pub device: &'b dev::Device,
     pub images: &'a [&'a Image<'b>],
     pub extent: surface::Extent2D,
-    pub render_pass: &'a graphics::RenderPass<'b>,
+    pub render_pass: &'a graphics::RenderPass,
 }
 
 /// Framebuffer represents a collection of specific memory attachments that a render pass instance uses
@@ -676,7 +676,7 @@ impl<'a> Drop for Framebuffer<'a> {
 
 pub struct FramebufferListType<'a, 'b : 'a> {
     pub device: &'b dev::Device,
-    pub render_pass: &'a graphics::RenderPass<'b>,
+    pub render_pass: &'a graphics::RenderPass,
     pub images: &'a ImageList<'b>,
     pub extent: surface::Extent2D,
 }
