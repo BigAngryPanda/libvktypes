@@ -33,7 +33,7 @@ fn device_creation() {
 fn with_ext() {
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME],
+        extensions: &[extensions::DEBUG_EXT_NAME, extensions::SURFACE_EXT_NAME],
         ..libvk::InstanceType::default()
     };
 

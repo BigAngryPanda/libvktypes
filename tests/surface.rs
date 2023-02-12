@@ -55,7 +55,7 @@ fn get_capabilities() {
     let (hw_dev, _, _) = hw_list
         .find_first(
             hw::HWDevice::is_dedicated_gpu,
-            hw::QueueFamilyDescription::is_graphics,
+            |q| q.is_graphics() && q.is_surface_supported(),
             |_| true
         )
         .expect("Failed to find suitable hardware device");

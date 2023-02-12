@@ -322,7 +322,7 @@ pub fn get_cmd_pool() -> &'static cmd::Pool {
     }
 }
 
-pub fn get_graphics_pipeline() -> &'static graphics::Pipeline<'static> {
+pub fn get_graphics_pipeline() -> &'static graphics::Pipeline {
     unsafe {
         INIT_GRAPHICS_PIPELINE.call_once(|| {
             let capabilities = get_surface_capabilities();
@@ -335,10 +335,8 @@ pub fn get_graphics_pipeline() -> &'static graphics::Pipeline<'static> {
             };
 
             let pipe_type = graphics::PipelineType {
-                device: get_graphics_device(),
                 vertex_shader: get_vert_shader(),
                 vertex_size: std::mem::size_of::<[f32; 2]>() as u32,
-                vert_slots: 1,
                 vert_input: &[vertex_cfg],
                 frag_shader: get_frag_shader(),
                 topology: graphics::Topology::TRIANGLE_STRIP,
@@ -346,10 +344,10 @@ pub fn get_graphics_pipeline() -> &'static graphics::Pipeline<'static> {
                 push_constant_size: 0,
                 render_pass: get_render_pass(),
                 subpass_index: 0,
-                enable_depth: false,
+                enable_depth: false
             };
 
-            GRAPHICS_PIPELINE.write(graphics::Pipeline::new(&pipe_type).expect("Failed to create pipeline"));
+            GRAPHICS_PIPELINE.write(graphics::Pipeline::new(get_graphics_device(), &pipe_type).expect("Failed to create pipeline"));
         });
 
         GRAPHICS_PIPELINE.assume_init_ref()
