@@ -15,10 +15,8 @@ fn create_pipeline() {
     };
 
     let pipe_type = graphics::PipelineType {
-        device: test_context::get_graphics_device(),
         vertex_shader: test_context::get_vert_shader(),
         vertex_size: std::mem::size_of::<[f32; 2]>() as u32,
-        vert_slots: 1,
         vert_input: &[vertex_cfg],
         frag_shader: test_context::get_frag_shader(),
         topology: graphics::Topology::TRIANGLE_STRIP,
@@ -26,8 +24,8 @@ fn create_pipeline() {
         push_constant_size: 0,
         render_pass: test_context::get_render_pass(),
         subpass_index: 0,
-        enable_depth: false,
+        enable_depth: false
     };
 
-    assert!(graphics::Pipeline::new(&pipe_type).is_ok());
+    assert!(graphics::Pipeline::new(test_context::get_graphics_device(), &pipe_type).is_ok());
 }

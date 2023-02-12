@@ -1,3 +1,5 @@
+//! Pipeline configuration
+
 use ash::vk;
 
 use crate::{
@@ -11,6 +13,7 @@ use crate::{
 
 use std::ptr;
 use std::fmt;
+use std::sync::Arc;
 use std::error::Error;
 
 /// Configuration of pipeline's vertex stage input
@@ -95,12 +98,9 @@ impl From<&VertexInputCfg> for vk::VertexInputAttributeDescription {
 pub type Topology = vk::PrimitiveTopology;
 
 pub struct PipelineType<'a, 'b> {
-    pub device: &'a dev::Device,
     pub vertex_shader: &'b shader::Shader<'a>,
     /// Size of every vertex
     pub vertex_size: u32,
-    /// Number of vertex binding slots
-    pub vert_slots: u32,
     pub vert_input: &'b [VertexInputCfg],
     pub frag_shader: &'b shader::Shader<'a>,
     pub topology: Topology,
@@ -131,14 +131,14 @@ impl fmt::Display for PipelineError {
 
 impl Error for PipelineError { }
 
-pub struct Pipeline<'a> {
-    i_dev: &'a dev::Device,
+pub struct Pipeline {
+    i_core: Arc<dev::Core>,
     i_layout: vk::PipelineLayout,
     i_pipeline: vk::Pipeline,
 }
 
-impl<'a> Pipeline<'a> {
-    pub fn new<'b>(pipe_cfg: &'b PipelineType<'a, 'b>) -> Result<Pipeline<'a>, PipelineError> {
+impl Pipeline {
+    pub fn new<'a, 'b>(device: &dev::Device, pipe_cfg: &'b PipelineType<'a, 'b>) -> Result<Pipeline, PipelineError> {
         let shader_stage_create_infos = [
             vk::PipelineShaderStageCreateInfo {
                 s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -161,7 +161,7 @@ impl<'a> Pipeline<'a> {
         ];
 
         let vertex_binding_descriptions: Vec<vk::VertexInputBindingDescription> =
-            (0..pipe_cfg.vert_slots)
+            (0..pipe_cfg.vert_input.len() as u32)
             .map(|i| vk::VertexInputBindingDescription {
                 binding: i,
                 stride: pipe_cfg.vertex_size,
@@ -303,7 +303,7 @@ impl<'a> Pipeline<'a> {
         };
 
         let pipeline_layout = on_error_ret!(
-		    unsafe { pipe_cfg.device.device().create_pipeline_layout(&layout_create_info, None) },
+		    unsafe { device.device().create_pipeline_layout(&layout_create_info, device.allocator()) },
             PipelineError::Layout
         );
 
@@ -350,13 +350,12 @@ impl<'a> Pipeline<'a> {
 
         let pipeline = on_error_ret!(
             unsafe {
-                pipe_cfg
-                .device
+                device
                 .device()
                 .create_graphics_pipelines(
                     vk::PipelineCache::null(),
                     &[pipeline_create_info],
-                    None
+                    device.allocator()
                 )
             },
             PipelineError::Pipeline
@@ -365,7 +364,7 @@ impl<'a> Pipeline<'a> {
 
         Ok(
             Pipeline {
-                i_dev: pipe_cfg.device,
+                i_core: device.core().clone(),
                 i_layout: pipeline_layout,
                 i_pipeline: pipeline[0],
             }
@@ -378,11 +377,11 @@ impl<'a> Pipeline<'a> {
     }
 }
 
-impl<'a> Drop for Pipeline<'a> {
+impl Drop for Pipeline {
     fn drop(&mut self) {
         unsafe {
-            self.i_dev.device().destroy_pipeline_layout(self.i_layout, None);
-            self.i_dev.device().destroy_pipeline(self.i_pipeline, None);
+            self.i_core.device().destroy_pipeline_layout(self.i_layout, self.i_core.allocator());
+            self.i_core.device().destroy_pipeline(self.i_pipeline, self.i_core.allocator());
         }
     }
 }

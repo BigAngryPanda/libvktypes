@@ -111,10 +111,8 @@ fn main() {
         .expect("Failed to create render pass");
 
     let pipe_type = graphics::PipelineType {
-        device: &device,
         vertex_shader: &vert_shader,
         vertex_size: std::mem::size_of::<[f32; 4]>() as u32,
-        vert_slots: 1,
         vert_input: &[graphics::VertexInputCfg {
             location: 0,
             binding: 0,
@@ -127,10 +125,10 @@ fn main() {
         push_constant_size: 0,
         render_pass: &render_pass,
         subpass_index: 0,
-        enable_depth: false,
+        enable_depth: false
     };
 
-    let pipeline = graphics::Pipeline::new(&pipe_type).expect("Failed to create pipeline");
+    let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
     let sem_type = sync::SemaphoreType {
         device: &device,
