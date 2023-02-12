@@ -42,7 +42,7 @@ fn compute_memory_allocation() {
 
     let mem_type = memory::MemoryType {
         device: &device,
-        size: 1,
+        size: 4,
         properties: hw::MemoryProperty::HOST_VISIBLE,
         usage: memory::BufferUsageFlags::STORAGE_BUFFER |
                memory::BufferUsageFlags::TRANSFER_SRC   |
