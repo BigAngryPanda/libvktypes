@@ -4,61 +4,15 @@
 
 use ash::vk;
 
-use crate::{libvk, hw, alloc, queue, memory, sync};
+use crate::{libvk, hw, alloc, queue, memory, sync, dev};
 use crate::{on_error, on_error_ret};
 
-use std::marker::PhantomData;
-use std::ptr;
 use std::sync::Arc;
-use std::fmt;
-
-#[doc(hidden)]
-pub struct Core {
-    i_device: ash::Device,
-    i_callback: Option<alloc::Callback>,
-    _marker: PhantomData<*const libvk::Instance>
-}
-
-impl Core {
-    fn new(device: ash::Device, callback: Option<alloc::Callback>) -> Core {
-        Core {
-            i_device: device,
-            i_callback: callback,
-            _marker: PhantomData
-        }
-    }
-
-    pub fn device(&self) -> &ash::Device {
-        &self.i_device
-    }
-
-    pub fn allocator(&self) -> Option<&alloc::Callback> {
-        self.i_callback.as_ref()
-    }
-}
-
-impl fmt::Debug for Core {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Core")
-        .field("i_device", &(&self.i_device as *const ash::Device))
-        .field("i_callback", &self.i_callback)
-        .finish()
-    }
-}
-
-impl Drop for Core {
-    fn drop(&mut self) {
-        unsafe { self.i_device.destroy_device(self.i_callback.as_ref()) };
-    }
-}
+use std::ptr;
 
 /// Device configuration structure
 ///
-/// Note: to prevent lifetime bounds [HWDevice](crate::hw::HWDevice) will be cloned
-///
-/// It is not optimal but maybe in the future it will be fixed
-///
-/// Note on queue creation: every queue family in [`hw`](self::DeviceCfg::hw)
+/// Note: on queue creation: every queue family in [`hw`](self::DeviceCfg::hw)
 /// will be enabled and every queue within family will have equal priority
 pub struct DeviceCfg<'a> {
     pub lib: &'a libvk::Instance,
@@ -76,7 +30,7 @@ pub enum DeviceError {
 ///
 /// `Device` represents logical device and provide API to the selected GPU
 pub struct Device {
-    i_core: Arc<Core>,
+    i_core: Arc<dev::Core>,
     i_hw: hw::HWDevice,
 }
 
@@ -120,8 +74,11 @@ impl Device {
             DeviceError::Creating
         );
 
+        // Note: to prevent lifetime bounds [HWDevice](crate::hw::HWDevice) will be cloned
+        //
+        // It is not optimal but maybe in the future it will be fixed
         Ok(Device {
-            i_core: Arc::new(Core::new(dev, dev_type.allocator)),
+            i_core: Arc::new(dev::Core::new(dev, dev_type.allocator)),
             i_hw: dev_type.hw.clone()
         })
     }
@@ -190,7 +147,7 @@ impl Device {
     }
 
     #[doc(hidden)]
-    pub fn core(&self) -> &Arc<Core> {
+    pub fn core(&self) -> &Arc<dev::Core> {
         &self.i_core
     }
 
