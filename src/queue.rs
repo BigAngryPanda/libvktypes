@@ -12,14 +12,14 @@ pub struct ExecInfo<'a, 'b : 'a> {
     pub buffer: &'a cmd::ExecutableBuffer<'b>,
     pub wait_stage: cmd::PipelineStage,
     pub timeout: u64,
-    pub wait: &'a [&'a sync::Semaphore<'b>],
-    pub signal: &'a [&'a sync::Semaphore<'b>],
+    pub wait: &'a [&'a sync::Semaphore],
+    pub signal: &'a [&'a sync::Semaphore],
 }
 
 pub struct PresentInfo<'a, 'b : 'a> {
     pub swapchain: &'a swapchain::Swapchain,
     pub image_index: u32,
-    pub wait: &'a [&'a sync::Semaphore<'b>]
+    pub wait: &'a [&'b sync::Semaphore]
 }
 
 #[derive(Debug)]

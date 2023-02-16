@@ -5,6 +5,7 @@ use ash::vk;
 use crate::dev;
 use crate::on_error_ret;
 
+use std::sync::Arc;
 use std::{error, fmt, ptr};
 
 #[derive(Debug)]
@@ -14,25 +15,19 @@ pub enum SemaphoreError {
 
 impl fmt::Display for SemaphoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "vkCreateSemaphore call failed")
+        write!(f, "Failed to create semaphore (vkCreateSemaphore call failed)")
     }
 }
 
 impl error::Error for SemaphoreError {}
 
-pub struct SemaphoreType<'a> {
-    pub device: &'a dev::Device,
-}
-
-pub struct Semaphore<'a> {
-    i_device: &'a dev::Device,
+pub struct Semaphore {
+    i_core: Arc<dev::Core>,
     i_semaphore: vk::Semaphore,
 }
 
-impl<'a> Semaphore<'a> {
-    pub fn new<'b>(cfg: &'b SemaphoreType<'a>) -> Result<Semaphore<'a>, SemaphoreError> {
-        let dev = cfg.device.device();
-
+impl Semaphore {
+    pub fn new(device: &dev::Device) -> Result<Semaphore, SemaphoreError> {
         let semaphore_create_info = vk::SemaphoreCreateInfo {
             s_type: vk::StructureType::SEMAPHORE_CREATE_INFO,
             p_next: ptr::null(),
@@ -40,12 +35,12 @@ impl<'a> Semaphore<'a> {
         };
 
         let semaphore = on_error_ret!(
-            unsafe { dev.create_semaphore(&semaphore_create_info, None) },
+            unsafe { device.device().create_semaphore(&semaphore_create_info, device.allocator()) },
             SemaphoreError::Create
         );
 
         Ok(Semaphore {
-            i_device: cfg.device,
+            i_core: device.core().clone(),
             i_semaphore: semaphore,
         })
     }
@@ -56,12 +51,12 @@ impl<'a> Semaphore<'a> {
     }
 }
 
-impl<'a> Drop for Semaphore<'a> {
+impl Drop for Semaphore {
     fn drop(&mut self) {
         unsafe {
-            self.i_device
+            self.i_core
                 .device()
-                .destroy_semaphore(self.i_semaphore, None);
+                .destroy_semaphore(self.i_semaphore, self.i_core.allocator());
         }
     }
 }
@@ -73,30 +68,23 @@ pub enum FenceError {
 
 impl fmt::Display for FenceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "vkCreateFence call failed")
+        write!(f, "Failed to create fence (vkCreateFence call failed)")
     }
 }
 
 impl error::Error for FenceError {}
 
-pub struct FenceType<'a> {
-    pub device: &'a dev::Device,
-    pub signaled: bool,
-}
-
-pub struct Fence<'a> {
-    i_device: &'a dev::Device,
+pub struct Fence {
+    i_core: Arc<dev::Core>,
     i_fence: vk::Fence,
 }
 
-impl<'a> Fence<'a> {
-    pub fn new<'b>(cfg: &'b FenceType<'a>) -> Result<Fence<'a>, FenceError> {
-        let dev = cfg.device.device();
-
+impl Fence {
+    pub fn new(device: &dev::Device, signaled: bool) -> Result<Fence, FenceError> {
         let fence_create_info = vk::FenceCreateInfo {
             s_type: vk::StructureType::FENCE_CREATE_INFO,
             p_next: ptr::null(),
-            flags: if cfg.signaled {
+            flags: if signaled {
                 vk::FenceCreateFlags::SIGNALED
             } else {
                 vk::FenceCreateFlags::empty()
@@ -104,12 +92,12 @@ impl<'a> Fence<'a> {
         };
 
         let fence = on_error_ret!(
-            unsafe { dev.create_fence(&fence_create_info, None) },
+            unsafe { device.device().create_fence(&fence_create_info, device.allocator()) },
             FenceError::Create
         );
 
         Ok(Fence {
-            i_device: cfg.device,
+            i_core: device.core().clone(),
             i_fence: fence,
         })
     }
@@ -120,12 +108,12 @@ impl<'a> Fence<'a> {
     }
 }
 
-impl<'a> Drop for Fence<'a> {
+impl Drop for Fence {
     fn drop(&mut self) {
         unsafe {
-            self.i_device
+            self.i_core
                 .device()
-                .destroy_fence(self.i_fence, None);
+                .destroy_fence(self.i_fence, self.i_core.allocator());
         }
     }
 }

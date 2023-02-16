@@ -128,12 +128,8 @@ fn main() {
 
     let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
-    let sem_type = sync::SemaphoreType {
-        device: &device,
-    };
-
-    let img_sem = sync::Semaphore::new(&sem_type).expect("Failed to create semaphore");
-    let render_sem = sync::Semaphore::new(&sem_type).expect("Failed to create semaphore");
+    let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
+    let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
 
     let cmd_pool_type = cmd::PoolCfg {
         queue_index: queue.index(),

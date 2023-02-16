@@ -4,7 +4,7 @@
 
 use ash::vk;
 
-use crate::{libvk, hw, alloc, queue, memory};
+use crate::{libvk, hw, alloc, queue, memory, sync};
 use crate::{on_error, on_error_ret};
 
 use std::marker::PhantomData;
@@ -179,6 +179,14 @@ impl Device {
         T: Fn(&hw::MemoryDescription) -> bool
     {
         self.filter_memory(f, cfg).next()
+    }
+
+    pub fn create_fence(&self, signaled: bool) -> Result<sync::Fence, sync::FenceError> {
+        sync::Fence::new(&self, signaled)
+    }
+
+    pub fn create_semaphore(&self) -> Result<sync::Semaphore, sync::SemaphoreError> {
+        sync::Semaphore::new(&self)
     }
 
     #[doc(hidden)]
