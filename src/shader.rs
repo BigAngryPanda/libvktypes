@@ -7,12 +7,12 @@ use crate::dev;
 use crate::on_error_ret;
 
 use std::{ptr, mem};
+use std::sync::Arc;
 use std::fs::File;
 use std::path::Path;
 use std::ffi::CString;
 
-pub struct ShaderType<'a> {
-    pub device: &'a dev::Device,
+pub struct ShaderCfg<'a> {
     pub path: &'a str,
     pub entry: CString,
 }
@@ -27,14 +27,14 @@ pub enum ShaderError {
 /// Shader type represents loaded shader bytecode wrapper
 ///
 /// You may think of it as file handler
-pub struct Shader<'a> {
-	i_dev: &'a dev::Device,
+pub struct Shader {
+	i_core: Arc<dev::Core>,
 	i_module: vk::ShaderModule,
 	i_entry: CString,
 }
 
-impl<'a> Shader<'a> {
-    pub fn from_bytecode<'b>(shader_type: &'b ShaderType<'a>, bytecode: &[u32]) -> Result<Shader<'a>, ShaderError> {
+impl Shader {
+    pub fn from_bytecode(device: &dev::Device, shader_type: &ShaderCfg, bytecode: &[u32]) -> Result<Shader, ShaderError> {
         let shader_info = vk::ShaderModuleCreateInfo {
             s_type: vk::StructureType::SHADER_MODULE_CREATE_INFO,
             p_next: ptr::null(),
@@ -44,20 +44,20 @@ impl<'a> Shader<'a> {
         };
 
         let shader_module: vk::ShaderModule = on_error_ret!(
-            unsafe { shader_type.device.device().create_shader_module(&shader_info, None) },
+            unsafe { device.device().create_shader_module(&shader_info, device.allocator()) },
             ShaderError::ShaderCreation
         );
 
         Ok(
             Shader {
-                i_dev: shader_type.device,
+                i_core: device.core().clone(),
                 i_module: shader_module,
                 i_entry: shader_type.entry.clone()
             }
         )
     }
 
-    pub fn from_file<'b>(shader_type: &'b ShaderType<'a>) -> Result<Shader<'a>, ShaderError> {
+    pub fn from_file(device: &dev::Device, shader_type: &ShaderCfg) -> Result<Shader, ShaderError> {
         let mut spv_file: File = on_error_ret!(
             File::open(Path::new(shader_type.path)),
             ShaderError::InvalidFile
@@ -68,24 +68,24 @@ impl<'a> Shader<'a> {
             ShaderError::BytecodeRead
         );
 
-        Shader::from_bytecode(shader_type, &spv_bytecode)
+        Shader::from_bytecode(device, shader_type, &spv_bytecode)
     }
 
     /// Return reference to name of entry function (point) in shader
-    pub fn entry(&'a self) -> &CString {
+    pub fn entry(&self) -> &CString {
         &self.i_entry
     }
 
     #[doc(hidden)]
-    pub fn module(&'a self) -> vk::ShaderModule {
+    pub fn module(&self) -> vk::ShaderModule {
         self.i_module
     }
 }
 
-impl<'a> Drop for Shader<'a> {
+impl Drop for Shader {
     fn drop(&mut self) {
         unsafe {
-            self.i_dev.device().destroy_shader_module(self.i_module, None);
+            self.i_core.device().destroy_shader_module(self.i_module, self.i_core.allocator());
         }
     }
 }

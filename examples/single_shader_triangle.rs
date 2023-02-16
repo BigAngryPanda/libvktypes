@@ -66,21 +66,19 @@ fn main() {
 
     let swapchain = swapchain::Swapchain::new(&lib, &device, &surface, &swp_type).expect("Failed to create swapchain");
 
-    let vert_shader_type = shader::ShaderType {
-        device: &device,
+    let vert_shader_type = shader::ShaderCfg {
         path: "examples/compiled_shaders/single_triangle.spv",
         entry: CString::new("main").expect("Failed to allocate string"),
     };
 
-    let vert_shader = shader::Shader::from_file(&vert_shader_type).expect("Failed to create vertex shader module");
+    let vert_shader = shader::Shader::from_file(&device, &vert_shader_type).expect("Failed to create vertex shader module");
 
-    let frag_shader_type = shader::ShaderType {
-        device: &device,
+    let frag_shader_type = shader::ShaderCfg {
         path: "examples/compiled_shaders/single_color.spv",
         entry: CString::new("main").expect("Failed to allocate string"),
     };
 
-    let frag_shader = shader::Shader::from_file(&frag_shader_type).expect("Failed to create fragment shader module");
+    let frag_shader = shader::Shader::from_file(&device, &frag_shader_type).expect("Failed to create fragment shader module");
 
     let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");

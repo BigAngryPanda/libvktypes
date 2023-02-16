@@ -53,13 +53,12 @@ fn create_pipeline() {
 
     let buff = memory::Memory::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
 
-    let shader_type = shader::ShaderType {
-        device: &device,
+    let shader_type = shader::ShaderCfg {
         path: "tests/compiled_shaders/fill_memory.spv",
         entry: CString::new("main").expect("Failed to allocate string"),
     };
 
-    let shader = shader::Shader::from_file(&shader_type).expect("Failed to create shader module");
+    let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");
 
     let pipe_type = compute::PipelineType {
         device: &device,

@@ -4,7 +4,7 @@
 
 use ash::vk;
 
-use crate::{libvk, hw, alloc, queue, memory, sync, dev};
+use crate::{libvk, hw, alloc, queue, memory, dev};
 use crate::{on_error, on_error_ret};
 
 use std::sync::Arc;
@@ -136,14 +136,6 @@ impl Device {
         T: Fn(&hw::MemoryDescription) -> bool
     {
         self.filter_memory(f, cfg).next()
-    }
-
-    pub fn create_fence(&self, signaled: bool) -> Result<sync::Fence, sync::FenceError> {
-        sync::Fence::new(&self, signaled)
-    }
-
-    pub fn create_semaphore(&self) -> Result<sync::Semaphore, sync::SemaphoreError> {
-        sync::Semaphore::new(&self)
     }
 
     #[doc(hidden)]

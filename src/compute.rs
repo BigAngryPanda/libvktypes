@@ -14,7 +14,7 @@ use std::ptr;
 pub struct PipelineType<'a> {
     pub device: &'a dev::Device,
     pub buffers: &'a [&'a memory::Memory],
-    pub shader: &'a shader::Shader<'a>,
+    pub shader: &'a shader::Shader,
     pub push_constant_size : u32,
 }
 

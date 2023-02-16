@@ -37,11 +37,10 @@ fn load_shader() {
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-    let shader_type = shader::ShaderType {
-        device: &device,
+    let shader_type = shader::ShaderCfg {
         path: "tests/compiled_shaders/fill_memory.spv",
         entry: CString::new("main").expect("Failed to allocate string"),
     };
 
-    assert!(shader::Shader::from_file(&shader_type).is_ok());
+    assert!(shader::Shader::from_file(&device, &shader_type).is_ok());
 }

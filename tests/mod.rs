@@ -229,36 +229,34 @@ pub fn get_swapchain() -> &'static swapchain::Swapchain {
     }
 }
 
-pub fn get_vert_shader() -> &'static shader::Shader<'static> {
+pub fn get_vert_shader() -> &'static shader::Shader {
     unsafe {
         INIT_VERT_SHADER.call_once(|| {
             let dev = get_graphics_device();
 
-            let shader_type = shader::ShaderType {
-                device: dev,
+            let shader_type = shader::ShaderCfg {
                 path: "tests/compiled_shaders/single_dot.spv",
                 entry: std::ffi::CString::new("main").expect("Failed to allocate string"),
             };
 
-            VERT_SHADER.write(shader::Shader::from_file(&shader_type).expect("Failed to create shader module"));
+            VERT_SHADER.write(shader::Shader::from_file(dev, &shader_type).expect("Failed to create shader module"));
         });
 
         VERT_SHADER.assume_init_ref()
     }
 }
 
-pub fn get_frag_shader() -> &'static shader::Shader<'static> {
+pub fn get_frag_shader() -> &'static shader::Shader {
     unsafe {
         INIT_FRAG_SHADER.call_once(|| {
             let dev = get_graphics_device();
 
-            let shader_type = shader::ShaderType {
-                device: dev,
+            let shader_type = shader::ShaderCfg {
                 path: "tests/compiled_shaders/single_color.spv",
                 entry: std::ffi::CString::new("main").expect("Failed to allocate string"),
             };
 
-            FRAG_SHADER.write(shader::Shader::from_file(&shader_type).expect("Failed to create shader module"));
+            FRAG_SHADER.write(shader::Shader::from_file(dev, &shader_type).expect("Failed to create shader module"));
         });
 
         FRAG_SHADER.assume_init_ref()
