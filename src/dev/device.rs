@@ -8,7 +8,8 @@ use crate::{libvk, hw, alloc, queue, memory, dev};
 use crate::{on_error, on_error_ret};
 
 use std::sync::Arc;
-use std::ptr;
+use std::{ptr, fmt};
+use std::error::Error;
 
 /// Device configuration structure
 ///
@@ -25,6 +26,14 @@ pub struct DeviceCfg<'a> {
 pub enum DeviceError {
     Creating,
 }
+
+impl fmt::Display for DeviceError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Failed to create Device (vkCreateDevice call failed)")
+    }
+}
+
+impl Error for DeviceError {}
 
 /// Core structure of the library
 ///

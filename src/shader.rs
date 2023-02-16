@@ -6,7 +6,8 @@ use ash::util::read_spv;
 use crate::dev;
 use crate::on_error_ret;
 
-use std::{ptr, mem};
+use std::{ptr, mem, fmt};
+use std::error::Error;
 use std::sync::Arc;
 use std::fs::File;
 use std::path::Path;
@@ -23,6 +24,26 @@ pub enum ShaderError {
 	BytecodeRead,
 	ShaderCreation,
 }
+
+impl fmt::Display for ShaderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let err_msg = match self {
+            ShaderError::InvalidFile => {
+                "Failed to open file"
+            },
+            ShaderError::BytecodeRead => {
+                "Failed to read from file"
+            },
+            ShaderError::ShaderCreation => {
+                "Failed to create shader (vkCreateShaderModule call failed)"
+            }
+        };
+
+        write!(f, "{:?}", err_msg)
+    }
+}
+
+impl Error for ShaderError {}
 
 /// Shader type represents loaded shader bytecode wrapper
 ///

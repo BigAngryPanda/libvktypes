@@ -4,6 +4,7 @@ use ash::vk;
 
 use std::{fmt, ptr};
 use std::sync::Arc;
+use std::error::Error;
 
 use crate::{on_error_ret, data_ptr};
 use crate::{dev, cmd, sync, swapchain};
@@ -36,9 +37,32 @@ pub enum QueueError {
     Timeout,
     /// Failed to
     /// [present](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkQueuePresentKHR.html)
-    /// image from swapchain
+    /// image
     Present
 }
+
+impl fmt::Display for QueueError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let err_msg = match self {
+            QueueError::Execution => {
+                "Failed to submit queue (vkQueueSubmit call failed)"
+            },
+            QueueError::Fence => {
+                "Failed to create fence (vkCreateFence call failed)"
+            },
+            QueueError::Timeout => {
+                "Execution time exceed max time"
+            },
+            QueueError::Present => {
+                "Failed to present image"
+            }
+        };
+
+        write!(f, "{:?}", err_msg)
+    }
+}
+
+impl Error for QueueError {}
 
 /// Information about what queue to allocate
 ///
