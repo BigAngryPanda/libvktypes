@@ -65,7 +65,7 @@ static mut RENDER_PASS: MaybeUninit<graphics::RenderPass> = MaybeUninit::<graphi
 
 static INIT_IMAGE_LIST: Once = Once::new();
 
-static mut IMAGE_LIST: MaybeUninit<memory::ImageList> = MaybeUninit::<memory::ImageList>::uninit();
+static mut IMAGE_LIST: MaybeUninit<Vec<memory::Image>> = MaybeUninit::<Vec<memory::Image>>::uninit();
 
 static INIT_CMD_POOL: Once = Once::new();
 
@@ -77,7 +77,7 @@ static mut GRAPHICS_PIPELINE: MaybeUninit<graphics::Pipeline> = MaybeUninit::<gr
 
 static INIT_FRAMEBUFFER: Once = Once::new();
 
-static mut FRAMEBUFFER: MaybeUninit<memory::FramebufferList> = MaybeUninit::<memory::FramebufferList>::uninit();
+static mut FRAMEBUFFER: MaybeUninit<Vec<memory::Framebuffer>> = MaybeUninit::<Vec<memory::Framebuffer>>::uninit();
 
 pub fn get_window() -> &'static window::Window {
     unsafe {
@@ -135,7 +135,7 @@ pub fn get_graphics_hw() -> &'static hw::HWDevice {
                 .find_first(
                     hw::HWDevice::is_dedicated_gpu,
                     |q| q.is_graphics() && q.is_surface_supported(),
-                    |_| true
+                    hw::any
                 )
                 .expect("Failed to find suitable hardware device");
 
@@ -211,10 +211,7 @@ pub fn get_swapchain() -> &'static swapchain::Swapchain {
 
             let capabilities = get_surface_capabilities();
 
-            let swp_type = swapchain::SwapchainType {
-                lib: lib_ref,
-                dev: device,
-                surface: surface_ref,
+            let swp_type = swapchain::SwapchainCfg {
                 num_of_images: 2,
                 format: capabilities.formats().next().expect("No available formats").format,
                 color: capabilities.formats().next().expect("No available formats").color_space,
@@ -225,7 +222,7 @@ pub fn get_swapchain() -> &'static swapchain::Swapchain {
                 alpha: capabilities.alpha_composition(),
             };
 
-            SWAPCHAIN.write(swapchain::Swapchain::new(&swp_type).expect("Failed to create swapchain"));
+            SWAPCHAIN.write(swapchain::Swapchain::new(lib_ref, device, surface_ref,&swp_type).expect("Failed to create swapchain"));
         });
 
         SWAPCHAIN.assume_init_ref()
@@ -286,19 +283,12 @@ pub fn get_render_pass() -> &'static graphics::RenderPass {
     }
 }
 
-pub fn get_image_list() -> &'static memory::ImageList<'static> {
+pub fn get_image_list() -> &'static Vec<memory::Image> {
     unsafe {
         INIT_IMAGE_LIST.call_once(|| {
-            let dev = get_graphics_device();
-
             let swp = get_swapchain();
 
-            let img_type = memory::ImageListType {
-                device: dev,
-                swapchain: swp,
-            };
-
-            IMAGE_LIST.write(memory::ImageList::from_swapchain(&img_type).expect("Failed to get image list"));
+            IMAGE_LIST.write(swp.images().expect("Failed to get image list"));
         });
 
         IMAGE_LIST.assume_init_ref()
@@ -330,7 +320,7 @@ pub fn get_graphics_pipeline() -> &'static graphics::Pipeline {
             let vertex_cfg = graphics::VertexInputCfg {
                 location: 0,
                 binding: 0,
-                format: surface::ImageFormat::R32G32B32A32_SFLOAT,
+                format: memory::ImageFormat::R32G32B32A32_SFLOAT,
                 offset: 0,
             };
 
@@ -354,7 +344,7 @@ pub fn get_graphics_pipeline() -> &'static graphics::Pipeline {
     }
 }
 
-pub fn get_framebuffers() -> &'static memory::FramebufferList<'static> {
+pub fn get_framebuffers() -> &'static Vec<memory::Framebuffer> {
     unsafe {
         INIT_FRAMEBUFFER.call_once(|| {
             let dev = get_graphics_device();
@@ -365,15 +355,19 @@ pub fn get_framebuffers() -> &'static memory::FramebufferList<'static> {
 
             let capabilities = get_surface_capabilities();
 
-            let framebuffer_cfg = memory::FramebufferListType {
-                device: dev,
-                render_pass: rp,
-                images: imgs,
-                extent: capabilities.extent2d(),
-            };
+            let framebuffers: Vec<memory::Framebuffer> =
+                imgs.iter().map(|img| {
+                    let framebuffer_cfg = memory::FramebufferCfg {
+                        render_pass: rp,
+                        images: &[&img],
+                        extent: capabilities.extent2d(),
+                    };
+
+                    memory::Framebuffer::new(dev, &framebuffer_cfg).expect("Failed to create framebuffer")
+                }).collect();
 
             FRAMEBUFFER.write(
-                memory::FramebufferList::new(&framebuffer_cfg).expect("Failed to create framebuffers")
+                framebuffers
             );
         });
 

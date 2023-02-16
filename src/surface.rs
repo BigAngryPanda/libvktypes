@@ -83,7 +83,7 @@ impl Drop for Surface {
 
 /// Surface formats
 ///
-/// Contains two field: [`format`](self::ImageFormat) and [`color_space`](self::ColorSpace)
+/// Contains two field: [`format`](crate::memory::ImageFormat) and [`color_space`](self::ColorSpace)
 ///
 #[doc = "Ash documentation: <https://docs.rs/ash/latest/ash/vk/struct.SurfaceFormatKHR.html>"]
 ///
@@ -92,7 +92,8 @@ impl Drop for Surface {
 /// # Example
 ///
 /// ```
-/// use libvktypes::surface::{SurfaceFormat, ImageFormat, ColorSpace};
+/// use libvktypes::surface::{SurfaceFormat, ColorSpace};
+/// use libvktypes::memory::ImageFormat;
 ///
 /// SurfaceFormat {
 ///     format: ImageFormat::R8G8B8A8_UNORM,
@@ -100,13 +101,6 @@ impl Drop for Surface {
 /// };
 /// ```
 pub type SurfaceFormat = vk::SurfaceFormatKHR;
-
-/// Image formats
-///
-#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.Format.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkFormat.html>"]
-pub type ImageFormat = vk::Format;
 
 /// Color spaces
 ///

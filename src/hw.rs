@@ -654,3 +654,8 @@ impl Description {
         None
     }
 }
+
+/// Helper function which provides nicer placeholder for filters
+pub fn any<T>(_: &T) -> bool {
+    true
+}

@@ -13,7 +13,7 @@ use std::ptr;
 /// Note: only [memory](crate::memory::Memory) with memory::UsageFlags::STORAGE_BUFFER is allowed
 pub struct PipelineType<'a> {
     pub device: &'a dev::Device,
-    pub buffers: &'a [&'a memory::Memory<'a>],
+    pub buffers: &'a [&'a memory::Memory],
     pub shader: &'a shader::Shader<'a>,
     pub push_constant_size : u32,
 }

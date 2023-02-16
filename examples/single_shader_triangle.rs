@@ -53,10 +53,7 @@ fn main() {
 
     let surf_format = capabilities.formats().next().expect("No available formats").format;
 
-    let swp_type = swapchain::SwapchainType {
-        lib: &lib,
-        dev: &device,
-        surface: &surface,
+    let swp_type = swapchain::SwapchainCfg {
         num_of_images: capabilities.min_img_count(),
         format: surf_format,
         color: surface::ColorSpace::SRGB_NONLINEAR,
@@ -67,7 +64,7 @@ fn main() {
         alpha: capabilities.first_alpha_composition().expect("No alpha composition")
     };
 
-    let swapchain = swapchain::Swapchain::new(&swp_type).expect("Failed to create swapchain");
+    let swapchain = swapchain::Swapchain::new(&lib, &device, &surface, &swp_type).expect("Failed to create swapchain");
 
     let vert_shader_type = shader::ShaderType {
         device: &device,
@@ -118,25 +115,19 @@ fn main() {
 
     let cmd_buffer = cmd_pool.allocate().expect("Failed to allocate command pool");
 
-    let img_cfg = memory::ImageListType {
-        device: &device,
-        swapchain: &swapchain,
-    };
-
-    let images = memory::ImageList::from_swapchain(&img_cfg).expect("Failed to get images");
+    let images = swapchain.images().expect("Failed to get images");
 
     let img_index = swapchain.next_image(u64::MAX, Some(&img_sem), None).expect("Failed to get image index");
 
-    let frames_cfg = memory::FramebufferListType {
-        device: &device,
+    let frames_cfg = memory::FramebufferCfg {
         render_pass: &render_pass,
-        images: &images,
+        images: &[&images[img_index as usize]],
         extent: capabilities.extent2d(),
     };
 
-    let frames = memory::FramebufferList::new(&frames_cfg).expect("Failed to create framebuffers");
+    let frame = memory::Framebuffer::new(&device, &frames_cfg).expect("Failed to create framebuffers");
 
-    cmd_buffer.begin_render_pass(&render_pass, &frames[img_index as usize]);
+    cmd_buffer.begin_render_pass(&render_pass, &frame);
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 

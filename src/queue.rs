@@ -25,7 +25,7 @@ pub struct PresentInfo<'a, 'b : 'a> {
 #[derive(Debug)]
 pub enum QueueError {
     /// Failed to
-    /// [submit](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkQueueSubmit.html
+    /// [submit](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkQueueSubmit.html)
     /// queue
     Execution,
     /// Failed to

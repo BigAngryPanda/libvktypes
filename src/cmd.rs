@@ -175,7 +175,7 @@ impl<'a> Buffer<'a> {
 
     /// Bind specifically *compute* pipeline
     ///
-    /// For graphics see [`bind_graphics_pipeline`](bind_graphics_pipeline)
+    /// For graphics see [`bind_graphics_pipeline`](Buffer::bind_graphics_pipeline)
     pub fn bind_compute_pipeline(&self, pipe: &compute::Pipeline) {
         let dev = self.i_pool.device();
 
@@ -339,7 +339,7 @@ impl<'a> Buffer<'a> {
 
     /// Bind specifically *graphics* pipeline
     ///
-    /// For graphics see [`bind_compute_pipeline`](bind_compute_pipeline)
+    /// For graphics see [`bind_compute_pipeline`](Buffer::bind_compute_pipeline)
     pub fn bind_graphics_pipeline(&self, pipe: &graphics::Pipeline) {
         let dev = self.i_pool.device();
 

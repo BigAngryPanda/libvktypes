@@ -1,4 +1,4 @@
-use libvktypes::{surface, swapchain};
+use libvktypes::{surface, swapchain, memory};
 
 #[path = "./mod.rs"]
 mod test_context;
@@ -29,18 +29,15 @@ fn init_swapchain() {
 
     assert!(capabilities.is_img_count_supported(3));
     assert!(capabilities.is_format_supported(surface::SurfaceFormat {
-        format: surface::ImageFormat::B8G8R8A8_UNORM,
+        format: memory::ImageFormat::B8G8R8A8_UNORM,
         color_space: surface::ColorSpace::SRGB_NONLINEAR,
     }));
     assert!(capabilities.is_mode_supported(surface::PresentMode::FIFO));
     assert!(capabilities.is_flags_supported(surface::UsageFlags::COLOR_ATTACHMENT));
 
-    let swp_type = swapchain::SwapchainType {
-        lib: lib_ref,
-        dev: device,
-        surface: surface_ref,
+    let swp_type = swapchain::SwapchainCfg {
         num_of_images: 3,
-        format: surface::ImageFormat::B8G8R8A8_UNORM,
+        format: memory::ImageFormat::B8G8R8A8_UNORM,
         color: surface::ColorSpace::SRGB_NONLINEAR,
         present_mode: surface::PresentMode::FIFO,
         flags: surface::UsageFlags::COLOR_ATTACHMENT,
@@ -49,5 +46,5 @@ fn init_swapchain() {
         alpha: capabilities.alpha_composition(),
     };
 
-    assert!(swapchain::Swapchain::new(&swp_type).is_ok());
+    assert!(swapchain::Swapchain::new(lib_ref, device, surface_ref, &swp_type).is_ok());
 }

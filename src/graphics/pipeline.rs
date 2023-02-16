@@ -5,6 +5,7 @@ use ash::vk;
 use crate::{
     dev,
     surface,
+    memory,
     data_ptr,
     on_error_ret,
     shader,
@@ -30,7 +31,7 @@ use std::error::Error;
 /// And corresponding configuration
 /// ```
 /// // Vertex
-/// use libvktypes::surface::ImageFormat;
+/// use libvktypes::memory::ImageFormat;
 /// use libvktypes::graphics::VertexInputCfg;
 ///
 /// struct Vertex {
@@ -62,7 +63,7 @@ pub struct VertexInputCfg {
     /// The number of the slot from which data should be read
     pub binding: u32,
     /// Data type and number of components per attribute
-    pub format: surface::ImageFormat,
+    pub format: memory::ImageFormat,
     /// Beginning of data for a given attribute
     pub offset: u32,
 }
@@ -72,7 +73,7 @@ impl Default for VertexInputCfg {
         VertexInputCfg {
             location: 0,
             binding: 0,
-            format: surface::ImageFormat::UNDEFINED,
+            format: memory::ImageFormat::UNDEFINED,
             offset: 0,
         }
     }

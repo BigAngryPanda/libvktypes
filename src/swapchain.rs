@@ -6,16 +6,39 @@ use ash::extensions::khr;
 use ash::vk;
 
 use crate::{on_error_ret};
-use crate::{dev, libvk, surface, sync};
+use crate::{dev, libvk, surface, sync, memory};
 
 use std::ptr;
+use std::fmt;
+use std::sync::Arc;
+use std::error::Error;
 
 #[derive(Debug)]
 pub enum SwapchainError {
     Creating,
     NextImage,
-    Present
+    Images
 }
+
+impl fmt::Display for SwapchainError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let err_msg = match self {
+            SwapchainError::Creating => {
+                "Failed to create swapchain (vkCreateSwapchainKHR call failed)"
+            },
+            SwapchainError::NextImage => {
+                "Failed to create image view (vkAcquireNextImageKHR call failed)"
+            },
+            SwapchainError::Images => {
+                "Failed to get images from swapchain"
+            }
+        };
+
+        write!(f, "{:?}", err_msg)
+    }
+}
+
+impl Error for SwapchainError {}
 
 /// Swapchain configuration struct
 ///
@@ -52,12 +75,9 @@ pub enum SwapchainError {
 /// [Capabilities::pre_transformation](crate::surface::Capabilities::pre_transformation) for `transform`
 ///
 /// [Capabilities::alpha_composition](crate::surface::Capabilities::alpha_composition) for `alpha`
-pub struct SwapchainType<'a> {
-    pub lib: &'a libvk::Instance,
-    pub dev: &'a dev::Device,
-    pub surface: &'a surface::Surface,
+pub struct SwapchainCfg {
     pub num_of_images: u32,
-    pub format: surface::ImageFormat,
+    pub format: memory::ImageFormat,
     pub color: surface::ColorSpace,
     pub present_mode: surface::PresentMode,
     pub flags: surface::UsageFlags,
@@ -67,20 +87,25 @@ pub struct SwapchainType<'a> {
 }
 
 pub struct Swapchain {
+    i_core: Arc<dev::Core>,
     i_loader: khr::Swapchain,
     i_swapchain: vk::SwapchainKHR,
-    i_format: vk::Format,
+    i_format: vk::Format
 }
 
 impl Swapchain {
-    pub fn new(swp_type: &SwapchainType) -> Result<Swapchain, SwapchainError> {
-        let loader = khr::Swapchain::new(swp_type.lib.instance(), swp_type.dev.device());
+    pub fn new(lib: &libvk::Instance,
+               dev: &dev::Device,
+               surface: &surface::Surface,
+               swp_type: &SwapchainCfg
+    ) -> Result<Swapchain, SwapchainError> {
+        let loader = khr::Swapchain::new(lib.instance(), dev.device());
 
         let create_info = vk::SwapchainCreateInfoKHR {
             s_type: vk::StructureType::SWAPCHAIN_CREATE_INFO_KHR,
             p_next: ptr::null(),
             flags: vk::SwapchainCreateFlagsKHR::empty(),
-            surface: swp_type.surface.surface(),
+            surface: surface.surface(),
             min_image_count: swp_type.num_of_images,
             image_format: swp_type.format,
             image_color_space: swp_type.color,
@@ -102,6 +127,7 @@ impl Swapchain {
 
         Ok(
             Swapchain {
+                i_core: dev.core().clone(),
                 i_loader: loader,
                 i_swapchain: swapchain,
                 i_format: swp_type.format,
@@ -133,6 +159,27 @@ impl Swapchain {
         );
 
         Ok(image_index)
+    }
+
+    pub fn images(&self) -> Result<Vec<memory::Image>, SwapchainError> {
+        let swapchain_images = on_error_ret!(
+            unsafe {
+                self.i_loader
+                    .get_swapchain_images(self.i_swapchain)
+            },
+            SwapchainError::Images
+        );
+
+        let mut result = Vec::<memory::Image>::new();
+
+        for img in swapchain_images {
+            match memory::Image::preallocated(&self.i_core, img, self.i_format) {
+                Ok(val) => result.push(val),
+                Err(_) => return Err(SwapchainError::Images),
+            }
+        }
+
+        Ok(result)
     }
 
     #[doc(hidden)]

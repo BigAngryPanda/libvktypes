@@ -8,8 +8,7 @@ use libvktypes::{
     layers,
     libvk,
     memory,
-    surface,
-    graphics,
+    graphics
 };
 
 #[test]
@@ -40,18 +39,19 @@ fn compute_memory_allocation() {
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-    let mem_type = memory::MemoryType {
-        device: &device,
+    let mem_type = memory::MemoryCfg {
         size: 4,
         properties: hw::MemoryProperty::HOST_VISIBLE,
         usage: memory::BufferUsageFlags::STORAGE_BUFFER |
                memory::BufferUsageFlags::TRANSFER_SRC   |
                memory::BufferUsageFlags::TRANSFER_DST,
-        sharing_mode: memory::SharingMode::EXCLUSIVE,
+        shared_access: false,
         queue_families: &[queue.index()],
     };
 
-    assert!(memory::Memory::allocate(&mem_type).is_ok());
+    let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
+
+    assert!(memory::Memory::allocate(&device, &selected_memory, &mem_type).is_ok());
 }
 
 #[test]
@@ -82,46 +82,37 @@ fn zero_allocation() {
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-    let mem_type = memory::MemoryType {
-        device: &device,
+    let mem_type = memory::MemoryCfg {
         size: 0,
         properties: hw::MemoryProperty::HOST_VISIBLE,
         usage: memory::BufferUsageFlags::STORAGE_BUFFER |
                memory::BufferUsageFlags::TRANSFER_SRC   |
                memory::BufferUsageFlags::TRANSFER_DST,
-        sharing_mode: memory::SharingMode::EXCLUSIVE,
+        shared_access: false,
         queue_families: &[queue.index()],
     };
 
-    assert!(memory::Memory::allocate(&mem_type).is_err());
+    let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
+
+    assert!(memory::Memory::allocate(&device, &selected_memory, &mem_type).is_err());
 }
 
 #[test]
-fn images_allocation() {
-    let dev = test_context::get_graphics_device();
-
+fn image_allocation() {
     let swp = test_context::get_swapchain();
 
-    let img_type = memory::ImageListType {
-        device: dev,
-        swapchain: swp,
-    };
-
-    assert!(memory::ImageList::from_swapchain(&img_type).is_ok());
+    assert!(swp.images().is_ok());
 }
 
 #[test]
 fn depth_buffer() {
     let queue = test_context::get_graphics_queue();
 
-    let dev = test_context::get_graphics_device();
-
     let caps = test_context::get_surface_capabilities();
 
-    let img_type = memory::ImageType {
-        device: dev,
+    let img_type = memory::ImageCfg {
         queue_families: &[queue.index()],
-        format: surface::ImageFormat::D32_SFLOAT,
+        format: memory::ImageFormat::D32_SFLOAT,
         extent: caps.extent3d(1),
         usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
         layout: graphics::ImageLayout::UNDEFINED,
@@ -129,7 +120,7 @@ fn depth_buffer() {
         properties: hw::MemoryProperty::DEVICE_LOCAL,
     };
 
-    assert!(memory::Image::new(&img_type).is_ok());
+    assert!(memory::Image::new(test_context::get_graphics_device(), &img_type).is_ok());
 }
 
 #[test]
@@ -138,16 +129,15 @@ fn init_framebuffer() {
 
     let rp = test_context::get_render_pass();
 
-    let imgs = test_context::get_image_list();
+    let img = test_context::get_image_list();
 
     let capabilities = test_context::get_surface_capabilities();
 
-    let framebuffer_cfg = memory::FramebufferListType {
-        device: dev,
+    let framebuffer_cfg = memory::FramebufferCfg {
         render_pass: rp,
-        images: imgs,
-        extent: capabilities.extent2d(),
+        images: &[&img[0]],
+        extent: capabilities.extent2d()
     };
 
-    assert!(memory::FramebufferList::new(&framebuffer_cfg).is_ok());
+    assert!(memory::Framebuffer::new(dev, &framebuffer_cfg).is_ok());
 }

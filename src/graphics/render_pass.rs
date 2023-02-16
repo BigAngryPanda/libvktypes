@@ -9,7 +9,7 @@ use ash::vk;
 
 use crate::{
     dev,
-    surface,
+    memory,
     data_ptr,
     on_error_ret
 };
@@ -77,7 +77,7 @@ pub const NO_ATTACHMENT: u32 =  vk::ATTACHMENT_UNUSED;
 /// Structure specifying an attachment description
 #[derive(Debug)]
 pub struct AttachmentInfo {
-    pub format: surface::ImageFormat,
+    pub format: memory::ImageFormat,
     pub load_op: AttachmentLoadOp,
     pub store_op: AttachmentStoreOp,
     pub stencil_load_op: AttachmentLoadOp,
@@ -89,7 +89,7 @@ pub struct AttachmentInfo {
 impl Default for AttachmentInfo {
     fn default() -> Self {
         AttachmentInfo {
-            format: surface::ImageFormat::UNDEFINED,
+            format: memory::ImageFormat::UNDEFINED,
             load_op: AttachmentLoadOp::DONT_CARE,
             store_op: AttachmentStoreOp::DONT_CARE,
             stencil_load_op: AttachmentLoadOp::DONT_CARE,
@@ -120,9 +120,9 @@ impl From<&AttachmentInfo> for vk::AttachmentDescription {
 /// Essentially SubpassSync acts like a memory barrier between two (previous and next) subpasses
 #[derive(Debug)]
 pub struct SubpassSync {
-    /// Index of previous subpass in [`RenderPassType::subpasses`] or [`SUBPASS_EXTERNAL`]
+    /// Index of previous subpass in [`RenderPassCfg::subpasses`] or [`SUBPASS_EXTERNAL`]
     pub src_subpass: u32,
-    /// Index of next subpass in [`RenderPassType::subpasses`] or [`SUBPASS_EXTERNAL`]
+    /// Index of next subpass in [`RenderPassCfg::subpasses`] or [`SUBPASS_EXTERNAL`]
     pub dst_subpass: u32,
     /// Pipeline stage during which a given attachment was used before
     pub src_stage: PipelineStage,
@@ -291,7 +291,7 @@ impl RenderPass {
     }
 
     /// Create [`RenderPass`] with single subpass and single attachment
-    pub fn single_subpass(device: &dev::Device, img_format: surface::ImageFormat)
+    pub fn single_subpass(device: &dev::Device, img_format: memory::ImageFormat)
         -> Result<RenderPass, RenderPassError>
     {
         let subpass_info = [

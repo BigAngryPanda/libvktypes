@@ -39,18 +39,19 @@ fn create_pipeline() {
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-    let mem_type = memory::MemoryType {
-        device: &device,
+    let mem_type = memory::MemoryCfg {
         size: 4,
         properties: hw::MemoryProperty::HOST_VISIBLE,
         usage: memory::BufferUsageFlags::STORAGE_BUFFER |
                memory::BufferUsageFlags::TRANSFER_SRC   |
                memory::BufferUsageFlags::TRANSFER_DST,
-        sharing_mode: memory::SharingMode::EXCLUSIVE,
+        shared_access: false,
         queue_families: &[queue.index()],
     };
 
-    let buff = memory::Memory::allocate(&mem_type).expect("Failed to allocate memory");
+    let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
+
+    let buff = memory::Memory::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
 
     let shader_type = shader::ShaderType {
         device: &device,

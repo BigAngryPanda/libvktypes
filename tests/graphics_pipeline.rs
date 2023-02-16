@@ -1,7 +1,7 @@
 #[path = "./mod.rs"]
 mod test_context;
 
-use libvktypes::{graphics, surface};
+use libvktypes::{graphics, memory};
 
 #[test]
 fn create_pipeline() {
@@ -10,7 +10,7 @@ fn create_pipeline() {
     let vertex_cfg = graphics::VertexInputCfg {
         location: 0,
         binding: 0,
-        format: surface::ImageFormat::R32G32B32A32_SFLOAT,
+        format: memory::ImageFormat::R32G32B32A32_SFLOAT,
         offset: 0,
     };
 
