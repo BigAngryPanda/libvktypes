@@ -3,6 +3,10 @@ use libvktypes::*;
 use std::ffi::CString;
 
 fn main() {
+    let event_loop = window::eventloop();
+
+    let wnd = window::create_window(&event_loop).expect("Failed to create window");
+
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
         extensions: &[extensions::DEBUG_EXT_NAME,
@@ -13,14 +17,7 @@ fn main() {
 
     let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
 
-    let wnd = window::Window::new().expect("Failed to create window");
-
-    let surface_cfg = surface::SurfaceType {
-        lib: &lib,
-        window: &wnd,
-    };
-
-    let surface = surface::Surface::new(&surface_cfg).expect("Failed to create surface");
+    let surface = surface::Surface::new(&lib, &wnd).expect("Failed to create surface");
 
     let hw_list = hw::Description::poll(&lib, Some(&surface)).expect("Failed to list hardware");
 
@@ -48,17 +45,17 @@ fn main() {
 
     let capabilities = surface::Capabilities::get(&cap_type).expect("Failed to get capabilities");
 
-    assert!(capabilities.is_mode_supported(surface::PresentMode::FIFO));
-    assert!(capabilities.is_flags_supported(surface::UsageFlags::COLOR_ATTACHMENT));
+    assert!(capabilities.is_mode_supported(swapchain::PresentMode::FIFO));
+    assert!(capabilities.is_flags_supported(memory::UsageFlags::COLOR_ATTACHMENT));
 
     let surf_format = capabilities.formats().next().expect("No available formats").format;
 
     let swp_type = swapchain::SwapchainCfg {
         num_of_images: capabilities.min_img_count(),
         format: surf_format,
-        color: surface::ColorSpace::SRGB_NONLINEAR,
-        present_mode: surface::PresentMode::FIFO,
-        flags: surface::UsageFlags::COLOR_ATTACHMENT,
+        color: memory::ColorSpace::SRGB_NONLINEAR,
+        present_mode: swapchain::PresentMode::FIFO,
+        flags: memory::UsageFlags::COLOR_ATTACHMENT,
         extent: capabilities.extent2d(),
         transform: capabilities.pre_transformation(),
         alpha: capabilities.first_alpha_composition().expect("No alpha composition")
@@ -188,6 +185,18 @@ fn main() {
 
     cmd_queue.present(&present_info).expect("Failed to present frame");
 
-    #[allow(clippy::empty_loop)]
-    loop { }
+    event_loop.run(move |event, _, control_flow| {
+        control_flow.set_poll();
+
+        match event {
+            winit::event::Event::WindowEvent {
+                event: winit::event::WindowEvent::CloseRequested,
+                ..
+            } => {
+                control_flow.set_exit();
+            },
+            _ => ()
+        }
+
+    });
 }

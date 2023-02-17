@@ -30,17 +30,17 @@ fn init_swapchain() {
     assert!(capabilities.is_img_count_supported(3));
     assert!(capabilities.is_format_supported(surface::SurfaceFormat {
         format: memory::ImageFormat::B8G8R8A8_UNORM,
-        color_space: surface::ColorSpace::SRGB_NONLINEAR,
+        color_space: memory::ColorSpace::SRGB_NONLINEAR,
     }));
-    assert!(capabilities.is_mode_supported(surface::PresentMode::FIFO));
-    assert!(capabilities.is_flags_supported(surface::UsageFlags::COLOR_ATTACHMENT));
+    assert!(capabilities.is_mode_supported(swapchain::PresentMode::FIFO));
+    assert!(capabilities.is_flags_supported(memory::UsageFlags::COLOR_ATTACHMENT));
 
     let swp_type = swapchain::SwapchainCfg {
         num_of_images: 3,
         format: memory::ImageFormat::B8G8R8A8_UNORM,
-        color: surface::ColorSpace::SRGB_NONLINEAR,
-        present_mode: surface::PresentMode::FIFO,
-        flags: surface::UsageFlags::COLOR_ATTACHMENT,
+        color: memory::ColorSpace::SRGB_NONLINEAR,
+        present_mode: swapchain::PresentMode::FIFO,
+        flags: memory::UsageFlags::COLOR_ATTACHMENT,
         extent: capabilities.extent2d(),
         transform: capabilities.pre_transformation(),
         alpha: capabilities.alpha_composition(),

@@ -3,7 +3,7 @@
 use ash::vk;
 
 use crate::on_error_ret;
-use crate::{dev, graphics, hw, surface};
+use crate::{dev, graphics, hw};
 
 use std::error::Error;
 use std::fmt;
@@ -30,6 +30,66 @@ pub type ImageAspect = vk::ImageAspectFlags;
 ///
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkFormat.html>"]
 pub type ImageFormat = vk::Format;
+
+/// Structure specifying a two-dimensional extent
+///
+/// Contains two field: `width` and `height`
+///
+#[doc = "Ash documentation: <https://docs.rs/ash/latest/ash/vk/struct.Extent2D.html>"]
+///
+#[doc = "Vulkan documentation: <https://docs.rs/ash/latest/ash/vk/struct.Extent2D.html>"]
+///
+/// # Example
+///
+/// ```
+/// use libvktypes::memory::Extent2D;
+///
+/// Extent2D {
+///     width: 1920,
+///     height: 1080,
+/// };
+/// ```
+pub type Extent2D = vk::Extent2D;
+
+/// Structure specifying a three-dimensional extent
+///
+#[doc = "Ash documentation: <https://docs.rs/ash/latest/ash/vk/struct.Extent3D.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkExtent3D.html>"]
+///
+/// # Example
+///
+/// ```
+/// use libvktypes::memory::Extent3D;
+///
+/// Extent3D {
+///     width: 1920,
+///     height: 1080,
+///     depth: 1,
+/// };
+/// ```
+pub type Extent3D = vk::Extent3D;
+
+/// Image usage flags
+///
+#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.ImageUsageFlags.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkImageUsageFlagBits.html>"]
+pub type UsageFlags = vk::ImageUsageFlags;
+
+/// Color spaces
+///
+#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.ColorSpaceKHR.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkColorSpaceKHR.html>"]
+pub type ColorSpace = vk::ColorSpaceKHR;
+
+/// Value indicating the alpha compositing mode to use when this surface is composited together with other surfaces on certain window systems
+///
+#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.CompositeAlphaFlagsKHR.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkCompositeAlphaFlagBitsKHR.html>"]
+pub type CompositeAlphaFlags = vk::CompositeAlphaFlagsKHR;
 
 /// Errors during [`Image`] initialization and access
 #[derive(Debug)]
@@ -66,7 +126,7 @@ impl Error for ImageError {}
 pub struct ImageCfg<'a> {
     pub queue_families: &'a [u32],
     pub format: ImageFormat,
-    pub extent: surface::Extent3D,
+    pub extent: Extent3D,
     pub usage: ImageUsageFlags,
     pub layout: graphics::ImageLayout,
     pub aspect: ImageAspect,

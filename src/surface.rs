@@ -5,40 +5,52 @@ use ash::extensions::khr;
 
 use winit::platform::unix::WindowExtUnix;
 
-use crate::{libvk, window, hw};
+use crate::{libvk, window, hw, memory, swapchain};
 use crate::{on_error_ret, on_option};
 
-use std::ptr;
+use std::error::Error;
+use std::{ptr, fmt};
 use std::os::raw::{
     c_void,
     c_ulong,
 };
 
-pub struct SurfaceType<'a> {
-    pub lib: &'a libvk::Instance,
-    pub window: &'a window::Window,
-}
-
 #[derive(Debug)]
 pub enum SurfaceError {
     XLibIsNotSupported,
-    Creation
+    Create
 }
 
+impl fmt::Display for SurfaceError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let err_msg = match self {
+            SurfaceError::XLibIsNotSupported => {
+                "Xlib display is not supported"
+            },
+            SurfaceError::Create => {
+                "Failed to create Xlib surface (vkCreateXlibSurfaceKHR call failed)"
+            }
+        };
+
+        write!(f, "{:?}", err_msg)
+    }
+}
+
+impl Error for SurfaceError {}
+
+/// Note: custom allocator is not supported
 pub struct Surface {
     i_loader: khr::Surface,
     i_surface: vk::SurfaceKHR,
 }
 
 impl Surface {
-    pub fn new(surface_type: &SurfaceType) -> Result<Surface, SurfaceError> {
-        let wnd = surface_type.window.window();
-        let entry = surface_type.lib.entry();
-        let instance = surface_type.lib.instance();
+    #[cfg(target_os = "linux")]
+    /// Only for Linux with X11
+    pub fn new(lib: &libvk::Instance, window: &window::Window,) -> Result<Surface, SurfaceError> {
+	    let x11_display: *mut c_void = on_option!(window.xlib_display(), return Err(SurfaceError::XLibIsNotSupported));
 
-	    let x11_display: *mut c_void = on_option!(wnd.xlib_display(), return Err(SurfaceError::XLibIsNotSupported));
-
-	    let x11_window: c_ulong = wnd.xlib_window().unwrap();
+	    let x11_window: c_ulong = window.xlib_window().unwrap();
 
 	    let x11_create_info:vk::XlibSurfaceCreateInfoKHR = vk::XlibSurfaceCreateInfoKHR {
 	        s_type: vk::StructureType::XLIB_SURFACE_CREATE_INFO_KHR,
@@ -48,20 +60,19 @@ impl Surface {
 	        dpy: x11_display as *mut vk::Display,
 	    };
 
-	    let xlib_surface_loader = khr::XlibSurface::new(entry, instance);
+	    let xlib_surface_loader = khr::XlibSurface::new(lib.entry(), lib.instance());
 
         let surface_khr: vk::SurfaceKHR = on_error_ret!(
-            unsafe { xlib_surface_loader.create_xlib_surface(&x11_create_info, None) }, SurfaceError::Creation
+            unsafe { xlib_surface_loader.create_xlib_surface(&x11_create_info, None) },
+            SurfaceError::Create
         );
 
-        let surface_loader = khr::Surface::new(entry, instance);
+        let surface_loader = khr::Surface::new(lib.entry(), lib.instance());
 
-        Ok(
-            Surface {
-                i_loader: surface_loader,
-                i_surface: surface_khr,
-            }
-        )
+        Ok(Surface {
+            i_loader: surface_loader,
+            i_surface: surface_khr,
+        })
     }
 
     #[doc(hidden)]
@@ -92,8 +103,8 @@ impl Drop for Surface {
 /// # Example
 ///
 /// ```
-/// use libvktypes::surface::{SurfaceFormat, ColorSpace};
-/// use libvktypes::memory::ImageFormat;
+/// use libvktypes::surface::SurfaceFormat;
+/// use libvktypes::memory::{ImageFormat, ColorSpace};
 ///
 /// SurfaceFormat {
 ///     format: ImageFormat::R8G8B8A8_UNORM,
@@ -101,66 +112,6 @@ impl Drop for Surface {
 /// };
 /// ```
 pub type SurfaceFormat = vk::SurfaceFormatKHR;
-
-/// Color spaces
-///
-#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.ColorSpaceKHR.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkColorSpaceKHR.html>"]
-pub type ColorSpace = vk::ColorSpaceKHR;
-
-/// Present modes
-///
-#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.PresentModeKHR.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPresentModeKHR.html>"]
-pub type PresentMode = vk::PresentModeKHR;
-
-/// Image usage flags
-///
-#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.ImageUsageFlags.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkImageUsageFlagBits.html>"]
-pub type UsageFlags = vk::ImageUsageFlags;
-
-/// Structure specifying a two-dimensional extent
-///
-/// Contains two field: `width` and `height`
-///
-#[doc = "Ash documentation: <https://docs.rs/ash/latest/ash/vk/struct.Extent2D.html>"]
-///
-#[doc = "Vulkan documentation: <https://docs.rs/ash/latest/ash/vk/struct.Extent2D.html>"]
-///
-/// # Example
-///
-/// ```
-/// use libvktypes::surface::Extent2D;
-///
-/// Extent2D {
-///     width: 1920,
-///     height: 1080,
-/// };
-/// ```
-pub type Extent2D = vk::Extent2D;
-
-/// Structure specifying a three-dimensional extent
-///
-#[doc = "Ash documentation: <https://docs.rs/ash/latest/ash/vk/struct.Extent3D.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkExtent3D.html>"]
-///
-/// # Example
-///
-/// ```
-/// use libvktypes::surface::Extent3D;
-///
-/// Extent3D {
-///     width: 1920,
-///     height: 1080,
-///     depth: 1,
-/// };
-/// ```
-pub type Extent3D = vk::Extent3D;
 
 /// Value describing the transform, relative to the presentation engine’s natural orientation
 ///
@@ -170,13 +121,6 @@ pub type Extent3D = vk::Extent3D;
 ///
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSurfaceTransformFlagBitsKHR.html>"]
 pub type PreTransformation = vk::SurfaceTransformFlagsKHR;
-
-/// Value indicating the alpha compositing mode to use when this surface is composited together with other surfaces on certain window systems
-///
-#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.CompositeAlphaFlagsKHR.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkCompositeAlphaFlagBitsKHR.html>"]
-pub type CompositeAlphaFlags = vk::CompositeAlphaFlagsKHR;
 
 #[derive(Debug)]
 pub enum CapabilitiesError {
@@ -265,28 +209,28 @@ impl Capabilities {
     }
 
     /// Return iterator over all available presentation modes
-    pub fn modes(&self) -> impl Iterator<Item = &PresentMode> {
+    pub fn modes(&self) -> impl Iterator<Item = &swapchain::PresentMode> {
         self.i_modes.iter()
     }
 
     /// Does surface support provided presentation mode
-    pub fn is_mode_supported(&self, mode: PresentMode) -> bool {
+    pub fn is_mode_supported(&self, mode: swapchain::PresentMode) -> bool {
         self.i_modes.contains(&mode)
     }
 
     /// Check if selected flags is supported
-    pub fn is_flags_supported(&self, flags: UsageFlags) -> bool {
+    pub fn is_flags_supported(&self, flags: memory::UsageFlags) -> bool {
         self.i_capabilities.supported_usage_flags.contains(flags)
     }
 
     /// Return 2d extent supported by surface
-    pub fn extent2d(&self) -> Extent2D {
+    pub fn extent2d(&self) -> memory::Extent2D {
         self.i_capabilities.current_extent
     }
 
     /// Return 3d extent from supported 2d extent and selected depth
-    pub fn extent3d(&self, ext_depth: u32) -> Extent3D {
-        Extent3D {
+    pub fn extent3d(&self, ext_depth: u32) -> memory::Extent3D {
+        memory::Extent3D {
             width: self.i_capabilities.current_extent.width,
             height: self.i_capabilities.current_extent.height,
             depth: ext_depth,
@@ -299,16 +243,16 @@ impl Capabilities {
     }
 
     /// Retrun current composite alpha flags
-    pub fn alpha_composition(&self) -> CompositeAlphaFlags {
+    pub fn alpha_composition(&self) -> memory::CompositeAlphaFlags {
         self.i_capabilities.supported_composite_alpha
     }
 
     /// Does surface support provided alpha composition flag(s)
-    pub fn is_alpha_supported(&self, alpha: CompositeAlphaFlags) -> bool {
+    pub fn is_alpha_supported(&self, alpha: memory::CompositeAlphaFlags) -> bool {
         self.i_capabilities.supported_composite_alpha.contains(alpha)
     }
 
-    pub fn first_alpha_composition(&self) -> Option<CompositeAlphaFlags> {
+    pub fn first_alpha_composition(&self) -> Option<memory::CompositeAlphaFlags> {
         for i in 0..4 {
             if self
                 .i_capabilities

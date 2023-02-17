@@ -4,7 +4,6 @@ use ash::vk;
 
 use crate::{
     dev,
-    surface,
     memory,
     data_ptr,
     on_error_ret,
@@ -105,7 +104,7 @@ pub struct PipelineType<'a> {
     pub vert_input: &'a [VertexInputCfg],
     pub frag_shader: &'a shader::Shader,
     pub topology: Topology,
-    pub extent: surface::Extent2D,
+    pub extent: memory::Extent2D,
     pub push_constant_size: u32,
     pub render_pass: &'a graphics::RenderPass,
     /// Subpass index inside [`RenderPass`](PipelineType::render_pass)

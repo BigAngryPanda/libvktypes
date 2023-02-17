@@ -19,12 +19,7 @@ fn init_surface() {
 
     let lib = libvk::Instance::new(&lib_type).expect("Failed to create instance");
 
-    let surface_cfg = surface::SurfaceType {
-        lib: &lib,
-        window: window_ref,
-    };
-
-    assert!(surface::Surface::new(&surface_cfg).is_ok());
+    assert!(surface::Surface::new(&lib, window_ref).is_ok());
 }
 
 #[cfg(target_os = "linux")]
@@ -43,12 +38,7 @@ fn get_capabilities() {
 
     let lib = libvk::Instance::new(&lib_type).expect("Failed to create instance");
 
-    let surface_cfg = surface::SurfaceType {
-        lib: &lib,
-        window: window_ref,
-    };
-
-    let surface = surface::Surface::new(&surface_cfg).expect("Failed to create surface");
+    let surface = surface::Surface::new(&lib, window_ref).expect("Failed to create surface");
 
     let hw_list = hw::Description::poll(&lib, Some(&surface)).expect("Failed to list hardware");
 

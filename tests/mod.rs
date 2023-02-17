@@ -82,7 +82,7 @@ static mut FRAMEBUFFER: MaybeUninit<Vec<memory::Framebuffer>> = MaybeUninit::<Ve
 pub fn get_window() -> &'static window::Window {
     unsafe {
         INIT_WINDOW.call_once(|| {
-            WINDOW.write(window::Window::new().expect("Failed to create window"));
+            WINDOW.write(window::create_window(&window::eventloop()).expect("Failed to create window"));
         });
 
         WINDOW.assume_init_ref()
@@ -113,12 +113,7 @@ pub fn get_graphics_instance() -> &'static libvk::Instance {
 pub fn get_surface() -> &'static surface::Surface {
     unsafe {
         INIT_SURFACE.call_once(|| {
-            let surface_cfg = surface::SurfaceType {
-                lib: get_graphics_instance(),
-                window: get_window(),
-            };
-
-            SURFACE.write(surface::Surface::new(&surface_cfg).expect("Failed to create surface"));
+            SURFACE.write(surface::Surface::new(get_graphics_instance(), get_window()).expect("Failed to create surface"));
         });
 
         SURFACE.assume_init_ref()
@@ -216,7 +211,7 @@ pub fn get_swapchain() -> &'static swapchain::Swapchain {
                 format: capabilities.formats().next().expect("No available formats").format,
                 color: capabilities.formats().next().expect("No available formats").color_space,
                 present_mode: *capabilities.modes().next().expect("No available modes"),
-                flags: surface::UsageFlags::COLOR_ATTACHMENT,
+                flags: memory::UsageFlags::COLOR_ATTACHMENT,
                 extent: capabilities.extent2d(),
                 transform: capabilities.pre_transformation(),
                 alpha: capabilities.alpha_composition(),

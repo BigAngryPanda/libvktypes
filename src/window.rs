@@ -1,45 +1,18 @@
-//! Wrapper around native window
-
-use crate::on_error_ret;
+//! Helper functions around `winit` library
 
 use winit::event_loop::EventLoopBuilder;
 use winit::platform::unix::EventLoopBuilderExtUnix;
+use winit::error::OsError;
 
 pub type EventLoop = winit::event_loop::EventLoop<()>;
+pub type Window = winit::window::Window;
 
-#[derive(Debug)]
-pub enum WindowError {
-    Initialization,
+#[cfg(target_os = "linux")]
+/// Only for Linux with X11
+pub fn eventloop() -> EventLoop {
+    EventLoopBuilder::new().with_x11().with_any_thread(true).build()
 }
 
-pub struct Window {
-    i_window: winit::window::Window,
-    i_evloop: EventLoop,
-}
-
-impl Window {
-    pub fn new() -> Result<Window, WindowError> {
-        let eventloop = EventLoopBuilder::new().with_x11().with_any_thread(true).build();
-
-        Ok(
-            Window {
-                i_window: on_error_ret!(
-                    winit::window::Window::new(&eventloop),
-                    WindowError::Initialization),
-                i_evloop: eventloop,
-            }
-        )
-    }
-
-    /// Consume window and return internal event loop
-    ///
-    #[doc = "See more <https://docs.rs/winit/latest/winit/window/struct.Window.html>"]
-    pub fn event_loop(self) -> EventLoop {
-        self.i_evloop
-    }
-
-    #[doc(hidden)]
-    pub fn window(&self) -> &winit::window::Window {
-        &self.i_window
-    }
+pub fn create_window(eventloop: &EventLoop) -> Result<Window, OsError> {
+    winit::window::Window::new(&eventloop)
 }

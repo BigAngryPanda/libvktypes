@@ -1,7 +1,7 @@
 use ash::vk;
 
 use crate::on_error_ret;
-use crate::{dev, graphics, surface, memory};
+use crate::{dev, graphics, memory};
 
 use std::error::Error;
 use std::sync::Arc;
@@ -23,7 +23,7 @@ impl Error for FramebufferError {}
 
 pub struct FramebufferCfg<'a, 'b> {
     pub images: &'a [&'b memory::Image],
-    pub extent: surface::Extent2D,
+    pub extent: memory::Extent2D,
     pub render_pass: &'a graphics::RenderPass
 }
 

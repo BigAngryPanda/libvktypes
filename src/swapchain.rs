@@ -40,6 +40,13 @@ impl fmt::Display for SwapchainError {
 
 impl Error for SwapchainError {}
 
+/// Present modes
+///
+#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.PresentModeKHR.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPresentModeKHR.html>"]
+pub type PresentMode = vk::PresentModeKHR;
+
 /// Swapchain configuration struct
 ///
 /// Note:
@@ -78,12 +85,12 @@ impl Error for SwapchainError {}
 pub struct SwapchainCfg {
     pub num_of_images: u32,
     pub format: memory::ImageFormat,
-    pub color: surface::ColorSpace,
-    pub present_mode: surface::PresentMode,
-    pub flags: surface::UsageFlags,
-    pub extent: surface::Extent2D,
+    pub color: memory::ColorSpace,
+    pub present_mode: PresentMode,
+    pub flags: memory::UsageFlags,
+    pub extent: memory::Extent2D,
     pub transform: surface::PreTransformation,
-    pub alpha: surface::CompositeAlphaFlags,
+    pub alpha: memory::CompositeAlphaFlags,
 }
 
 pub struct Swapchain {
