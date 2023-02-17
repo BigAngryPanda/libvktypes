@@ -97,7 +97,7 @@ impl From<&VertexInputCfg> for vk::VertexInputAttributeDescription {
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPrimitiveTopology.html>"]
 pub type Topology = vk::PrimitiveTopology;
 
-pub struct PipelineType<'a> {
+pub struct PipelineCfg<'a> {
     pub vertex_shader: &'a shader::Shader,
     /// Size of every vertex
     pub vertex_size: u32,
@@ -138,7 +138,7 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
-    pub fn new(device: &dev::Device, pipe_cfg: &PipelineType) -> Result<Pipeline, PipelineError> {
+    pub fn new(device: &dev::Device, pipe_cfg: &PipelineCfg) -> Result<Pipeline, PipelineError> {
         let shader_stage_create_infos = [
             vk::PipelineShaderStageCreateInfo {
                 s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,

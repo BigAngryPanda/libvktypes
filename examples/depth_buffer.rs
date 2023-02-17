@@ -174,7 +174,7 @@ fn main() {
     let render_pass = graphics::RenderPass::new(&device, &rp_cfg)
         .expect("Failed to create render pass");
 
-    let pipe_type = graphics::PipelineType {
+    let pipe_type = graphics::PipelineCfg {
         vertex_shader: &vert_shader,
         vertex_size: std::mem::size_of::<[f32; 4]>() as u32,
         vert_input: &[graphics::VertexInputCfg {

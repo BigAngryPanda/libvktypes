@@ -14,7 +14,7 @@ fn create_pipeline() {
         offset: 0,
     };
 
-    let pipe_type = graphics::PipelineType {
+    let pipe_type = graphics::PipelineCfg {
         vertex_shader: test_context::get_vert_shader(),
         vertex_size: std::mem::size_of::<[f32; 2]>() as u32,
         vert_input: &[vertex_cfg],
