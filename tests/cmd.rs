@@ -100,14 +100,13 @@ fn cmd_buffer_exec() {
 
     let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");
 
-    let pipe_type = compute::PipelineType {
-        device: &device,
+    let pipe_type = compute::PipelineCfg {
         buffers: &[&buff],
         shader: &shader,
         push_constant_size: 0,
     };
 
-    let pipeline = compute::Pipeline::new(&pipe_type).expect("Failed to create pipeline");
+    let pipeline = compute::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
     let cmd_pool_type = cmd::PoolCfg {
         queue_index: queue.index(),

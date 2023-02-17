@@ -6,13 +6,14 @@ use crate::dev;
 use crate::memory;
 use crate::shader;
 
-use crate::on_error_ret;
+use crate::{on_error, on_error_ret};
 
-use std::ptr;
+use std::sync::Arc;
+use std::{fmt, ptr};
+use std::error::Error;
 
 /// Note: only [memory](crate::memory::Memory) with memory::UsageFlags::STORAGE_BUFFER is allowed
-pub struct PipelineType<'a> {
-    pub device: &'a dev::Device,
+pub struct PipelineCfg<'a> {
     pub buffers: &'a [&'a memory::Memory],
     pub shader: &'a shader::Shader,
     pub push_constant_size : u32,
@@ -28,9 +29,38 @@ pub enum PipelineError {
     Pipeline
 }
 
+impl fmt::Display for PipelineError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let err_msg = match self {
+            PipelineError::DescriptorPool => {
+                "Failed to create descriptor pool (vkCreateDescriptorPool call failed)"
+            },
+            PipelineError::DescriptorSetLayout => {
+                "Failed to create descriptor set layout (vkCreateDescriptorSetLayout call failed)"
+            },
+            PipelineError::DescriptorSet => {
+                "Failed to allocate descriptor set (vkAllocateDescriptorSets call failed)"
+            },
+            PipelineError::PipelineLayout => {
+                "Failed to create pipeline layout (vkCreatePipelineLayout call failed)"
+            },
+            PipelineError::PipelineCache => {
+                "Failed to create pipeline cache (vkCreatePipelineCache call failed)"
+            },
+            PipelineError::Pipeline => {
+                "Failed to create pipeline (vkCreatePipeline call failed)"
+            }
+        };
+
+        write!(f, "{:?}", err_msg)
+    }
+}
+
+impl Error for PipelineError {}
+
 /// Represents compute pipeline
-pub struct Pipeline<'a> {
-    i_dev:             &'a dev::Device,
+pub struct Pipeline {
+    i_core:            Arc<dev::Core>,
     i_pipeline_layout: vk::PipelineLayout,
     i_desc_set_layout: vk::DescriptorSetLayout,
     i_desc_set:        vk::DescriptorSet,
@@ -41,8 +71,8 @@ pub struct Pipeline<'a> {
 
 // TODO provide dynamic buffer binding
 // TODO shader module must outlive pipeline?
-impl<'a> Pipeline<'a> {
-    pub fn new(pipe_type: &'a PipelineType) -> Result<Pipeline<'a>, PipelineError> {
+impl Pipeline {
+    pub fn new(device: &dev::Device, pipe_type: &PipelineCfg) -> Result<Pipeline, PipelineError> {
         let desc_size:[vk::DescriptorPoolSize; 1] =
         [
             vk::DescriptorPoolSize {
@@ -66,7 +96,7 @@ impl<'a> Pipeline<'a> {
         };
 
         let desc_pool = on_error_ret!(
-            unsafe { pipe_type.device.device().create_descriptor_pool(&desc_info, None) },
+            unsafe { device.device().create_descriptor_pool(&desc_info, device.allocator()) },
             PipelineError::DescriptorPool
         );
 
@@ -88,10 +118,13 @@ impl<'a> Pipeline<'a> {
             p_bindings: bindings.as_ptr(),
         };
 
-        let desc_set_layout = on_error_ret!(
-            unsafe { pipe_type.device.device().create_descriptor_set_layout(&desc_layout_info, None) },
-            PipelineError::DescriptorSetLayout
-        );
+        let desc_set_layout = unsafe { on_error!(
+            device.device().create_descriptor_set_layout(&desc_layout_info, device.allocator()),
+            {
+                device.device().destroy_descriptor_pool(desc_pool, device.allocator());
+                return Err(PipelineError::DescriptorSetLayout);
+            }
+        )};
 
         let push_const_range = vk::PushConstantRange {
             stage_flags: vk::ShaderStageFlags::COMPUTE,
@@ -109,10 +142,14 @@ impl<'a> Pipeline<'a> {
             p_push_constant_ranges: if pipe_type.push_constant_size != 0 { &push_const_range } else { ptr::null() }
         };
 
-        let pipeline_layout = on_error_ret!(
-            unsafe { pipe_type.device.device().create_pipeline_layout(&pipeline_layout_info, None) },
-            PipelineError::PipelineLayout
-        );
+        let pipeline_layout = unsafe { on_error!(
+            device.device().create_pipeline_layout(&pipeline_layout_info, device.allocator()),
+            {
+                device.device().destroy_descriptor_set_layout(desc_set_layout, device.allocator());
+                device.device().destroy_descriptor_pool(desc_pool, device.allocator());
+                return Err(PipelineError::PipelineLayout);
+            }
+        )};
 
         let alloc_info = vk::DescriptorSetAllocateInfo {
             s_type: vk::StructureType::DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -122,10 +159,15 @@ impl<'a> Pipeline<'a> {
             p_set_layouts: &desc_set_layout
         };
 
-        let desc_set = on_error_ret!(
-            unsafe { pipe_type.device.device().allocate_descriptor_sets(&alloc_info) },
-            PipelineError::DescriptorSet
-        );
+        let desc_set = unsafe { on_error!(
+            device.device().allocate_descriptor_sets(&alloc_info),
+            {
+                device.device().destroy_pipeline_layout(pipeline_layout, device.allocator());
+                device.device().destroy_descriptor_set_layout(desc_set_layout, device.allocator());
+                device.device().destroy_descriptor_pool(desc_pool, device.allocator());
+                return Err(PipelineError::DescriptorSet);
+            }
+        )};
 
         let mut offset_counter = 0u64;
         let mut buffer_descs: Vec<vk::DescriptorBufferInfo> = Vec::new();
@@ -161,7 +203,7 @@ impl<'a> Pipeline<'a> {
             }
         ).collect();
 
-        unsafe { pipe_type.device.device().update_descriptor_sets(&write_desc, &[]) };
+        unsafe { device.device().update_descriptor_sets(&write_desc, &[]) };
 
         let pipeline_cache_info = vk::PipelineCacheCreateInfo {
             s_type: vk::StructureType::PIPELINE_CACHE_CREATE_INFO,
@@ -171,10 +213,15 @@ impl<'a> Pipeline<'a> {
             p_initial_data: ptr::null()
         };
 
-        let pipeline_cache = on_error_ret!(
-            unsafe { pipe_type.device.device().create_pipeline_cache(&pipeline_cache_info, None) },
-            PipelineError::PipelineCache
-        );
+        let pipeline_cache = unsafe { on_error!(
+            device.device().create_pipeline_cache(&pipeline_cache_info, device.allocator()),
+            {
+                device.device().destroy_pipeline_layout(pipeline_layout, device.allocator());
+                device.device().destroy_descriptor_set_layout(desc_set_layout, device.allocator());
+                device.device().destroy_descriptor_pool(desc_pool, device.allocator());
+                return Err(PipelineError::PipelineCache);
+            }
+        )};
 
         let pipeline_shader = vk::PipelineShaderStageCreateInfo {
             s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -196,14 +243,20 @@ impl<'a> Pipeline<'a> {
             base_pipeline_index: 0
         };
 
-        let pipelines = on_error_ret!(
-            unsafe { pipe_type.device.device().create_compute_pipelines(pipeline_cache, &[pipeline_info], None) },
-            PipelineError::Pipeline
-        );
+        let pipelines = unsafe { on_error!(
+            device.device().create_compute_pipelines(pipeline_cache, &[pipeline_info], device.allocator()),
+            {
+                device.device().destroy_pipeline_cache(pipeline_cache, device.allocator());
+                device.device().destroy_pipeline_layout(pipeline_layout, device.allocator());
+                device.device().destroy_descriptor_set_layout(desc_set_layout, device.allocator());
+                device.device().destroy_descriptor_pool(desc_pool, device.allocator());
+                return Err(PipelineError::Pipeline);
+            }
+        )};
 
         Ok(
             Pipeline {
-                i_dev: pipe_type.device,
+                i_core: device.core().clone(),
                 i_pipeline_layout: pipeline_layout,
                 i_desc_set_layout: desc_set_layout,
                 i_desc_set: desc_set[0],
@@ -230,16 +283,17 @@ impl<'a> Pipeline<'a> {
     }
 }
 
-impl<'a> Drop for Pipeline<'a> {
+impl Drop for Pipeline {
     fn drop(&mut self) {
-        let device = self.i_dev.device();
+        let device = self.i_core.device();
+        let alloc = self.i_core.allocator();
 
         unsafe {
-            device.destroy_pipeline_layout(self.i_pipeline_layout, None);
-            device.destroy_descriptor_set_layout(self.i_desc_set_layout, None);
-            device.destroy_descriptor_pool(self.i_desc_pool, None);
-            device.destroy_pipeline(self.i_pipeline, None);
-            device.destroy_pipeline_cache(self.i_pipeline_cache, None);
+            device.destroy_pipeline(self.i_pipeline, alloc);
+            device.destroy_pipeline_cache(self.i_pipeline_cache, alloc);
+            device.destroy_pipeline_layout(self.i_pipeline_layout, alloc);
+            device.destroy_descriptor_set_layout(self.i_desc_set_layout, alloc);
+            device.destroy_descriptor_pool(self.i_desc_pool, alloc);
         }
     }
 }

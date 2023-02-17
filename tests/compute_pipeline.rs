@@ -60,12 +60,11 @@ fn create_pipeline() {
 
     let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");
 
-    let pipe_type = compute::PipelineType {
-        device: &device,
+    let pipe_type = compute::PipelineCfg {
         buffers: &[&buff],
         shader: &shader,
         push_constant_size: 0,
     };
 
-    assert!(compute::Pipeline::new(&pipe_type).is_ok());
+    assert!(compute::Pipeline::new(&device, &pipe_type).is_ok());
 }
