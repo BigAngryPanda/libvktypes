@@ -1,10 +1,4 @@
-//! Functional objects definitions such as Instance and Device
-//!
-//! Instead of types `resources` are more sophisticated and carry some internal logic (instead of types which is pure description)
-//!
-//! Here `resource` and `object` is used interchangeably
-//!
-//! Usually each object created via providing corresponded object type
+//! Library aims to make interaction with GPU via Vulkan API less verbose and safer
 
 pub mod macros;
 pub mod alloc;
