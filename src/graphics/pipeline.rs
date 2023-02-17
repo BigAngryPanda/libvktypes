@@ -5,6 +5,7 @@ use ash::vk;
 use crate::{
     dev,
     memory,
+    on_error,
     data_ptr,
     on_error_ret,
     shader,
@@ -284,7 +285,7 @@ impl Pipeline {
         /*
             A pipeline layout describes all the resources that can be accessed by the pipeline
         */
-        let layout_create_info:vk::PipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo {
+        let layout_create_info = vk::PipelineLayoutCreateInfo {
             s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
             p_next: ptr::null(),
             flags: vk::PipelineLayoutCreateFlags::empty(),
@@ -322,7 +323,7 @@ impl Pipeline {
             max_depth_bounds: f32::default(),
         };
 
-        let pipeline_create_info:vk::GraphicsPipelineCreateInfo = vk::GraphicsPipelineCreateInfo {
+        let pipeline_create_info = vk::GraphicsPipelineCreateInfo {
             s_type: vk::StructureType::GRAPHICS_PIPELINE_CREATE_INFO,
             p_next: ptr::null(),
             flags: vk::PipelineCreateFlags::empty(),
@@ -348,18 +349,19 @@ impl Pipeline {
             base_pipeline_index: -1,
         };
 
-        let pipeline = on_error_ret!(
-            unsafe {
-                device
-                .device()
-                .create_graphics_pipelines(
-                    vk::PipelineCache::null(),
-                    &[pipeline_create_info],
-                    device.allocator()
-                )
-            },
-            PipelineError::Pipeline
-        );
+        let pipeline = unsafe { on_error!(
+            device
+            .device()
+            .create_graphics_pipelines(
+                vk::PipelineCache::null(),
+                &[pipeline_create_info],
+                device.allocator()
+            ),
+            {
+                device.device().destroy_pipeline_layout(pipeline_layout, device.allocator());
+                return Err(PipelineError::Pipeline);
+            }
+        )};
 
 
         Ok(
