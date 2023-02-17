@@ -47,7 +47,7 @@ pub struct Surface {
 impl Surface {
     #[cfg(target_os = "linux")]
     /// Only for Linux with X11
-    pub fn new(lib: &libvk::Instance, window: &window::Window,) -> Result<Surface, SurfaceError> {
+    pub fn new(lib: &libvk::Instance, window: &window::Window) -> Result<Surface, SurfaceError> {
 	    let x11_display: *mut c_void = on_option!(window.xlib_display(), return Err(SurfaceError::XLibIsNotSupported));
 
 	    let x11_window: c_ulong = window.xlib_window().unwrap();
@@ -125,14 +125,29 @@ pub type PreTransformation = vk::SurfaceTransformFlagsKHR;
 #[derive(Debug)]
 pub enum CapabilitiesError {
     Modes,
-    Capabilities,
+    Surface,
     Formats
 }
 
-pub struct CapabilitiesType<'a> {
-    pub hw: &'a hw::HWDevice,
-    pub surface: &'a Surface
+impl fmt::Display for CapabilitiesError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let err_msg = match self {
+            CapabilitiesError::Modes => {
+                "Failed to get present modes (vkGetPhysicalDeviceSurfacePresentModesKHR call failed)"
+            },
+            CapabilitiesError::Surface => {
+                "Failed to get surface capabilities (vkGetPhysicalDeviceSurfaceCapabilitiesKHR call failed)"
+            },
+            CapabilitiesError::Formats => {
+                "Failed to get surface formats (vkGetPhysicalDeviceSurfaceFormatsKHR call failed)"
+            }
+        };
+
+        write!(f, "{:?}", err_msg)
+    }
 }
+
+impl Error for CapabilitiesError {}
 
 pub struct Capabilities {
     i_modes: Vec<vk::PresentModeKHR>,
@@ -142,10 +157,7 @@ pub struct Capabilities {
 
 impl Capabilities {
     /// Query for surface capabilities for the selected hw device
-    pub fn get(cap_type: &CapabilitiesType) -> Result<Capabilities, CapabilitiesError> {
-        let hw = cap_type.hw;
-        let surface = cap_type.surface;
-
+    pub fn get(hw: &hw::HWDevice, surface: &Surface) -> Result<Capabilities, CapabilitiesError> {
         let mods = on_error_ret!(
             unsafe {
                 surface.loader().get_physical_device_surface_present_modes(hw.device(), surface.surface())
@@ -157,7 +169,7 @@ impl Capabilities {
             unsafe {
                 surface.loader().get_physical_device_surface_capabilities(hw.device(), surface.surface())
             },
-            CapabilitiesError::Capabilities
+            CapabilitiesError::Surface
         );
 
         let formats = on_error_ret!(

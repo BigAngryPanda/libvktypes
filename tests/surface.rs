@@ -50,10 +50,5 @@ fn get_capabilities() {
         )
         .expect("Failed to find suitable hardware device");
 
-    let cap_type = surface::CapabilitiesType {
-        hw: hw_dev,
-        surface: &surface
-    };
-
-    assert!(surface::Capabilities::get(&cap_type).is_ok());
+    assert!(surface::Capabilities::get(&hw_dev, &surface).is_ok());
 }

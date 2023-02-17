@@ -38,12 +38,7 @@ fn main() {
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-    let cap_type = surface::CapabilitiesType {
-        hw: hw_dev,
-        surface: &surface
-    };
-
-    let capabilities = surface::Capabilities::get(&cap_type).expect("Failed to get capabilities");
+    let capabilities = surface::Capabilities::get(&hw_dev, &surface).expect("Failed to get capabilities");
 
     //assert!(capabilities.is_img_count_supported(2));
     assert!(capabilities.is_format_supported(surface::SurfaceFormat {

@@ -166,12 +166,7 @@ pub fn get_present_queue() -> &'static hw::QueueFamilyDescription {
 pub fn get_surface_capabilities() -> &'static surface::Capabilities {
     unsafe {
         INIT_SURFACE_CAP.call_once(|| {
-            let cap_type = surface::CapabilitiesType {
-                hw: get_graphics_hw(),
-                surface: get_surface(),
-            };
-
-            SURFACE_CAP.write(surface::Capabilities::get(&cap_type).expect("Failed to query capabilities"));
+            SURFACE_CAP.write(surface::Capabilities::get(get_graphics_hw(), get_surface()).expect("Failed to query capabilities"));
         });
 
         SURFACE_CAP.assume_init_ref()
