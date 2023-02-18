@@ -94,7 +94,7 @@ impl Drop for Surface {
 
 /// Surface formats
 ///
-/// Contains two field: [`format`](crate::memory::ImageFormat) and [`color_space`](self::ColorSpace)
+/// Contains two field: [`format`](crate::memory::ImageFormat) and [`color_space`](crate::memory::ColorSpace)
 ///
 #[doc = "Ash documentation: <https://docs.rs/ash/latest/ash/vk/struct.SurfaceFormatKHR.html>"]
 ///

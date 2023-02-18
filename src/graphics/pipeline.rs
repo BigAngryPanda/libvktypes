@@ -108,7 +108,7 @@ pub struct PipelineCfg<'a> {
     pub extent: memory::Extent2D,
     pub push_constant_size: u32,
     pub render_pass: &'a graphics::RenderPass,
-    /// Subpass index inside [`RenderPass`](PipelineType::render_pass)
+    /// Subpass index inside [`RenderPass`](PipelineCfg::render_pass)
     pub subpass_index: u32,
     pub enable_depth: bool,
 }
