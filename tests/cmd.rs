@@ -14,8 +14,6 @@ use libvktypes::{
     queue
 };
 
-use std::ffi::CString;
-
 #[test]
 fn cmd_pool_allocation() {
     let lib_type = libvk::InstanceType {
@@ -95,7 +93,7 @@ fn cmd_buffer_exec() {
 
     let shader_type = shader::ShaderCfg {
         path: "tests/compiled_shaders/fill_memory.spv",
-        entry: CString::new("main").expect("Failed to allocate string"),
+        entry: "main",
     };
 
     let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");

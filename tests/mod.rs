@@ -226,7 +226,7 @@ pub fn get_vert_shader() -> &'static shader::Shader {
 
             let shader_type = shader::ShaderCfg {
                 path: "tests/compiled_shaders/single_dot.spv",
-                entry: std::ffi::CString::new("main").expect("Failed to allocate string"),
+                entry: "main",
             };
 
             VERT_SHADER.write(shader::Shader::from_file(dev, &shader_type).expect("Failed to create shader module"));
@@ -243,7 +243,7 @@ pub fn get_frag_shader() -> &'static shader::Shader {
 
             let shader_type = shader::ShaderCfg {
                 path: "tests/compiled_shaders/single_color.spv",
-                entry: std::ffi::CString::new("main").expect("Failed to allocate string"),
+                entry: "main",
             };
 
             FRAG_SHADER.write(shader::Shader::from_file(dev, &shader_type).expect("Failed to create shader module"));

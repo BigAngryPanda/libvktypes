@@ -7,8 +7,6 @@ use libvktypes::{
     shader,
 };
 
-use std::ffi::CString;
-
 #[test]
 fn load_shader() {
     let lib_type = libvk::InstanceType {
@@ -39,7 +37,7 @@ fn load_shader() {
 
     let shader_type = shader::ShaderCfg {
         path: "tests/compiled_shaders/fill_memory.spv",
-        entry: CString::new("main").expect("Failed to allocate string"),
+        entry: "main",
     };
 
     assert!(shader::Shader::from_file(&device, &shader_type).is_ok());

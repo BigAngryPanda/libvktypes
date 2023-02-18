@@ -13,9 +13,13 @@ use std::fs::File;
 use std::path::Path;
 use std::ffi::CString;
 
+use shaderc;
+
+pub type ShaderType = shaderc::ShaderKind;
+
 pub struct ShaderCfg<'a> {
     pub path: &'a str,
-    pub entry: CString,
+    pub entry: &'a str,
 }
 
 #[derive(Debug)]
@@ -23,6 +27,7 @@ pub enum ShaderError {
 	InvalidFile,
 	BytecodeRead,
 	ShaderCreation,
+    NullTerminate
 }
 
 impl fmt::Display for ShaderError {
@@ -36,6 +41,9 @@ impl fmt::Display for ShaderError {
             },
             ShaderError::ShaderCreation => {
                 "Failed to create shader (vkCreateShaderModule call failed)"
+            },
+            ShaderError::NullTerminate => {
+                "Failed to null terminate shader entry name"
             }
         };
 
@@ -69,13 +77,13 @@ impl Shader {
             ShaderError::ShaderCreation
         );
 
-        Ok(
-            Shader {
-                i_core: device.core().clone(),
-                i_module: shader_module,
-                i_entry: shader_type.entry.clone()
-            }
-        )
+        let entry = on_error_ret!(CString::new(shader_type.entry), ShaderError::NullTerminate);
+
+        Ok(Shader {
+            i_core: device.core().clone(),
+            i_module: shader_module,
+            i_entry: entry
+        })
     }
 
     pub fn from_file(device: &dev::Device, shader_type: &ShaderCfg) -> Result<Shader, ShaderError> {

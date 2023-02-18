@@ -9,8 +9,6 @@ use libvktypes::{
     compute,
 };
 
-use std::ffi::CString;
-
 #[test]
 fn create_pipeline() {
     let lib_type = libvk::InstanceType {
@@ -55,7 +53,7 @@ fn create_pipeline() {
 
     let shader_type = shader::ShaderCfg {
         path: "tests/compiled_shaders/fill_memory.spv",
-        entry: CString::new("main").expect("Failed to allocate string"),
+        entry: "main",
     };
 
     let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");

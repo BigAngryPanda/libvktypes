@@ -1,7 +1,5 @@
 use libvktypes::*;
 
-use std::ffi::CString;
-
 fn main() {
     let event_loop = window::eventloop();
 
@@ -60,14 +58,14 @@ fn main() {
 
     let vert_shader_type = shader::ShaderCfg {
         path: "examples/compiled_shaders/vertex_input.spv",
-        entry: CString::new("main").expect("Failed to allocate string"),
+        entry: "main",
     };
 
     let vert_shader = shader::Shader::from_file(&device, &vert_shader_type).expect("Failed to create vertex shader module");
 
     let frag_shader_type = shader::ShaderCfg {
         path: "examples/compiled_shaders/color_from_vertex.spv",
-        entry: CString::new("main").expect("Failed to allocate string"),
+        entry: "main",
     };
 
     let frag_shader = shader::Shader::from_file(&device, &frag_shader_type).expect("Failed to create fragment shader module");
