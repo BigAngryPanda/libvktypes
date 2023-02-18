@@ -147,7 +147,7 @@ impl Pipeline {
                 flags: vk::PipelineShaderStageCreateFlags::empty(),
                 stage: vk::ShaderStageFlags::VERTEX,
                 module: pipe_cfg.vertex_shader.module(),
-                p_name: pipe_cfg.frag_shader.entry().as_ptr(),
+                p_name: pipe_cfg.vertex_shader.entry().as_ptr(),
                 p_specialization_info: ptr::null(),
             },
             vk::PipelineShaderStageCreateInfo {
