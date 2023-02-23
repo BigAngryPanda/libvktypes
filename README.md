@@ -49,6 +49,10 @@ See more:
 - [winit](https://github.com/rust-windowing/winit)
 - [shaderc](https://github.com/google/shaderc-rs)
 
+## Platforms
+
+- GNU/Linux (X11)
+
 ## Contributing
 
 Feel free to fork/create pull request/discussion and so on
