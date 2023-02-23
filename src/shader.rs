@@ -4,18 +4,35 @@ use ash::vk;
 use ash::util::read_spv;
 
 use crate::dev;
-use crate::on_error_ret;
+use crate::{on_error_ret, on_option_ret};
 
 use std::{ptr, mem, fmt};
 use std::error::Error;
 use std::sync::Arc;
-use std::fs::File;
+use std::fs;
 use std::path::Path;
 use std::ffi::CString;
 
 use shaderc;
 
-pub type ShaderType = shaderc::ShaderKind;
+/// See
+/// [documentation](https://docs.rs/shaderc/latest/shaderc/enum.ShaderKind.html)
+/// about possible values
+/// Example
+/// ```
+/// use libvktypes::shader;
+///
+/// // Example for vertex shader
+/// let vertex_shader_type = shader::Kind::Vertex;
+///
+/// // And so on
+/// let fragment_shader_type = shader::Kind::Fragment;
+///
+/// let compute_shader_type = shader::Kind::Compute;
+///
+/// let geometry_shader_type = shader::Kind::Geometry;
+/// ```
+pub type Kind = shaderc::ShaderKind;
 
 pub struct ShaderCfg<'a> {
     pub path: &'a str,
@@ -27,6 +44,8 @@ pub enum ShaderError {
 	InvalidFile,
 	BytecodeRead,
 	ShaderCreation,
+    Shaderc,
+    Compiling,
     NullTerminate
 }
 
@@ -41,6 +60,12 @@ impl fmt::Display for ShaderError {
             },
             ShaderError::ShaderCreation => {
                 "Failed to create shader (vkCreateShaderModule call failed)"
+            },
+            ShaderError::Shaderc => {
+                "Failed to create compiler (internal shaderc library error)"
+            },
+            ShaderError::Compiling => {
+                "Failed to compile shader source code"
             },
             ShaderError::NullTerminate => {
                 "Failed to null terminate shader entry name"
@@ -63,6 +88,7 @@ pub struct Shader {
 }
 
 impl Shader {
+    /// Build shader module from provided SPIR-V bytecode
     pub fn from_bytecode(device: &dev::Device, shader_type: &ShaderCfg, bytecode: &[u32]) -> Result<Shader, ShaderError> {
         let shader_info = vk::ShaderModuleCreateInfo {
             s_type: vk::StructureType::SHADER_MODULE_CREATE_INFO,
@@ -86,9 +112,12 @@ impl Shader {
         })
     }
 
+    /// Build shader module from SPIR-V bytecode file
+    ///
+    /// Note: compare this method with [`from_src_file`](Self::from_src_file)
     pub fn from_file(device: &dev::Device, shader_type: &ShaderCfg) -> Result<Shader, ShaderError> {
-        let mut spv_file: File = on_error_ret!(
-            File::open(Path::new(shader_type.path)),
+        let mut spv_file: fs::File = on_error_ret!(
+            fs::File::open(Path::new(shader_type.path)),
             ShaderError::InvalidFile
         );
 
@@ -98,6 +127,31 @@ impl Shader {
         );
 
         Shader::from_bytecode(device, shader_type, &spv_bytecode)
+    }
+
+    /// Build shader module from `glsl` source code directly
+    pub fn from_glsl(device: &dev::Device, cfg: &ShaderCfg, src: &str, kind: Kind) -> Result<Shader, ShaderError> {
+        let compiler = on_option_ret!(shaderc::Compiler::new(), ShaderError::Shaderc);
+
+        let binary_result = on_error_ret!(
+            compiler.compile_into_spirv(src, kind, cfg.path, cfg.entry, None),
+            ShaderError::Compiling
+        );
+
+        if binary_result.is_empty() {
+            return Err(ShaderError::Compiling);
+        }
+
+        Self::from_bytecode(device, cfg, binary_result.as_binary())
+    }
+
+    /// Build shader module from file with `glsl` source code directly
+    ///
+    /// Note: compare this method with [`from_file`](Self::from_file)
+    pub fn from_glsl_file(device: &dev::Device, cfg: &ShaderCfg, kind: Kind) -> Result<Shader, ShaderError> {
+        let src = on_error_ret!(fs::read_to_string(cfg.path), ShaderError::InvalidFile);
+
+        Self::from_glsl(device, cfg, &src, kind)
     }
 
     /// Return reference to name of entry function (point) in shader

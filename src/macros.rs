@@ -1,3 +1,4 @@
+/// Unwrap `Option` value. Return value or performs action on `None`
 #[macro_export]
 macro_rules! on_option {
     ( $e:expr, $err_exp:expr ) => {
@@ -8,7 +9,15 @@ macro_rules! on_option {
     }
 }
 
-/// Unwrap value. Return ```Ok(x)``` or performs action on error
+/// Unwrap `Option` value. Return value or return error on `None`
+#[macro_export]
+macro_rules! on_option_ret {
+    ( $e:expr, $err_exp:expr ) => {
+        $crate::on_option!($e, return Err($err_exp))
+    }
+}
+
+/// Unwrap `Result` value. Return `x` or performs action on error
 ///
 /// Example
 /// ```
