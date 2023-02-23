@@ -38,9 +38,20 @@ cargo doc --no-deps
 
 ```--no-deps``` is optional (ignore it if you want generate docs for underlying crates)
 
+## Dependencies
+
+While direct dependencies desctibed in [Cargo.toml](Cargo.toml)
+they have their own dependencies as well
+
+See more:
+
+- [ash](https://github.com/ash-rs/ash)
+- [winit](https://github.com/rust-windowing/winit)
+- [shaderc](https://github.com/google/shaderc-rs)
+
 ## Contributing
 
-Feel free to fork/ create pull request/ discussion and so on
+Feel free to fork/create pull request/discussion and so on
 
 All help are appreciated
 
