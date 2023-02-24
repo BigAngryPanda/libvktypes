@@ -114,7 +114,7 @@ impl Shader {
 
     /// Build shader module from SPIR-V bytecode file
     ///
-    /// Note: compare this method with [`from_src_file`](Self::from_src_file)
+    /// Note: compare this method with [`from_glsl_file`](Self::from_glsl_file)
     pub fn from_file(device: &dev::Device, shader_type: &ShaderCfg) -> Result<Shader, ShaderError> {
         let mut spv_file: fs::File = on_error_ret!(
             fs::File::open(Path::new(shader_type.path)),
