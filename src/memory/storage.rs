@@ -18,8 +18,8 @@ use std::ptr;
 #[doc = "Vulkan documentation: <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkBufferUsageFlagBits.html>"]
 pub type BufferUsageFlags = vk::BufferUsageFlags;
 
-/// Configuration of [`Memory`](Memory) struct
-pub struct MemoryCfg<'a> {
+/// Configuration of [`Storage`](Storage) struct
+pub struct StorageCfg<'a> {
     pub size: u64,
     pub properties: hw::MemoryProperty,
     pub usage: BufferUsageFlags,
@@ -27,7 +27,7 @@ pub struct MemoryCfg<'a> {
     pub queue_families: &'a [u32]
 }
 
-/// Errors during [`Memory`](Memory) initialization and access
+/// Errors during [`Storage`](Storage) initialization and access
 #[derive(Debug)]
 pub enum MemoryError {
     /// Failed to [create](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateBuffer.html) buffer
@@ -71,8 +71,8 @@ impl fmt::Display for MemoryError {
 
 impl Error for MemoryError {}
 
-/// Aligned region in memory with [specified](MemoryCfg) properties
-pub struct Memory {
+/// Aligned region in memory with [specified](StorageCfg) properties
+pub struct Storage {
     i_core: Arc<dev::Core>,
     i_device_memory: vk::DeviceMemory,
     i_buffer: vk::Buffer,
@@ -80,7 +80,7 @@ pub struct Memory {
     i_flags: hw::MemoryProperty,
 }
 
-impl Memory {
+impl Storage {
     /// Allocate new region of memory
     ///
     /// Note: if memory is HOST_VISIBLE and is not HOST_COHERENT performs
@@ -88,7 +88,7 @@ impl Memory {
     /// and
     /// [flush](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkFlushMappedMemoryRanges.html)
     /// which may result in [errors](MemoryError::MapAccess)
-    pub fn allocate(device: &dev::Device, memory: &hw::MemoryDescription, mem_cfg: &MemoryCfg) -> Result<Memory, MemoryError> {
+    pub fn allocate(device: &dev::Device, memory: &hw::MemoryDescription, mem_cfg: &StorageCfg) -> Result<Storage, MemoryError> {
         let buffer_info = vk::BufferCreateInfo {
             s_type: vk::StructureType::BUFFER_CREATE_INFO,
             p_next: ptr::null(),
@@ -183,7 +183,7 @@ impl Memory {
             MemoryError::Bind
         );
 
-        Ok(Memory {
+        Ok(Storage {
             i_core: device.core().clone(),
             i_device_memory: dev_memory,
             i_buffer: buffer,
@@ -248,7 +248,7 @@ impl Memory {
     /// If memory is not coherent performs
     /// [vkInvalidateMappedMemoryRanges](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkInvalidateMappedMemoryRanges.html)
     ///
-    /// I.e. makes device memory changes available to host (compare with [Memory::write()] method)
+    /// I.e. makes device memory changes available to host (compare with [Storage::write()] method)
     ///
     /// Note: on failure return same error [MemoryError::Flush]
     pub fn read(&self) -> Result<&[u8], MemoryError> {
@@ -305,7 +305,7 @@ impl Memory {
     }
 }
 
-impl Drop for Memory {
+impl Drop for Storage {
     fn drop(&mut self) {
         unsafe {
             self.i_core.device().destroy_buffer(self.i_buffer, self.i_core.allocator());

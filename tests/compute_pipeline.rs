@@ -37,7 +37,7 @@ fn create_pipeline() {
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-    let mem_type = memory::MemoryCfg {
+    let mem_type = memory::StorageCfg {
         size: 4,
         properties: hw::MemoryProperty::HOST_VISIBLE,
         usage: memory::BufferUsageFlags::STORAGE_BUFFER |
@@ -49,7 +49,7 @@ fn create_pipeline() {
 
     let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
 
-    let buff = memory::Memory::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
+    let buff = memory::Storage::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
 
     let shader_type = shader::ShaderCfg {
         path: "tests/compiled_shaders/fill_memory.spv",

@@ -100,7 +100,7 @@ impl Device {
     }
 
     /// Check if it is possible allocate memory with `cfg` from `desc`
-    pub fn is_compatible(&self, desc: &hw::MemoryDescription, cfg: &memory::MemoryCfg) -> bool {
+    pub fn is_compatible(&self, desc: &hw::MemoryDescription, cfg: &memory::StorageCfg) -> bool {
         let buffer_info = vk::BufferCreateInfo {
             s_type: vk::StructureType::BUFFER_CREATE_INFO,
             p_next: ptr::null(),
@@ -132,7 +132,7 @@ impl Device {
     }
 
     /// Return iterator over memories filtered by `f` and [compatibility](Device::is_compatible) with `cfg`
-    pub fn filter_memory<'a, T>(&'a self, f: T, cfg: &'a memory::MemoryCfg) -> impl Iterator<Item = &'a hw::MemoryDescription>
+    pub fn filter_memory<'a, T>(&'a self, f: T, cfg: &'a memory::StorageCfg) -> impl Iterator<Item = &'a hw::MemoryDescription>
     where
         T: Fn(&hw::MemoryDescription) -> bool
     {
@@ -140,7 +140,7 @@ impl Device {
     }
 
     /// Tries to find first suitable memory
-    pub fn find_memory<'a, T>(&'a self, f: T, cfg: &'a memory::MemoryCfg) -> Option<&'a hw::MemoryDescription>
+    pub fn find_memory<'a, T>(&'a self, f: T, cfg: &'a memory::StorageCfg) -> Option<&'a hw::MemoryDescription>
     where
         T: Fn(&hw::MemoryDescription) -> bool
     {

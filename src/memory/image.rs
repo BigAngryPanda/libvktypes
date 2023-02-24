@@ -1,4 +1,4 @@
-//! More specific version of [`Memory`](crate::memory::memory::Memory)
+//! More specific version of [`Storage`](crate::memory::storage::Storage)
 
 use ash::vk;
 

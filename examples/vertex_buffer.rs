@@ -70,7 +70,7 @@ fn main() {
 
     let frag_shader = shader::Shader::from_file(&device, &frag_shader_type).expect("Failed to create fragment shader module");
 
-    let mem_type = memory::MemoryCfg {
+    let mem_type = memory::StorageCfg {
         size: 16*4,
         properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
         usage: memory::BufferUsageFlags::VERTEX_BUFFER |
@@ -82,7 +82,7 @@ fn main() {
 
     let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
 
-    let vertex_data = memory::Memory::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
+    let vertex_data = memory::Storage::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
 
     let mut set_vrtx_buffer = |bytes: &mut [f32]| {
         bytes.clone_from_slice(&[0.5f32, 0.5f32, 0.0f32, 1.0f32,

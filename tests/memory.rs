@@ -39,7 +39,7 @@ fn compute_memory_allocation() {
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-    let mem_type = memory::MemoryCfg {
+    let mem_type = memory::StorageCfg {
         size: 4,
         properties: hw::MemoryProperty::HOST_VISIBLE,
         usage: memory::BufferUsageFlags::STORAGE_BUFFER |
@@ -51,7 +51,7 @@ fn compute_memory_allocation() {
 
     let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
 
-    assert!(memory::Memory::allocate(&device, &selected_memory, &mem_type).is_ok());
+    assert!(memory::Storage::allocate(&device, &selected_memory, &mem_type).is_ok());
 }
 
 #[test]
@@ -82,7 +82,7 @@ fn zero_allocation() {
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-    let mem_type = memory::MemoryCfg {
+    let mem_type = memory::StorageCfg {
         size: 0,
         properties: hw::MemoryProperty::HOST_VISIBLE,
         usage: memory::BufferUsageFlags::STORAGE_BUFFER |
@@ -94,7 +94,7 @@ fn zero_allocation() {
 
     let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
 
-    assert!(memory::Memory::allocate(&device, &selected_memory, &mem_type).is_err());
+    assert!(memory::Storage::allocate(&device, &selected_memory, &mem_type).is_err());
 }
 
 #[test]

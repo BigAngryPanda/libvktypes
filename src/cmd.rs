@@ -199,10 +199,10 @@ impl<'a> Buffer<'a> {
 
     // Copy `src` buffer into `dst`
     ///
-    /// If `dst` has less capacity then copy only first [crate::memory::Memory::size()] bytes
+    /// If `dst` has less capacity then copy only first [crate::memory::Storage::size()] bytes
     ///
     /// If `src` has less capacity then rest of the `dst` memory will be left intact
-    pub fn copy_memory(&self, src: &memory::Memory, dst: &memory::Memory) {
+    pub fn copy_memory(&self, src: &memory::Storage, dst: &memory::Storage) {
         let dev = self.i_pool.device();
 
         let copy_info = vk::BufferCopy {
@@ -238,7 +238,7 @@ impl<'a> Buffer<'a> {
     ///
     /// For more types see [AccessType]
     pub fn set_barrier(&mut self,
-        mem: &memory::Memory,
+        mem: &memory::Storage,
         src_type: AccessType,
         dst_type: AccessType,
         src_stage: PipelineStage,
@@ -326,7 +326,7 @@ impl<'a> Buffer<'a> {
     /// Update vertex bindings
     ///
     /// Updating starts from **first** binding
-    pub fn bind_vertex_buffers(&self, buffers: &[&memory::Memory]) {
+    pub fn bind_vertex_buffers(&self, buffers: &[&memory::Storage]) {
         let dev = self.i_pool.device();
 
         let vertex_buffers: Vec<vk::Buffer> = buffers.iter().map(|x| x.buffer()).collect();
