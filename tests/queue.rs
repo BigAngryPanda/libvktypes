@@ -1,10 +1,10 @@
-#[path = "./mod.rs"]
 mod test_context;
 
 #[cfg(test)]
 mod queue {
-    use crate::test_context;
     use libvktypes::queue;
+
+    use super::test_context;
 
     #[test]
     fn queue_alloc() {

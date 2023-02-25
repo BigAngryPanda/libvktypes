@@ -1,160 +1,163 @@
-#[path = "./mod.rs"]
-pub mod test_context;
+mod test_context;
 
-use libvktypes::{
-    dev,
-    extensions,
-    hw,
-    layers,
-    libvk,
-    memory,
-    shader,
-    compute,
-    cmd,
-    queue
-};
-
-#[test]
-fn cmd_pool_allocation() {
-    let lib_type = libvk::InstanceType {
-        debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME],
-        ..libvk::InstanceType::default()
+mod cmd {
+    use libvktypes::{
+        dev,
+        extensions,
+        hw,
+        layers,
+        libvk,
+        memory,
+        shader,
+        compute,
+        cmd,
+        queue
     };
 
-    let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
-    let hw_list = hw::Description::poll(&lib, None).expect("Failed to list hardware");
+    use super::test_context;
 
-    let (hw_dev, _, _) = hw_list
-        .find_first(
-            hw::HWDevice::is_dedicated_gpu,
-            hw::QueueFamilyDescription::is_compute,
-            |_| true
-        )
-        .expect("Failed to find suitable hardware device");
+    #[test]
+    fn cmd_pool_allocation() {
+        let lib_type = libvk::InstanceType {
+            debug_layer: Some(layers::DebugLayer::default()),
+            extensions: &[extensions::DEBUG_EXT_NAME],
+            ..libvk::InstanceType::default()
+        };
 
-    let dev_type = dev::DeviceCfg {
-        lib: &lib,
-        hw: hw_dev,
-        extensions: &[],
-        allocator: None,
-    };
+        let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
+        let hw_list = hw::Description::poll(&lib, None).expect("Failed to list hardware");
 
-    let device = dev::Device::new(&dev_type).expect("Failed to create device");
+        let (hw_dev, _, _) = hw_list
+            .find_first(
+                hw::HWDevice::is_dedicated_gpu,
+                hw::QueueFamilyDescription::is_compute,
+                |_| true
+            )
+            .expect("Failed to find suitable hardware device");
 
-    let cmd_pool_type = cmd::PoolCfg {
-        queue_index: 0,
-    };
+        let dev_type = dev::DeviceCfg {
+            lib: &lib,
+            hw: hw_dev,
+            extensions: &[],
+            allocator: None,
+        };
 
-    assert!(cmd::Pool::new(&device, &cmd_pool_type).is_ok());
-}
+        let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-#[test]
-fn cmd_buffer_exec() {
-    let lib_type = libvk::InstanceType {
-        debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME],
-        ..libvk::InstanceType::default()
-    };
+        let cmd_pool_type = cmd::PoolCfg {
+            queue_index: 0,
+        };
 
-    let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
-    let hw_list = hw::Description::poll(&lib, None).expect("Failed to list hardware");
+        assert!(cmd::Pool::new(&device, &cmd_pool_type).is_ok());
+    }
 
-    let (hw_dev, queue, _) = hw_list
-        .find_first(
-            hw::HWDevice::is_dedicated_gpu,
-            hw::QueueFamilyDescription::is_compute,
-            |_| true
-        )
-        .expect("Failed to find suitable hardware device");
+    #[test]
+    fn cmd_buffer_exec() {
+        let lib_type = libvk::InstanceType {
+            debug_layer: Some(layers::DebugLayer::default()),
+            extensions: &[extensions::DEBUG_EXT_NAME],
+            ..libvk::InstanceType::default()
+        };
 
-    let dev_type = dev::DeviceCfg {
-        lib: &lib,
-        hw: hw_dev,
-        extensions: &[],
-        allocator: None,
-    };
+        let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
+        let hw_list = hw::Description::poll(&lib, None).expect("Failed to list hardware");
 
-    let device = dev::Device::new(&dev_type).expect("Failed to create device");
+        let (hw_dev, queue, _) = hw_list
+            .find_first(
+                hw::HWDevice::is_dedicated_gpu,
+                hw::QueueFamilyDescription::is_compute,
+                |_| true
+            )
+            .expect("Failed to find suitable hardware device");
 
-    let mem_type = memory::StorageCfg {
-        size: 4,
-        properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT | hw::MemoryProperty::HOST_CACHED,
-        usage: memory::BufferUsageFlags::STORAGE_BUFFER |
-            memory::BufferUsageFlags::TRANSFER_SRC   |
-            memory::BufferUsageFlags::TRANSFER_DST,
-        shared_access: false,
-        queue_families: &[queue.index()],
-    };
+        let dev_type = dev::DeviceCfg {
+            lib: &lib,
+            hw: hw_dev,
+            extensions: &[],
+            allocator: None,
+        };
 
-    let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
+        let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-    let buff = memory::Storage::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
+        let mem_type = memory::StorageCfg {
+            size: 4,
+            properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT | hw::MemoryProperty::HOST_CACHED,
+            usage: memory::BufferUsageFlags::STORAGE_BUFFER |
+                memory::BufferUsageFlags::TRANSFER_SRC   |
+                memory::BufferUsageFlags::TRANSFER_DST,
+            shared_access: false,
+            queue_families: &[queue.index()],
+        };
 
-    let shader_type = shader::ShaderCfg {
-        path: "tests/compiled_shaders/fill_memory.spv",
-        entry: "main",
-    };
+        let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
 
-    let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");
+        let buff = memory::Storage::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
 
-    let pipe_type = compute::PipelineCfg {
-        buffers: &[&buff],
-        shader: &shader,
-        push_constant_size: 0,
-    };
+        let shader_type = shader::ShaderCfg {
+            path: "tests/compiled_shaders/fill_memory.spv",
+            entry: "main",
+        };
 
-    let pipeline = compute::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
+        let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");
 
-    let cmd_pool_type = cmd::PoolCfg {
-        queue_index: queue.index(),
-    };
+        let pipe_type = compute::PipelineCfg {
+            buffers: &[&buff],
+            shader: &shader,
+            push_constant_size: 0,
+        };
 
-    let cmd_pool = cmd::Pool::new(&device, &cmd_pool_type).expect("Failed to allocate command pool");
+        let pipeline = compute::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
-    let cmd_buffer = cmd_pool.allocate().expect("Failed to allocate command buffer");
+        let cmd_pool_type = cmd::PoolCfg {
+            queue_index: queue.index(),
+        };
 
-    cmd_buffer.bind_compute_pipeline(&pipeline);
+        let cmd_pool = cmd::Pool::new(&device, &cmd_pool_type).expect("Failed to allocate command pool");
 
-    cmd_buffer.dispatch(1, 1, 1);
+        let cmd_buffer = cmd_pool.allocate().expect("Failed to allocate command buffer");
 
-    let exec_buffer = cmd_buffer.commit().expect("Failed to commit command buffer");
+        cmd_buffer.bind_compute_pipeline(&pipeline);
 
-    let queue_type = queue::QueueCfg {
-        family_index: queue.index(),
-        queue_index: 0,
-    };
+        cmd_buffer.dispatch(1, 1, 1);
 
-    let queue = queue::Queue::new(&device, &queue_type);
+        let exec_buffer = cmd_buffer.commit().expect("Failed to commit command buffer");
 
-    let exec_info = queue::ExecInfo {
-        wait_stage: cmd::PipelineStage::COMPUTE_SHADER,
-        buffer: &exec_buffer,
-        timeout: u64::MAX,
-        wait: &[],
-        signal: &[],
-    };
+        let queue_type = queue::QueueCfg {
+            family_index: queue.index(),
+            queue_index: 0,
+        };
 
-    assert!(queue.exec(&exec_info).is_ok())
-}
+        let queue = queue::Queue::new(&device, &queue_type);
 
-#[test]
-fn write_graphics_cmds() {
-    let render_pass = test_context::get_render_pass();
+        let exec_info = queue::ExecInfo {
+            wait_stage: cmd::PipelineStage::COMPUTE_SHADER,
+            buffer: &exec_buffer,
+            timeout: u64::MAX,
+            wait: &[],
+            signal: &[],
+        };
 
-    let pipeline = test_context::get_graphics_pipeline();
+        assert!(queue.exec(&exec_info).is_ok())
+    }
 
-    let framebuffer = &test_context::get_framebuffers()[0];
+    #[test]
+    fn write_graphics_cmds() {
+        let render_pass = test_context::get_render_pass();
 
-    let pool = test_context::get_cmd_pool();
+        let pipeline = test_context::get_graphics_pipeline();
 
-    let cmd_buffer = pool.allocate().expect("Failed to allocate cmd buffer");
+        let framebuffer = &test_context::get_framebuffers()[0];
 
-    cmd_buffer.begin_render_pass(render_pass, framebuffer);
+        let pool = test_context::get_cmd_pool();
 
-    cmd_buffer.bind_graphics_pipeline(pipeline);
+        let cmd_buffer = pool.allocate().expect("Failed to allocate cmd buffer");
 
-    cmd_buffer.end_render_pass();
+        cmd_buffer.begin_render_pass(render_pass, framebuffer);
 
-    assert!(cmd_buffer.commit().is_ok());
+        cmd_buffer.bind_graphics_pipeline(pipeline);
+
+        cmd_buffer.end_render_pass();
+
+        assert!(cmd_buffer.commit().is_ok());
+    }
 }

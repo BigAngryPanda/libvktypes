@@ -1,57 +1,61 @@
-#[path = "./mod.rs"]
 mod test_context;
 
-use libvktypes::graphics;
+#[cfg(test)]
+mod render_pass {
+    use libvktypes::graphics;
 
-#[test]
-fn render_pass_init() {
-    let dev = test_context::get_graphics_device();
+    use super::test_context;
 
-    let cfg = test_context::get_surface_capabilities();
+    #[test]
+    fn render_pass_init() {
+        let dev = test_context::get_graphics_device();
 
-    let subpass_sync = [
-        graphics::SubpassSync {
-            src_subpass: graphics::SUBPASS_EXTERNAL,
-            dst_subpass: 0,
-            src_stage: graphics::PipelineStage::BOTTOM_OF_PIPE,
-            dst_stage: graphics::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-            src_access: graphics::AccessFlags::MEMORY_READ,
-            dst_access: graphics::AccessFlags::COLOR_ATTACHMENT_WRITE,
-        },
-        graphics::SubpassSync {
-            src_subpass: 0,
-            dst_subpass: graphics::SUBPASS_EXTERNAL,
-            src_stage: graphics::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-            dst_stage: graphics::PipelineStage::BOTTOM_OF_PIPE,
-            src_access: graphics::AccessFlags::COLOR_ATTACHMENT_WRITE,
-            dst_access: graphics::AccessFlags::MEMORY_READ,
-        }
-    ];
+        let cfg = test_context::get_surface_capabilities();
 
-    let attachment = [
-        graphics::AttachmentInfo {
-            format: cfg.formats().next().expect("No available formats").format,
-            load_op: graphics::AttachmentLoadOp::CLEAR,
-            store_op: graphics::AttachmentStoreOp::STORE,
-            stencil_load_op: graphics::AttachmentLoadOp::DONT_CARE,
-            stencil_store_op: graphics::AttachmentStoreOp::DONT_CARE,
-            initial_layout: graphics::ImageLayout::PRESENT_SRC_KHR,
-            final_layout: graphics::ImageLayout::PRESENT_SRC_KHR,
-        }
-    ];
+        let subpass_sync = [
+            graphics::SubpassSync {
+                src_subpass: graphics::SUBPASS_EXTERNAL,
+                dst_subpass: 0,
+                src_stage: graphics::PipelineStage::BOTTOM_OF_PIPE,
+                dst_stage: graphics::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+                src_access: graphics::AccessFlags::MEMORY_READ,
+                dst_access: graphics::AccessFlags::COLOR_ATTACHMENT_WRITE,
+            },
+            graphics::SubpassSync {
+                src_subpass: 0,
+                dst_subpass: graphics::SUBPASS_EXTERNAL,
+                src_stage: graphics::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+                dst_stage: graphics::PipelineStage::BOTTOM_OF_PIPE,
+                src_access: graphics::AccessFlags::COLOR_ATTACHMENT_WRITE,
+                dst_access: graphics::AccessFlags::MEMORY_READ,
+            }
+        ];
 
-    let subpass_info = [
-        graphics::SubpassInfo {
-            color_attachments: &[0],
-            ..Default::default()
-        }
-    ];
+        let attachment = [
+            graphics::AttachmentInfo {
+                format: cfg.formats().next().expect("No available formats").format,
+                load_op: graphics::AttachmentLoadOp::CLEAR,
+                store_op: graphics::AttachmentStoreOp::STORE,
+                stencil_load_op: graphics::AttachmentLoadOp::DONT_CARE,
+                stencil_store_op: graphics::AttachmentStoreOp::DONT_CARE,
+                initial_layout: graphics::ImageLayout::PRESENT_SRC_KHR,
+                final_layout: graphics::ImageLayout::PRESENT_SRC_KHR,
+            }
+        ];
 
-    let rp_cfg = graphics::RenderPassCfg {
-        attachments: &attachment,
-        sync_info: &subpass_sync,
-        subpasses: &subpass_info,
-    };
+        let subpass_info = [
+            graphics::SubpassInfo {
+                color_attachments: &[0],
+                ..Default::default()
+            }
+        ];
 
-    assert!(graphics::RenderPass::new(dev, &rp_cfg).is_ok());
+        let rp_cfg = graphics::RenderPassCfg {
+            attachments: &attachment,
+            sync_info: &subpass_sync,
+            subpasses: &subpass_info,
+        };
+
+        assert!(graphics::RenderPass::new(dev, &rp_cfg).is_ok());
+    }
 }
