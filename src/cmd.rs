@@ -326,7 +326,7 @@ impl<'a> Buffer<'a> {
     /// Update vertex bindings
     ///
     /// Updating starts from **first** binding
-    pub fn bind_vertex_buffers(&self, buffers: &[&memory::Storage]) {
+    pub fn bind_vertex_buffers(&self, buffers: &[&memory::VertexBuffer]) {
         let dev = self.i_pool.device();
 
         let vertex_buffers: Vec<vk::Buffer> = buffers.iter().map(|x| x.buffer()).collect();

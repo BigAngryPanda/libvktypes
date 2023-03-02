@@ -39,17 +39,16 @@ mod compute_pipeline {
 
         let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-        let mem_type = memory::StorageCfg {
+        let mem_type = memory::MemoryCfg {
             size: 4,
-            properties: hw::MemoryProperty::HOST_VISIBLE,
-            usage: memory::BufferUsageFlags::STORAGE_BUFFER |
-                memory::BufferUsageFlags::TRANSFER_SRC   |
-                memory::BufferUsageFlags::TRANSFER_DST,
+            properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT | hw::MemoryProperty::HOST_CACHED,
             shared_access: false,
-            queue_families: &[queue.index()],
+            transfer_src: true,
+            transfer_dst: true,
+            queue_families: &[queue.index()]
         };
 
-        let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
+        let selected_memory = memory::Storage::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
 
         let buff = memory::Storage::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
 

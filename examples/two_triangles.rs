@@ -81,19 +81,18 @@ fn main() {
 
     let frag_shader = shader::Shader::from_file(&device, &frag_shader_type).expect("Failed to create fragment shader module");
 
-    let mem_type = memory::StorageCfg {
+    let mem_type = memory::MemoryCfg {
         size: (std::mem::size_of::<f32>()*data.len()) as u64,
         properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
-        usage: memory::BufferUsageFlags::VERTEX_BUFFER |
-               memory::BufferUsageFlags::TRANSFER_SRC  |
-               memory::BufferUsageFlags::TRANSFER_DST,
         shared_access: false,
-        queue_families: &[queue.index()],
+        transfer_src: true,
+        transfer_dst: true,
+        queue_families: &[queue.index()]
     };
 
-    let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
+    let selected_memory = memory::VertexBuffer::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
 
-    let vertex_data = memory::Storage::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
+    let vertex_data = memory::VertexBuffer::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
 
     let mut set_vrtx_buffer = |bytes: &mut [f32]| {
         bytes.clone_from_slice(&data);

@@ -3,7 +3,7 @@ use ash::vk;
 use crate::{hw, dev, memory};
 
 fn get_flags(cfg: &memory::MemoryCfg) -> vk::BufferUsageFlags {
-    let mut flags = vk::BufferUsageFlags::STORAGE_BUFFER;
+    let mut flags = vk::BufferUsageFlags::VERTEX_BUFFER;
 
     if cfg.transfer_src {
         flags |= vk::BufferUsageFlags::TRANSFER_SRC;
@@ -16,10 +16,10 @@ fn get_flags(cfg: &memory::MemoryCfg) -> vk::BufferUsageFlags {
     flags
 }
 
-/// Represents generic storage buffer
-pub struct Storage(memory::BaseStorage);
+/// Specific buffer for vertex data
+pub struct VertexBuffer(memory::BaseStorage);
 
-impl Storage {
+impl VertexBuffer {
     /// Note on allocation: if memory is HOST_VISIBLE and is not HOST_COHERENT performs
     /// [map_memory](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkMapMemory.html)
     /// and
@@ -29,9 +29,9 @@ impl Storage {
         device: &dev::Device,
         memory: &hw::MemoryDescription,
         cfg: &memory::MemoryCfg
-    ) -> Result<Storage, memory::MemoryError> {
+    ) -> Result<VertexBuffer, memory::MemoryError> {
         match memory::BaseStorage::new(device, memory, cfg, get_flags(cfg)) {
-            Ok(val) => Ok(Storage(val)),
+            Ok(val) => Ok(VertexBuffer(val)),
             Err(e) => Err(e)
         }
     }
@@ -78,7 +78,7 @@ impl Storage {
     /// If memory is not coherent performs
     /// [vkInvalidateMappedMemoryRanges](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkInvalidateMappedMemoryRanges.html)
     ///
-    /// I.e. makes device memory changes available to host (compare with [Storage::write()] method)
+    /// I.e. makes device memory changes available to host (compare with [VertexBuffer::write()] method)
     ///
     /// Note: on failure return same error [memory::MemoryError::Flush]
     pub fn read(&self) -> Result<&[u8], memory::MemoryError> {

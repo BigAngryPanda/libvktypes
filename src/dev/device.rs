@@ -4,8 +4,8 @@
 
 use ash::vk;
 
-use crate::{libvk, hw, alloc, queue, memory, dev};
-use crate::{on_error, on_error_ret};
+use crate::{libvk, hw, alloc, queue, dev};
+use crate::on_error_ret;
 
 use std::sync::Arc;
 use std::{ptr, fmt};
@@ -99,54 +99,6 @@ impl Device {
         queue::Queue::new(self, cfg)
     }
 
-    /// Check if it is possible allocate memory with `cfg` from `desc`
-    pub fn is_compatible(&self, desc: &hw::MemoryDescription, cfg: &memory::StorageCfg) -> bool {
-        let buffer_info = vk::BufferCreateInfo {
-            s_type: vk::StructureType::BUFFER_CREATE_INFO,
-            p_next: ptr::null(),
-            flags: vk::BufferCreateFlags::empty(),
-            size: cfg.size,
-            usage: cfg.usage,
-            sharing_mode: if cfg.shared_access { vk::SharingMode::CONCURRENT } else { vk::SharingMode::EXCLUSIVE },
-            queue_family_index_count: cfg.queue_families.len() as u32,
-            p_queue_family_indices: cfg.queue_families.as_ptr(),
-        };
-
-        let buffer: vk::Buffer = on_error!(
-            unsafe { self.device().create_buffer(&buffer_info, None) },
-            return false
-        );
-
-        let requirements: vk::MemoryRequirements = unsafe {
-            self
-                .device()
-                .get_buffer_memory_requirements(buffer)
-        };
-
-        unsafe {
-            self.i_core.device().destroy_buffer(buffer, self.i_core.allocator())
-        };
-
-        ((requirements.memory_type_bits >> desc.index()) & 1) == 1
-            && desc.is_compatible(cfg.properties)
-    }
-
-    /// Return iterator over memories filtered by `f` and [compatibility](Device::is_compatible) with `cfg`
-    pub fn filter_memory<'a, T>(&'a self, f: T, cfg: &'a memory::StorageCfg) -> impl Iterator<Item = &'a hw::MemoryDescription>
-    where
-        T: Fn(&hw::MemoryDescription) -> bool
-    {
-        self.i_hw.filter_memory(move |m| f(m) && self.is_compatible(m, cfg))
-    }
-
-    /// Tries to find first suitable memory
-    pub fn find_memory<'a, T>(&'a self, f: T, cfg: &'a memory::StorageCfg) -> Option<&'a hw::MemoryDescription>
-    where
-        T: Fn(&hw::MemoryDescription) -> bool
-    {
-        self.filter_memory(f, cfg).next()
-    }
-
     #[doc(hidden)]
     pub fn core(&self) -> &Arc<dev::Core> {
         &self.i_core
@@ -162,7 +114,7 @@ impl Device {
         self.i_core.allocator()
     }
 
-    #[doc(hidden)]
+    /// Return physical device in use
     pub fn hw(&self) -> &hw::HWDevice {
         &self.i_hw
     }

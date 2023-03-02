@@ -75,19 +75,18 @@ fn main() {
 
     let surf_format = capabilities.formats().next().expect("No available formats").format;
 
-    let mem_type = memory::StorageCfg {
+    let mem_type = memory::MemoryCfg {
         size: 16*7,
         properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
-        usage: memory::BufferUsageFlags::VERTEX_BUFFER |
-               memory::BufferUsageFlags::TRANSFER_SRC  |
-               memory::BufferUsageFlags::TRANSFER_DST,
         shared_access: false,
-        queue_families: &[queue.index()],
+        transfer_src: true,
+        transfer_dst: true,
+        queue_families: &[queue.index()]
     };
 
-    let selected_memory = device.find_memory(hw::any, &mem_type).expect("No suitable memory");
+    let selected_memory = memory::VertexBuffer::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
 
-    let vertex_data = memory::Storage::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
+    let vertex_data = memory::VertexBuffer::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
 
     let mut set_vrtx_buffer = |bytes: &mut [f32]| {
         bytes.clone_from_slice(&[0.5f32, 0.5f32, 0.0f32, 1.0f32,
