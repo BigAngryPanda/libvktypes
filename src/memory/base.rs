@@ -201,7 +201,7 @@ impl BaseStorage {
                 self.i_core.device().map_memory(
                     self.i_device_memory,
                     0,
-                    self.i_size,
+                    vk::WHOLE_SIZE,
                     vk::MemoryMapFlags::empty(),
                 )
             },
