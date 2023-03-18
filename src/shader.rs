@@ -133,10 +133,13 @@ impl Shader {
     pub fn from_glsl(device: &dev::Device, cfg: &ShaderCfg, src: &str, kind: Kind) -> Result<Shader, ShaderError> {
         let compiler = on_option_ret!(shaderc::Compiler::new(), ShaderError::Shaderc);
 
-        let binary_result = on_error_ret!(
-            compiler.compile_into_spirv(src, kind, cfg.path, cfg.entry, None),
-            ShaderError::Compiling
-        );
+        let binary_result = match compiler.compile_into_spirv(src, kind, cfg.path, cfg.entry, None) {
+            Ok(val) => val,
+            Err(err) => {
+                print!("{}", err);
+                return Err(ShaderError::Compiling);
+            }
+        };
 
         if binary_result.is_empty() {
             return Err(ShaderError::Compiling);
