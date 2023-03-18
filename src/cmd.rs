@@ -348,6 +348,27 @@ impl<'a> Buffer<'a> {
         }
     }
 
+    /// Enable resource usage for the `pipeline`
+    ///
+    /// `offsets` for now has no effect so leave it as `&[]`
+    ///
+    /// Note: do not confuse with [`update`](graphics::Pipeline::update) method
+    pub fn bind_resources(&self, pipe: &graphics::Pipeline, offsets: &[u32]) {
+        unsafe {
+            self
+            .i_pool
+            .device()
+            .cmd_bind_descriptor_sets(
+                self.i_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                pipe.layout(),
+                0,
+                pipe.descriptor_set(),
+                offsets
+            );
+        }
+    }
+
     /// Add `vkCmdDraw` call to the buffer
     ///
     /// About args see [more](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCmdDraw.html)

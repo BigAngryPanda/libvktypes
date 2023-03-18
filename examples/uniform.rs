@@ -1,4 +1,45 @@
-use libvktypes::*;
+use libvktypes::{
+    window,
+    libvk,
+    layers,
+    extensions,
+    surface,
+    hw,
+    dev,
+    swapchain,
+    memory,
+    shader,
+    graphics,
+    sync,
+    cmd,
+    queue
+};
+
+use libvktypes::graphics::Resource;
+
+const VERT_SHADER: &str = "
+#version 460
+
+layout (location=0) in vec4 position;
+
+void main() {
+    gl_Position = position;
+}
+";
+
+const FRAG_SHADER: &str = "
+#version 460
+
+layout (location=0) out vec4 color;
+
+layout(set=0, binding=0) uniform Data {
+    vec4 colour;
+} data;
+
+void main(){
+    color = data.colour;
+}
+";
 
 fn main() {
     let event_loop = window::eventloop();
@@ -21,7 +62,7 @@ fn main() {
 
     let (hw_dev, queue, _) = hw_list
         .find_first(
-            hw::HWDevice::is_dedicated_gpu,
+            hw::HWDevice::is_discrete_gpu,
             |q| q.is_graphics() && q.is_surface_supported(),
             |_| true
         )
@@ -57,18 +98,67 @@ fn main() {
     let swapchain = swapchain::Swapchain::new(&lib, &device, &surface, &swp_type).expect("Failed to create swapchain");
 
     let vert_shader_type = shader::ShaderCfg {
-        path: "examples/compiled_shaders/single_triangle.spv",
+        path: "VERT_DATA",
         entry: "main",
     };
 
-    let vert_shader = shader::Shader::from_file(&device, &vert_shader_type).expect("Failed to create vertex shader module");
+    let vert_shader =
+        shader::Shader::from_glsl(&device, &vert_shader_type, VERT_SHADER, shader::Kind::Vertex)
+        .expect("Failed to create vertex shader module");
 
     let frag_shader_type = shader::ShaderCfg {
-        path: "examples/compiled_shaders/single_color.spv",
+        path: "FRAG_DATA",
         entry: "main",
     };
 
-    let frag_shader = shader::Shader::from_file(&device, &frag_shader_type).expect("Failed to create fragment shader module");
+    let frag_shader =
+        shader::Shader::from_glsl(&device, &frag_shader_type, FRAG_SHADER, shader::Kind::Fragment)
+        .expect("Failed to create fragment shader module");
+
+    let mem_type = memory::MemoryCfg {
+        size: 16*4,
+        properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
+        shared_access: false,
+        transfer_src: true,
+        transfer_dst: true,
+        queue_families: &[queue.index()]
+    };
+
+    let selected_memory = memory::VertexBuffer::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
+
+    let vertex_data = memory::VertexBuffer::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
+
+    let mut set_vrtx_buffer = |bytes: &mut [f32]| {
+        bytes.clone_from_slice(&[0.5f32, 0.5f32, 0.0f32, 1.0f32,
+                     0.5f32, -0.5f32, 0.0f32, 1.0f32,
+                     -0.5f32, 0.5f32, 0.0f32, 1.0f32,
+                     -0.5f32, -0.5f32, 0.0f32, 1.0f32]);
+    };
+
+    vertex_data.write(&mut set_vrtx_buffer).expect("Failed to fill the buffer");
+
+    let res_cfg = memory::MemoryCfg {
+        size: 2*std::mem::size_of::<[f32; 4]>() as u64,
+        properties: hw::MemoryProperty::HOST_VISIBLE,
+        shared_access: false,
+        transfer_src: true,
+        transfer_dst: true,
+        queue_families: &[queue.index()]
+    };
+
+    let selected_memory = memory::UniformBuffer::find_memory(&device, hw::any, &res_cfg).expect("No suitable memory");
+
+    let ubo = memory::UniformBuffer::allocate(&device, &selected_memory, &res_cfg).expect("Failed to allocate ubo");
+
+    ubo.write(&mut |bytes: &mut [f32]| {
+        bytes.clone_from_slice(
+            &[
+                0.42, 0.42, 0.42, 1.0,
+                0.42, 0.42, 0.42, 1.0
+            ]
+        );
+    })
+    .expect("Failed to fill the ubo");
 
     let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");
@@ -76,7 +166,12 @@ fn main() {
     let pipe_type = graphics::PipelineCfg {
         vertex_shader: &vert_shader,
         vertex_size: std::mem::size_of::<[f32; 4]>() as u32,
-        vert_input: &[],
+        vert_input: &[graphics::VertexInputCfg {
+            location: 0,
+            binding: 0,
+            format: memory::ImageFormat::R32G32B32A32_SFLOAT,
+            offset: 0,
+        }],
         frag_shader: &frag_shader,
         topology: graphics::Topology::TRIANGLE_STRIP,
         extent: capabilities.extent2d(),
@@ -84,10 +179,12 @@ fn main() {
         render_pass: &render_pass,
         subpass_index: 0,
         enable_depth: false,
-        sets: &[]
+        sets: &[&[ubo.layout(graphics::ShaderStage::FRAGMENT)]]
     };
 
     let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
+
+    pipeline.update(&[&[&ubo]]);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
@@ -115,6 +212,10 @@ fn main() {
     cmd_buffer.begin_render_pass(&render_pass, &frame);
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
+
+    cmd_buffer.bind_vertex_buffers(&[&vertex_data]);
+
+    cmd_buffer.bind_resources(&pipeline, &[]);
 
     cmd_buffer.draw(4, 1, 0, 0);
 

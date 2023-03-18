@@ -1,5 +1,3 @@
-//! Generic interface for various buffer classes
-//! (such as [vertex buffer](crate::memory::vertex_buffer::VertexBuffer), [storage](crate::memory::storage::Storage) etc.)
 use ash::vk;
 
 use crate::{on_error, on_error_ret};
@@ -44,32 +42,6 @@ pub fn is_compatible(
 
     ((requirements.memory_type_bits >> desc.index()) & 1) == 1
         && desc.is_compatible(cfg.properties)
-}
-
-#[doc(hidden)]
-pub fn filter_memory<'a, T>(
-    device: &'a dev::Device,
-    f: T,
-    cfg: &'a memory::MemoryCfg,
-    usage: vk::BufferUsageFlags
-) -> impl Iterator<Item = &'a hw::MemoryDescription>
-where
-    T: Fn(&hw::MemoryDescription) -> bool
-{
-    device.hw().filter_memory(move |m| f(m) && is_compatible(device, m, cfg, usage))
-}
-
-#[doc(hidden)]
-pub fn find_memory<'a, T>(
-    device: &'a dev::Device,
-    f: T,
-    cfg: &'a memory::MemoryCfg,
-    usage: vk::BufferUsageFlags
-) -> Option<&'a hw::MemoryDescription>
-where
-    T: Fn(&hw::MemoryDescription) -> bool
-{
-    filter_memory(device, f, cfg, usage).next()
 }
 
 #[doc(hidden)]

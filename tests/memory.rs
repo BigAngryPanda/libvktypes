@@ -142,4 +142,26 @@ mod memory {
 
         assert!(memory::Framebuffer::new(dev, &framebuffer_cfg).is_ok());
     }
+
+    #[test]
+    fn uniform_buffer() {
+        let device = test_context::get_graphics_device();
+
+        let queue = test_context::get_graphics_queue();
+
+        let mem_type = memory::MemoryCfg {
+            size: 1,
+            properties: hw::MemoryProperty::HOST_VISIBLE,
+            shared_access: false,
+            transfer_src: true,
+            transfer_dst: true,
+            queue_families: &[queue.index()]
+        };
+
+        let selected_memory = memory::UniformBuffer::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
+
+        assert!(
+            memory::UniformBuffer::allocate(device, &selected_memory, &mem_type).is_ok()
+        );
+    }
 }

@@ -1,3 +1,6 @@
+//! Memory for vertices storages
+//!
+//! Can be used only for vertex stage
 use ash::vk;
 
 use crate::{hw, dev, memory};
@@ -45,7 +48,7 @@ impl VertexBuffer {
     where
         T: Fn(&hw::MemoryDescription) -> bool
     {
-        memory::filter_memory(device, f, cfg, get_flags(cfg)).next()
+        device.hw().find_first_memory(move |m| f(m) && memory::is_compatible(device, m, cfg, get_flags(cfg)))
     }
 
     /// Return iterator over memories filtered by `f` and compatibility with `cfg`

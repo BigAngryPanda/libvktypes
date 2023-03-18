@@ -1,12 +1,16 @@
-//! Contains memory buffer, image etc.
+//! Contains various buffer types
 //!
-//! All types that are like "set of user data in memory" represented here
+//! All types that are like "region of user data in memory" are represented here
+//!
+//! Notable exeption of this is [`framebuffer`](crate::memory::Framebuffer)
 
 pub mod storage;
 pub mod image;
 pub mod framebuffer;
+#[doc(hidden)]
 pub mod base;
 pub mod vertex_buffer;
+pub mod uniform_buffer;
 
 #[doc(hidden)]
 pub use base::*;
@@ -18,13 +22,15 @@ pub use image::*;
 pub use framebuffer::*;
 #[doc(hidden)]
 pub use vertex_buffer::*;
+#[doc(hidden)]
+pub use uniform_buffer::*;
 
 use crate::hw;
 
 use std::error::Error;
 use std::fmt;
 
-/// Errors during [`Storage`](Storage) initialization and access
+/// Errors during memory allocation, initialization and access
 #[derive(Debug)]
 pub enum MemoryError {
     /// Failed to [create](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateBuffer.html) buffer
@@ -68,7 +74,7 @@ impl fmt::Display for MemoryError {
 
 impl Error for MemoryError {}
 
-/// Configuration struct for memory structs such as [`VertexBuffer`] of [`Storage`]
+/// Configuration struct for memory structs
 pub struct MemoryCfg<'a> {
     pub size: u64,
     pub properties: hw::MemoryProperty,

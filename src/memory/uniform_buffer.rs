@@ -1,10 +1,12 @@
-//! Typicall data storage for ([compute](crate::compute::Pipeline)) pipeline
+//! Buffer which can be used in shaders as uniform buffer
+//!
+//! Can be used in all stages
 use ash::vk;
 
-use crate::{hw, dev, memory};
+use crate::{hw, dev, memory, graphics};
 
 fn get_flags(cfg: &memory::MemoryCfg) -> vk::BufferUsageFlags {
-    let mut flags = vk::BufferUsageFlags::STORAGE_BUFFER;
+    let mut flags = vk::BufferUsageFlags::UNIFORM_BUFFER;
 
     if cfg.transfer_src {
         flags |= vk::BufferUsageFlags::TRANSFER_SRC;
@@ -18,9 +20,9 @@ fn get_flags(cfg: &memory::MemoryCfg) -> vk::BufferUsageFlags {
 }
 
 /// Represents generic storage buffer
-pub struct Storage(memory::BaseStorage);
+pub struct UniformBuffer(memory::BaseStorage);
 
-impl Storage {
+impl UniformBuffer {
     /// Note on allocation: if memory is HOST_VISIBLE and is not HOST_COHERENT performs
     /// [map_memory](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkMapMemory.html)
     /// and
@@ -30,9 +32,9 @@ impl Storage {
         device: &dev::Device,
         memory: &hw::MemoryDescription,
         cfg: &memory::MemoryCfg
-    ) -> Result<Storage, memory::MemoryError> {
-        match memory::BaseStorage::new(device, memory, cfg, get_flags(cfg)) {
-            Ok(val) => Ok(Storage(val)),
+    ) -> Result<UniformBuffer, memory::MemoryError> {
+        match memory::BaseStorage::new(device, memory, &cfg, get_flags(cfg)) {
+            Ok(val) => Ok(UniformBuffer(val)),
             Err(e) => Err(e)
         }
     }
@@ -79,8 +81,6 @@ impl Storage {
     /// If memory is not coherent performs
     /// [vkInvalidateMappedMemoryRanges](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkInvalidateMappedMemoryRanges.html)
     ///
-    /// I.e. makes device memory changes available to host (compare with [Storage::write()] method)
-    ///
     /// Note: on failure return same error [memory::MemoryError::Flush]
     pub fn read(&self) -> Result<&[u8], memory::MemoryError> {
         self.0.read()
@@ -94,5 +94,27 @@ impl Storage {
     #[doc(hidden)]
     pub fn buffer(&self) -> vk::Buffer {
         self.0.buffer()
+    }
+}
+
+impl graphics::Resource for UniformBuffer {
+    fn resource_type(&self) -> vk::DescriptorType {
+        vk::DescriptorType::UNIFORM_BUFFER
+    }
+
+    fn count(&self) -> u32 {
+        1
+    }
+
+    fn layout(&self, stage: graphics::ShaderStage) -> graphics::BindingCfg {
+        (self.resource_type(), stage, self.count())
+    }
+
+    fn buffer(&self) -> vk::Buffer {
+        self.0.buffer()
+    }
+
+    fn size(&self) -> u64 {
+        self.0.size()
     }
 }
