@@ -99,6 +99,8 @@ impl From<&VertexInputCfg> for vk::VertexInputAttributeDescription {
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPrimitiveTopology.html>"]
 pub type Topology = vk::PrimitiveTopology;
 
+/// Pipeline configuration
+///
 /// # Vertex stage configuration
 /// [`vertex_shader`](PipelineCfg::vertex_shader) is your vertex shader module (pretty straightforward)
 ///
@@ -178,7 +180,7 @@ pub struct PipelineCfg<'a> {
     pub render_pass: &'a graphics::RenderPass,
     /// Subpass index inside [`RenderPass`](PipelineCfg::render_pass)
     pub subpass_index: u32,
-    pub enable_depth: bool,
+    pub enable_depth_test: bool,
     pub sets: &'a [&'a [graphics::BindingCfg]]
 }
 
@@ -207,6 +209,7 @@ impl fmt::Display for PipelineError {
 
 impl Error for PipelineError { }
 
+/// Graphics pipeline
 pub struct Pipeline {
     i_core: Arc<dev::Core>,
     i_layout: vk::PipelineLayout,
@@ -451,7 +454,7 @@ impl Pipeline {
             p_viewport_state: &viewport_state_create_info,
             p_rasterization_state: &rasterization_state_create_info,
             p_multisample_state: &multisample_state_create_info,
-            p_depth_stencil_state: if pipe_cfg.enable_depth {
+            p_depth_stencil_state: if pipe_cfg.enable_depth_test {
                 &depth_cfg
             } else {
                 ptr::null()

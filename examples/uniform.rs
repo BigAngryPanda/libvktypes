@@ -178,7 +178,7 @@ fn main() {
         push_constant_size: 0,
         render_pass: &render_pass,
         subpass_index: 0,
-        enable_depth: false,
+        enable_depth_test: false,
         sets: &[&[ubo.layout(graphics::ShaderStage::FRAGMENT)]]
     };
 

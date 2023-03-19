@@ -20,7 +20,7 @@ mod graphics_pipeline {
             push_constant_size: 0,
             render_pass: test_context::get_render_pass(),
             subpass_index: 0,
-            enable_depth: false,
+            enable_depth_test: false,
             sets: &[]
         };
 
@@ -43,7 +43,7 @@ mod graphics_pipeline {
             push_constant_size: 0,
             render_pass: test_context::get_render_pass(),
             subpass_index: 0,
-            enable_depth: false,
+            enable_depth_test: false,
             sets: &[
                 &[
                     (
