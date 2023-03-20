@@ -334,6 +334,9 @@ pub struct HWDevice {
     i_vendor_id: u32,
     i_queues: Vec<QueueFamilyDescription>,
     i_heap_info: Vec<MemoryDescription>,
+    i_min_ub_offset: u64,
+    i_min_storage_offset: u64,
+    i_memory_alignment: u64
 }
 
 impl HWDevice {
@@ -391,6 +394,9 @@ impl HWDevice {
             i_vendor_id: properties.vendor_id,
             i_queues: queue_desc,
             i_heap_info: memory_desc,
+            i_min_ub_offset: properties.limits.min_uniform_buffer_offset_alignment,
+            i_min_storage_offset: properties.limits.min_storage_buffer_offset_alignment,
+            i_memory_alignment: properties.limits.non_coherent_atom_size
         }
     }
 
@@ -476,6 +482,21 @@ impl HWDevice {
     /// See [`HWType`]
     pub fn is_dedicated_gpu(&self) -> bool {
         self.is_discrete_gpu() || self.is_integrated_gpu()
+    }
+
+    /// Minimal offset for uniform buffer binding
+    pub fn ub_offset(&self) -> u64 {
+        self.i_min_ub_offset
+    }
+
+    /// Minimal offset for storage buffer binding
+    pub fn storage_offset(&self) -> u64 {
+        self.i_min_storage_offset
+    }
+
+    /// Memory mapping alignment
+    pub fn memory_alignment(&self) -> u64 {
+        self.i_memory_alignment
     }
 
     /// Return iterator over available queues
@@ -595,6 +616,25 @@ impl fmt::Display for HWDevice {
             )
             .unwrap();
         }
+
+        write!(
+            f,
+            "*****************************\n\
+            Limits\n"
+        )
+        .unwrap();
+
+        write!(
+            f,
+            "*****************************\n\
+            Min uniform buffer offset: {}\n\
+            Min storage buffer offset: {}\n\
+            Memory alignment: {}\n",
+            self.i_min_ub_offset,
+            self.i_min_storage_offset,
+            self.i_memory_alignment
+        )
+        .unwrap();
 
         Ok(())
     }
