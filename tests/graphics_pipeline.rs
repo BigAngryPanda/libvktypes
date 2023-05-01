@@ -2,7 +2,7 @@ mod test_context;
 
 #[cfg(test)]
 mod graphics_pipeline {
-    use libvktypes::graphics;
+    use libvktypes::{graphics, memory, hw};
 
     use super::test_context;
 
@@ -33,6 +33,24 @@ mod graphics_pipeline {
 
         let device = test_context::get_graphics_device();
 
+        let queue = test_context::get_graphics_queue();
+
+        let mem_cfg = memory::MemoryCfg {
+            properties: hw::MemoryProperty::HOST_VISIBLE,
+            filter: &hw::any,
+            buffers: &[
+                &memory::BufferCfg {
+                    size: 16,
+                    usage: memory::UNIFORM,
+                    queue_families: &[queue.index()],
+                    simultaneous_access: false,
+                    count: 1
+                }
+            ]
+        };
+
+        let uniform_data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+
         let pipe_type = graphics::PipelineCfg {
             vertex_shader: test_context::get_vert_shader(),
             vertex_size: std::mem::size_of::<[f32; 2]>() as u32,
@@ -46,10 +64,10 @@ mod graphics_pipeline {
             enable_depth_test: false,
             sets: &[
                 &[
-                    (
+                    &uniform_data.resource(
+                        0,
                         graphics::ResourceType::UNIFORM_BUFFER,
-                        graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT,
-                        1
+                        graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT
                     )
                 ]
             ]

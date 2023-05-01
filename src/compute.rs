@@ -12,9 +12,9 @@ use std::sync::Arc;
 use std::{fmt, ptr};
 use std::error::Error;
 
-/// Note: only [memory](crate::memory::Storage) with memory::UsageFlags::STORAGE_BUFFER is allowed
-pub struct PipelineCfg<'a> {
-    pub buffers: &'a [&'a memory::Storage],
+/// Note: only [memory](crate::memory::Memory) with memory::UsageFlags::STORAGE_BUFFER is allowed
+pub struct PipelineCfg<'a, 'b : 'a> {
+    pub buffers: &'a [memory::View<'b>],
     pub shader: &'a shader::Shader,
     pub push_constant_size : u32,
 }

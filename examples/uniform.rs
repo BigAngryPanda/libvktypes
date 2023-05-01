@@ -15,8 +15,6 @@ use libvktypes::{
     queue
 };
 
-use libvktypes::graphics::Resource;
-
 const VERT_SHADER: &str = "
 #version 460
 
@@ -115,49 +113,46 @@ fn main() {
         shader::Shader::from_glsl(&device, &frag_shader_type, FRAG_SHADER, shader::Kind::Fragment)
         .expect("Failed to create fragment shader module");
 
-    let mem_type = memory::MemoryCfg {
-        size: 16*4,
-        properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
-        shared_access: false,
-        transfer_src: true,
-        transfer_dst: true,
-        queue_families: &[queue.index()]
+    let mem_cfg = memory::MemoryCfg {
+        properties: hw::MemoryProperty::HOST_VISIBLE,
+        filter: &hw::any,
+        buffers: &[
+            &memory::BufferCfg {
+                size: 4*std::mem::size_of::<[f32; 4]>() as u64,
+                usage: memory::VERTEX,
+                queue_families: &[queue.index()],
+                simultaneous_access: false,
+                count: 1
+            },
+            &memory::BufferCfg {
+                size: std::mem::size_of::<[f32; 4]>() as u64,
+                usage: memory::UNIFORM,
+                queue_families: &[queue.index()],
+                simultaneous_access: false,
+                count: 1
+            }
+        ]
     };
 
-    let selected_memory = memory::VertexBuffer::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
-
-    let vertex_data = memory::VertexBuffer::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
+    let data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
 
     let mut set_vrtx_buffer = |bytes: &mut [f32]| {
-        bytes.clone_from_slice(&[0.5f32, 0.5f32, 0.0f32, 1.0f32,
-                     0.5f32, -0.5f32, 0.0f32, 1.0f32,
-                     -0.5f32, 0.5f32, 0.0f32, 1.0f32,
-                     -0.5f32, -0.5f32, 0.0f32, 1.0f32]);
+        bytes.clone_from_slice(&[
+            0.5f32, 0.5f32, 0.0f32, 1.0f32,
+            0.5f32, -0.5f32, 0.0f32, 1.0f32,
+            -0.5f32, 0.5f32, 0.0f32, 1.0f32,
+            -0.5f32, -0.5f32, 0.0f32, 1.0f32]);
     };
 
-    vertex_data.write(&mut set_vrtx_buffer).expect("Failed to fill the buffer");
+    data.access(&mut set_vrtx_buffer, 0).expect("Failed to fill the buffer");
 
-    let res_cfg = memory::MemoryCfg {
-        size: 2*std::mem::size_of::<[f32; 4]>() as u64,
-        properties: hw::MemoryProperty::HOST_VISIBLE,
-        shared_access: false,
-        transfer_src: true,
-        transfer_dst: true,
-        queue_families: &[queue.index()]
-    };
-
-    let selected_memory = memory::UniformBuffer::find_memory(&device, hw::any, &res_cfg).expect("No suitable memory");
-
-    let ubo = memory::UniformBuffer::allocate(&device, &selected_memory, &res_cfg).expect("Failed to allocate ubo");
-
-    ubo.write(&mut |bytes: &mut [f32]| {
+    data.access(&mut |bytes: &mut [f32]| {
         bytes.clone_from_slice(
             &[
-                0.42, 0.42, 0.42, 1.0,
                 0.42, 0.42, 0.42, 1.0
             ]
         );
-    })
+    }, 1)
     .expect("Failed to fill the ubo");
 
     let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
@@ -179,12 +174,12 @@ fn main() {
         render_pass: &render_pass,
         subpass_index: 0,
         enable_depth_test: false,
-        sets: &[&[ubo.layout(graphics::ShaderStage::FRAGMENT)]]
+        sets: &[&[&data.resource(1, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::FRAGMENT)]]
     };
 
     let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
-    pipeline.update(&[&[&ubo]]);
+    pipeline.update(&[&[&data.resource(1, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::FRAGMENT)]]);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
@@ -213,7 +208,7 @@ fn main() {
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    cmd_buffer.bind_vertex_buffers(&[&vertex_data]);
+    cmd_buffer.bind_vertex_buffers(&[data.view(0)]);
 
     cmd_buffer.bind_resources(&pipeline, &[]);
 

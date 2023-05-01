@@ -81,24 +81,27 @@ fn main() {
 
     let frag_shader = shader::Shader::from_file(&device, &frag_shader_type).expect("Failed to create fragment shader module");
 
-    let mem_type = memory::MemoryCfg {
-        size: (std::mem::size_of::<f32>()*data.len()) as u64,
+    let mem_cfg = memory::MemoryCfg {
         properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
-        shared_access: false,
-        transfer_src: true,
-        transfer_dst: true,
-        queue_families: &[queue.index()]
+        filter: &hw::any,
+        buffers: &[
+            &memory::BufferCfg {
+                size: (std::mem::size_of::<f32>()*data.len()) as u64,
+                usage: memory::VERTEX,
+                queue_families: &[queue.index()],
+                simultaneous_access: false,
+                count: 1
+            }
+        ]
     };
 
-    let selected_memory = memory::VertexBuffer::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
-
-    let vertex_data = memory::VertexBuffer::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
+    let vertex_data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
 
     let mut set_vrtx_buffer = |bytes: &mut [f32]| {
         bytes.clone_from_slice(&data);
     };
 
-    vertex_data.write(&mut set_vrtx_buffer).expect("Failed to fill the buffer");
+    vertex_data.access(&mut set_vrtx_buffer, 0).expect("Failed to fill the buffer");
 
     let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");
@@ -151,9 +154,7 @@ fn main() {
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    let vrtx_stage_data = [&vertex_data];
-
-    cmd_buffer.bind_vertex_buffers(&vrtx_stage_data);
+    cmd_buffer.bind_vertex_buffers(&[vertex_data.view(0)]);
 
     cmd_buffer.draw(3, 1, 0, 0);
     cmd_buffer.draw(3, 1, 3, 0);

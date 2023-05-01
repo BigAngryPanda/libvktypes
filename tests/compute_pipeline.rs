@@ -39,18 +39,21 @@ mod compute_pipeline {
 
         let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-        let mem_type = memory::MemoryCfg {
-            size: 4,
-            properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT | hw::MemoryProperty::HOST_CACHED,
-            shared_access: false,
-            transfer_src: true,
-            transfer_dst: true,
-            queue_families: &[queue.index()]
+        let compute_memory = memory::BufferCfg {
+            size: 1,
+            usage: memory::STORAGE,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
         };
 
-        let selected_memory = memory::Storage::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
+        let mem_cfg = memory::MemoryCfg {
+            properties: hw::MemoryProperty::HOST_VISIBLE,
+            filter: &hw::any,
+            buffers: &[&compute_memory]
+        };
 
-        let buff = memory::Storage::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
+        let data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
 
         let shader_type = shader::ShaderCfg {
             path: "tests/compiled_shaders/fill_memory.spv",
@@ -60,7 +63,7 @@ mod compute_pipeline {
         let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");
 
         let pipe_type = compute::PipelineCfg {
-            buffers: &[&buff],
+            buffers: &[data.view(0)],
             shader: &shader,
             push_constant_size: 0,
         };

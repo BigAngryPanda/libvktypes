@@ -75,18 +75,21 @@ fn main() {
 
     let surf_format = capabilities.formats().next().expect("No available formats").format;
 
-    let mem_type = memory::MemoryCfg {
-        size: 16*7,
+    let mem_cfg = memory::MemoryCfg {
         properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
-        shared_access: false,
-        transfer_src: true,
-        transfer_dst: true,
-        queue_families: &[queue.index()]
+        filter: &hw::any,
+        buffers: &[
+            &memory::BufferCfg {
+                size: 16*7,
+                usage: memory::VERTEX,
+                queue_families: &[queue.index()],
+                simultaneous_access: false,
+                count: 1
+            }
+        ]
     };
 
-    let selected_memory = memory::VertexBuffer::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
-
-    let vertex_data = memory::VertexBuffer::allocate(&device, &selected_memory, &mem_type).expect("Failed to allocate memory");
+    let vertex_data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
 
     let mut set_vrtx_buffer = |bytes: &mut [f32]| {
         bytes.clone_from_slice(&[0.5f32, 0.5f32, 0.0f32, 1.0f32,
@@ -98,7 +101,7 @@ fn main() {
                      -1.0f32, 1.0f32, 1.0f32, 1.0f32,]);
     };
 
-    vertex_data.write(&mut set_vrtx_buffer).expect("Failed to fill the buffer");
+    vertex_data.access(&mut set_vrtx_buffer, 0).expect("Failed to fill the buffer");
 
     let depth_type = memory::ImageCfg {
         queue_families: &[queue.index()],
@@ -219,9 +222,7 @@ fn main() {
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    let vrtx_stage_data = [&vertex_data];
-
-    cmd_buffer.bind_vertex_buffers(&vrtx_stage_data);
+    cmd_buffer.bind_vertex_buffers(&[vertex_data.view(0)]);
 
     cmd_buffer.draw(7, 1, 0, 0);
 

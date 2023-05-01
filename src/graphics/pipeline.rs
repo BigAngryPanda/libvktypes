@@ -116,59 +116,22 @@ pub type Topology = vk::PrimitiveTopology;
 /// Vertices must be in counterclockwise order
 ///
 /// # Depth test
-/// Set [`enable_depth`](PipelineCfg::enable_depth) to perform depth test
+/// Set [`enable_depth_test`](PipelineCfg::enable_depth_test) to perform depth test
 ///
 /// However you have to allocate depth buffer and properly pass it to the render pass
 ///
 /// # Shaders and sets
 /// `sets` represents shader layout description
 ///
-/// Each [`binding`](graphics::BindingCfg) represents single layout
-///
 /// In other words `sets[X][Y]` corresponds to
 /// `layout(set=X, binding=Y) ...`
 ///
 /// If you want to "skip" some sets leave empty array for corresponding sets
 ///
-/// If you want to "skip" some bindings leave `0` for corresponding binding
+/// If you want to "skip" some bindings use [`Resource::empty()`](crate::graphics::Resource::empty())
 ///
-/// Example
-/// ```
-///     use libvktypes::graphics;
-///
-///     let set1 = [(graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT, 1)];
-///     let set3 = [
-///         (graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT, 2),
-///         (graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT, 0),
-///         (graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT, 1)
-///     ];
-///
-///     let sets: &[&[graphics::BindingCfg]] = &[&set1, &[], &set3];
-/// ```
-///
-/// and shader code
-/// ```ignore
-///     layout(set=0, binding=0) uniform Data {
-///         vec4 smth;
-///     } data;
-///
-///     // skip set = 1
-///
-///     layout(set=2, binding=0) uniform AnotherData {
-///         mat4 some_mat;
-///     } another_data[2];
-///
-///     // skip binding = 1
-///
-///     layout(set=2, binding=2) uniform YetAnotherData {
-///         vec3 yet_other_vec;
-///     } yet_another_data;
-/// ```
-///
-/// Typically you don't want to explicitly define layouts
-///
-/// Instead you may use [`Resource::layout`](graphics::Resource::layout) method
-pub struct PipelineCfg<'a> {
+/// More detailed information can be found in `Resource` [documentation](crate::graphics::Resource)
+pub struct PipelineCfg<'a, 'b : 'a> {
     pub vertex_shader: &'a shader::Shader,
     /// Size of every vertex
     pub vertex_size: u32,
@@ -181,7 +144,7 @@ pub struct PipelineCfg<'a> {
     /// Subpass index inside [`RenderPass`](PipelineCfg::render_pass)
     pub subpass_index: u32,
     pub enable_depth_test: bool,
-    pub sets: &'a [&'a [graphics::BindingCfg]]
+    pub sets: &'a [&'a [&'a graphics::Resource<'b>]]
 }
 
 #[derive(Debug)]
@@ -513,9 +476,7 @@ impl Pipeline {
     /// Each resource in `data` must be compatiable with corresponding [set](PipelineCfg::sets)
     ///
     /// `data[0][0]` with `sets[0][0]` and so on
-    ///
-    /// It means resource [layout](graphics::Resource::layout) must be the same as in corresponding set
-    pub fn update(&self, data: &[&[&dyn graphics::Resource]]) {
+    pub fn update(&self, data: &[&[&graphics::Resource]]) {
         for i in 0..self.i_desc_sets.len() {
             self.update_set(data[i], i);
         }
@@ -524,23 +485,25 @@ impl Pipeline {
     /// Update selected set
     ///
     /// For requirements see [`Pipeline::update`]
-    pub fn update_set(&self, data: &[&dyn graphics::Resource], set_index: usize) {
+    pub fn update_set(&self, resources: &[&graphics::Resource], set_index: usize) {
         let mut offset_counter = 0u64;
         let mut buffer_descs: Vec<vk::DescriptorBufferInfo> = Vec::new();
 
-        for buffer in data {
-            buffer_descs.push(
-                vk::DescriptorBufferInfo {
-                    buffer: buffer.buffer(),
-                    offset: offset_counter,
-                    range: vk::WHOLE_SIZE
-                }
-            );
+        for resource in resources {
+            for view in resource.views() {
+                buffer_descs.push(
+                    vk::DescriptorBufferInfo {
+                        buffer: view.buffer(),
+                        offset: offset_counter,
+                        range: vk::WHOLE_SIZE
+                    }
+                );
 
-            offset_counter += buffer.size();
+                offset_counter += view.size();
+            }
         }
 
-        let write_desc: Vec<vk::WriteDescriptorSet> = data.iter().enumerate().map(
+        let write_desc: Vec<vk::WriteDescriptorSet> = resources.iter().enumerate().map(
             |(i, b)| vk::WriteDescriptorSet {
                 s_type: vk::StructureType::WRITE_DESCRIPTOR_SET,
                 p_next: ptr::null(),
@@ -599,15 +562,15 @@ impl Drop for Pipeline {
 
 fn create_descriptor_pool(
     device: &dev::Device,
-    resources: &[&[graphics::BindingCfg]]
+    resources: &[&[&graphics::Resource]]
 ) -> VkResult<vk::DescriptorPool> {
     let mut desc_size: Vec<vk::DescriptorPoolSize> = Vec::new();
 
     for &set in resources {
-        for &binding in set {
+        for binding in set {
             desc_size.push(vk::DescriptorPoolSize {
-                ty: binding.0,
-                descriptor_count: binding.2,
+                ty: binding.resource_type(),
+                descriptor_count: binding.count()
             });
         }
     }
@@ -628,14 +591,14 @@ fn create_descriptor_pool(
 
 fn create_set_layout(
     device: &dev::Device,
-    resources: &[graphics::BindingCfg]
+    resources: &[&graphics::Resource]
 ) -> VkResult<vk::DescriptorSetLayout> {
     let bindings: Vec<vk::DescriptorSetLayoutBinding> = resources.iter().enumerate().map(
-        |(i, &binding)| vk::DescriptorSetLayoutBinding {
+        |(i, binding)| vk::DescriptorSetLayoutBinding {
             binding: i as u32,
-            descriptor_type: binding.0,
-            descriptor_count: binding.2,
-            stage_flags: binding.1,
+            descriptor_type: binding.resource_type(),
+            descriptor_count: binding.count(),
+            stage_flags: binding.stage(),
             p_immutable_samplers: ptr::null()
         }
     ).collect();

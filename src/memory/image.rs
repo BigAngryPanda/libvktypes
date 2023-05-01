@@ -1,4 +1,4 @@
-//! More specific version of [`Storage`](crate::memory::storage::Storage)
+//! More specific version of [`Memory`](crate::memory::Memory) dedicated for rendering
 
 use ash::vk;
 

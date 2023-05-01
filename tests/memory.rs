@@ -42,18 +42,21 @@ mod memory {
 
         let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-        let mem_type = memory::MemoryCfg {
-            size: 4,
-            properties: hw::MemoryProperty::HOST_VISIBLE,
-            shared_access: false,
-            transfer_src: true,
-            transfer_dst: true,
-            queue_families: &[queue.index()]
+        let compute_memory = memory::BufferCfg {
+            size: 1,
+            usage: memory::STORAGE,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
         };
 
-        let selected_memory = memory::Storage::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
+        let mem_cfg = memory::MemoryCfg {
+            properties: hw::MemoryProperty::HOST_VISIBLE,
+            filter: &hw::any,
+            buffers: &[&compute_memory]
+        };
 
-        assert!(memory::Storage::allocate(&device, &selected_memory, &mem_type).is_ok());
+        assert!(memory::Memory::allocate(&device, &mem_cfg).is_ok());
     }
 
     #[test]
@@ -84,18 +87,74 @@ mod memory {
 
         let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-        let mem_type = memory::MemoryCfg {
+        let compute_memory = memory::BufferCfg {
             size: 0,
-            properties: hw::MemoryProperty::HOST_VISIBLE,
-            shared_access: false,
-            transfer_src: true,
-            transfer_dst: true,
-            queue_families: &[queue.index()]
+            usage: memory::STORAGE,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
         };
 
-        let selected_memory = memory::Storage::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
+        let mem_cfg = memory::MemoryCfg {
+            properties: hw::MemoryProperty::HOST_VISIBLE,
+            filter: &hw::any,
+            buffers: &[&compute_memory]
+        };
 
-        assert!(memory::Storage::allocate(&device, &selected_memory, &mem_type).is_err());
+        assert!(memory::Memory::allocate(&device, &mem_cfg).is_err());
+    }
+
+    #[test]
+    fn multiple_buffers() {
+        let lib_type = libvk::InstanceType {
+            debug_layer: Some(layers::DebugLayer::default()),
+            extensions: &[extensions::DEBUG_EXT_NAME],
+            ..libvk::InstanceType::default()
+        };
+
+        let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
+        let hw_list = hw::Description::poll(&lib, None).expect("Failed to list hardware");
+
+        let (hw_dev, queue, _) = hw_list
+            .find_first(
+                hw::HWDevice::is_dedicated_gpu,
+                hw::QueueFamilyDescription::is_compute,
+                |_| true
+            )
+            .expect("Failed to find suitable hardware device");
+
+        let dev_type = dev::DeviceCfg {
+            lib: &lib,
+            hw: hw_dev,
+            extensions: &[],
+            allocator: None,
+        };
+
+        let device = dev::Device::new(&dev_type).expect("Failed to create device");
+
+        let compute_memory = memory::BufferCfg {
+            size: 42,
+            usage: memory::STORAGE,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 2
+        };
+
+        let ubo = memory::BufferCfg {
+            size: 137,
+            usage: memory::UNIFORM,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        };
+
+        let mem_cfg = memory::MemoryCfg {
+            properties: hw::MemoryProperty::HOST_VISIBLE,
+            filter: &hw::any,
+            buffers: &[&compute_memory, &ubo]
+        };
+
+        assert!(memory::Memory::allocate(&device, &mem_cfg).is_ok());
     }
 
     #[test]
@@ -144,24 +203,67 @@ mod memory {
     }
 
     #[test]
-    fn uniform_buffer() {
-        let device = test_context::get_graphics_device();
-
-        let queue = test_context::get_graphics_queue();
-
-        let mem_type = memory::MemoryCfg {
-            size: 1,
-            properties: hw::MemoryProperty::HOST_VISIBLE,
-            shared_access: false,
-            transfer_src: true,
-            transfer_dst: true,
-            queue_families: &[queue.index()]
+    fn access_buffers() {
+        let lib_type = libvk::InstanceType {
+            debug_layer: Some(layers::DebugLayer::default()),
+            extensions: &[extensions::DEBUG_EXT_NAME],
+            ..libvk::InstanceType::default()
         };
 
-        let selected_memory = memory::UniformBuffer::find_memory(&device, hw::any, &mem_type).expect("No suitable memory");
+        let lib = libvk::Instance::new(&lib_type).expect("Failed to load library");
+        let hw_list = hw::Description::poll(&lib, None).expect("Failed to list hardware");
 
-        assert!(
-            memory::UniformBuffer::allocate(device, &selected_memory, &mem_type).is_ok()
-        );
+        let (hw_dev, queue, _) = hw_list
+            .find_first(
+                hw::HWDevice::is_dedicated_gpu,
+                hw::QueueFamilyDescription::is_compute,
+                |_| true
+            )
+            .expect("Failed to find suitable hardware device");
+
+        let dev_type = dev::DeviceCfg {
+            lib: &lib,
+            hw: hw_dev,
+            extensions: &[],
+            allocator: None,
+        };
+
+        let device = dev::Device::new(&dev_type).expect("Failed to create device");
+
+        let vertex_data = memory::BufferCfg {
+            size: 42,
+            usage: memory::VERTEX,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        };
+
+        let ubo = memory::BufferCfg {
+            size: 137,
+            usage: memory::UNIFORM,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        };
+
+        let mem_cfg = memory::MemoryCfg {
+            properties: hw::MemoryProperty::HOST_VISIBLE,
+            filter: &hw::any,
+            buffers: &[&vertex_data, &ubo]
+        };
+
+        let memory = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+
+        let result = memory.access(&mut |bytes: &mut [u8]| {
+            bytes.clone_from_slice(&[0x42; 42]);
+        }, 0);
+
+        assert!(result.is_ok());
+
+        let result = memory.access(&mut |bytes: &mut [u8]| {
+            bytes.clone_from_slice(&[0xff; 137]);
+        }, 1);
+
+        assert!(result.is_ok());
     }
 }
