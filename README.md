@@ -49,6 +49,26 @@ See more:
 - [winit](https://github.com/rust-windowing/winit)
 - [shaderc](https://github.com/google/shaderc-rs)
 
+Example for Linux Mint 21 (amd64/nvidia) packets for apt:
+
+```
+libvulkan-dev
+libvulkan1
+vulkan-validationlayers
+vulkan-validationlayers-dev
+g++
+cmake
+libfontconfig
+libfontconfig-dev
+```
+
+Also maybe you will need following packages
+```
+vulkan-icd
+```
+
+(virtual package which maps to `mesa-vulkan-drivers`)
+
 ## Platforms
 
 - GNU/Linux (X11)
