@@ -104,7 +104,6 @@ pub struct MemoryCfg<'a, 'b : 'a> {
 /// Aligned region of memory
 ///
 /// # Allocation
-///
 /// Memory allocated in single chunk
 /// in order which is provided by [`MemoryCfg`]
 /// so no rearranges will be performed
@@ -120,6 +119,11 @@ pub struct MemoryCfg<'a, 'b : 'a> {
 /// such as [`hw::ub_offset`](crate::hw::HWDevice::ub_offset) or [`hw::storage_offset`](crate::hw::HWDevice::storage_offset)
 ///
 /// Hint: you may print struct (as [`Memory`] implements [`fmt::Display`]) to see memory layout
+///
+/// # Memory View
+/// Whole memory chunk is split into regions (buffers) which are defined by [`MemoryCfg::buffers`]
+///
+/// To help with managing regions [`Memory View`](crate::memory::View) struct was provided
 pub struct Memory {
     i_core: Arc<dev::Core>,
     i_device_memory: vk::DeviceMemory,
