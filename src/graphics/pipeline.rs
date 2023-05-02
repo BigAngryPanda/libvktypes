@@ -486,7 +486,6 @@ impl Pipeline {
     ///
     /// For requirements see [`Pipeline::update`]
     pub fn update_set(&self, resources: &[&graphics::Resource], set_index: usize) {
-        let mut offset_counter = 0u64;
         let mut buffer_descs: Vec<vk::DescriptorBufferInfo> = Vec::new();
 
         for resource in resources {
@@ -494,24 +493,22 @@ impl Pipeline {
                 buffer_descs.push(
                     vk::DescriptorBufferInfo {
                         buffer: view.buffer(),
-                        offset: offset_counter,
+                        offset: 0,
                         range: vk::WHOLE_SIZE
                     }
                 );
-
-                offset_counter += view.size();
             }
         }
 
         let write_desc: Vec<vk::WriteDescriptorSet> = resources.iter().enumerate().map(
-            |(i, b)| vk::WriteDescriptorSet {
+            |(i, res)| vk::WriteDescriptorSet {
                 s_type: vk::StructureType::WRITE_DESCRIPTOR_SET,
                 p_next: ptr::null(),
                 dst_set: self.i_desc_sets[set_index],
                 dst_binding: i as u32,
                 dst_array_element: 0,
-                descriptor_count: b.count(),
-                descriptor_type: b.resource_type(),
+                descriptor_count: res.count(),
+                descriptor_type: res.resource_type(),
                 p_image_info: ptr::null(),
                 p_buffer_info: &buffer_descs[i],
                 p_texel_buffer_view: ptr::null()

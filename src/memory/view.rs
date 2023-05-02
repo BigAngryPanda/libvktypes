@@ -34,6 +34,11 @@ impl<'a> View<'a> {
         self.i_memory.buffer_size(self.i_index)
     }
 
+    /// Return size of the buffer with respect to the alignment
+    pub fn allocated_size(&self) -> u64 {
+        self.i_memory.buffer_allocated_size(self.i_index)
+    }
+
     /// Execute 'f' over selected buffer
     pub fn access<T, F>(&self, f: &mut F) -> Result<(), memory::MemoryError>
     where

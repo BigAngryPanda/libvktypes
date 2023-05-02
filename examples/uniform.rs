@@ -32,10 +32,10 @@ layout (location=0) out vec4 color;
 
 layout(set=0, binding=0) uniform Data {
     vec4 colour;
-} data;
+} data[2];
 
 void main(){
-    color = data.colour;
+    color = data[0].colour + data[1].colour;
 }
 ";
 
@@ -129,7 +129,7 @@ fn main() {
                 usage: memory::UNIFORM,
                 queue_families: &[queue.index()],
                 simultaneous_access: false,
-                count: 1
+                count: 2
             }
         ]
     };
@@ -149,11 +149,22 @@ fn main() {
     data.access(&mut |bytes: &mut [f32]| {
         bytes.clone_from_slice(
             &[
-                0.42, 0.42, 0.42, 1.0
+                0.4, 0.4, 0.4, 1.0
             ]
         );
     }, 1)
     .expect("Failed to fill the ubo");
+
+    data.access(&mut |bytes: &mut [f32]| {
+        bytes.clone_from_slice(
+            &[
+                0.12, 0.12, 0.12, 1.0
+            ]
+        );
+    }, 2)
+    .expect("Failed to fill the ubo");
+
+    let ubo = graphics::Resource::new(&[data.view(1), data.view(2)], graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::FRAGMENT);
 
     let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");
@@ -174,12 +185,12 @@ fn main() {
         render_pass: &render_pass,
         subpass_index: 0,
         enable_depth_test: false,
-        sets: &[&[&data.resource(1, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::FRAGMENT)]]
+        sets: &[&[&ubo]]
     };
 
     let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
-    pipeline.update(&[&[&data.resource(1, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::FRAGMENT)]]);
+    pipeline.update(&[&[&ubo]]);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");

@@ -291,7 +291,7 @@ impl Memory {
                 unsafe {
                     device
                     .device()
-                    .bind_buffer_memory(buffers[i], dev_memory, 0)
+                    .bind_buffer_memory(buffers[i], dev_memory, pos[i].0)
                 },
                 {
                     unsafe {
@@ -390,6 +390,11 @@ impl Memory {
     /// Return size for the selected buffer
     pub fn buffer_size(&self, index: usize) -> u64 {
         self.i_pos[index].1
+    }
+
+    /// Return size of the buffer with respect to the alignment
+    pub fn buffer_allocated_size(&self, index: usize) -> u64 {
+        self.i_pos[index].2
     }
 
     /// Create and return view to the selected buffer
