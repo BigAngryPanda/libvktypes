@@ -89,7 +89,14 @@ pub struct BufferCfg<'a> {
     pub size: u64,
     pub usage: BufferUsageFlags,
     pub queue_families: &'a [u32],
+    /// Will two or more queues have access to the buffer at the same time
     pub simultaneous_access: bool,
+    /// How many of this buffer you want to allocate one by one
+    ///
+    /// For example
+    /// `[<buffer cfg, count == 1>, <buffer cfg, count == 1>]` is equivalent to `[<buffer cfg, count == 2>]`
+    ///
+    /// Hence each buffer will be handled separately (e.g. for alignment)
     pub count: usize
 }
 
