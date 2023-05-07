@@ -344,6 +344,79 @@ impl RenderPass {
         RenderPass::new(&device, &rp_cfg)
     }
 
+    /// Create [`RenderPass`] with single subpass and single attachment
+    /// and number of depth buffers
+    pub fn with_depth_buffers(
+        device: &dev::Device,
+        img_format: memory::ImageFormat,
+        depth_buffer_format: memory::ImageFormat,
+        depth_buffers_count: u32)
+        -> Result<RenderPass, RenderPassError>
+    {
+        let subpass_info = [
+            SubpassInfo {
+                input_attachments: &[],
+                color_attachments: &[0],
+                resolve_attachments: &[],
+                depth_stencil_attachment: depth_buffers_count,
+                preserve_attachments: &[],
+            }
+        ];
+
+        let mut attachments = vec![
+            AttachmentInfo {
+                format: img_format,
+                load_op: AttachmentLoadOp::CLEAR,
+                store_op: AttachmentStoreOp::STORE,
+                stencil_load_op: AttachmentLoadOp::DONT_CARE,
+                stencil_store_op: AttachmentStoreOp::DONT_CARE,
+                initial_layout: ImageLayout::UNDEFINED,
+                final_layout: ImageLayout::PRESENT_SRC_KHR
+            }
+        ];
+
+        for _ in 0..depth_buffers_count {
+            attachments.push(
+                AttachmentInfo {
+                    format: depth_buffer_format,
+                    load_op: AttachmentLoadOp::CLEAR,
+                    store_op: AttachmentStoreOp::DONT_CARE,
+                    stencil_load_op: AttachmentLoadOp::DONT_CARE,
+                    stencil_store_op: AttachmentStoreOp::DONT_CARE,
+                    initial_layout: ImageLayout::UNDEFINED,
+                    final_layout: ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                }
+            );
+        }
+
+        let subpass_sync_info = [
+            SubpassSync {
+                src_subpass: SUBPASS_EXTERNAL,
+                dst_subpass: 0,
+                src_stage: PipelineStage::BOTTOM_OF_PIPE,
+                dst_stage: PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+                src_access: AccessFlags::MEMORY_READ,
+                dst_access: AccessFlags::COLOR_ATTACHMENT_WRITE | AccessFlags::COLOR_ATTACHMENT_READ,
+            },
+            SubpassSync {
+                src_subpass: 0,
+                dst_subpass: SUBPASS_EXTERNAL,
+                src_stage: PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+                dst_stage: PipelineStage::BOTTOM_OF_PIPE,
+                src_access: AccessFlags::COLOR_ATTACHMENT_WRITE | AccessFlags::COLOR_ATTACHMENT_READ,
+                dst_access: AccessFlags::MEMORY_READ,
+            }
+        ];
+
+        let rp_cfg = RenderPassCfg {
+            attachments: &attachments,
+            sync_info: &subpass_sync_info,
+            subpasses: &subpass_info,
+        };
+
+        RenderPass::new(&device, &rp_cfg)
+    }
+
     #[doc(hidden)]
     pub fn render_pass(&self) -> vk::RenderPass {
         self.i_rp

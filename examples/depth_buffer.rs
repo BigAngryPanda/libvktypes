@@ -115,63 +115,7 @@ fn main() {
 
     let depth_buffer = memory::Image::new(&device, &depth_type).expect("Failed to allocate depth buffer");
 
-    let subpass_info = [
-        graphics::SubpassInfo {
-            input_attachments: &[],
-            color_attachments: &[0],
-            resolve_attachments: &[],
-            depth_stencil_attachment: 1,
-            preserve_attachments: &[],
-        }
-    ];
-
-    let attachments = [
-        graphics::AttachmentInfo {
-            format: surf_format,
-            load_op: graphics::AttachmentLoadOp::CLEAR,
-            store_op: graphics::AttachmentStoreOp::STORE,
-            stencil_load_op: graphics::AttachmentLoadOp::DONT_CARE,
-            stencil_store_op: graphics::AttachmentStoreOp::DONT_CARE,
-            initial_layout: graphics::ImageLayout::UNDEFINED,
-            final_layout: graphics::ImageLayout::PRESENT_SRC_KHR,
-        },
-        graphics::AttachmentInfo {
-            format: memory::ImageFormat::D32_SFLOAT,
-            load_op: graphics::AttachmentLoadOp::CLEAR,
-            store_op: graphics::AttachmentStoreOp::DONT_CARE,
-            stencil_load_op: graphics::AttachmentLoadOp::DONT_CARE,
-            stencil_store_op: graphics::AttachmentStoreOp::DONT_CARE,
-            initial_layout: graphics::ImageLayout::UNDEFINED,
-            final_layout: graphics::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        }
-    ];
-
-    let subpass_sync_info = [
-        graphics::SubpassSync {
-            src_subpass: graphics::SUBPASS_EXTERNAL,
-            dst_subpass: 0,
-            src_stage: graphics::PipelineStage::BOTTOM_OF_PIPE,
-            dst_stage: graphics::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-            src_access: graphics::AccessFlags::MEMORY_READ,
-            dst_access: graphics::AccessFlags::COLOR_ATTACHMENT_WRITE | graphics::AccessFlags::COLOR_ATTACHMENT_READ,
-        },
-        graphics::SubpassSync {
-            src_subpass: 0,
-            dst_subpass: graphics::SUBPASS_EXTERNAL,
-            src_stage: graphics::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-            dst_stage: graphics::PipelineStage::BOTTOM_OF_PIPE,
-            src_access: graphics::AccessFlags::COLOR_ATTACHMENT_WRITE | graphics::AccessFlags::COLOR_ATTACHMENT_READ,
-            dst_access: graphics::AccessFlags::MEMORY_READ,
-        }
-    ];
-
-    let rp_cfg = graphics::RenderPassCfg {
-        attachments: &attachments,
-        sync_info: &subpass_sync_info,
-        subpasses: &subpass_info,
-    };
-
-    let render_pass = graphics::RenderPass::new(&device, &rp_cfg)
+    let render_pass = graphics::RenderPass::with_depth_buffers(&device, surf_format, memory::ImageFormat::D32_SFLOAT, 1)
         .expect("Failed to create render pass");
 
     let pipe_type = graphics::PipelineCfg {
