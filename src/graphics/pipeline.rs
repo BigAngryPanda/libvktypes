@@ -58,6 +58,7 @@ use std::error::Error;
 /// ];
 ///
 /// ```
+#[derive(Debug, Clone, Copy)]
 pub struct VertexInputCfg {
     /// Index of an attribute, the same as defined by the location layout specifier in a shader source code
     pub location: u32,

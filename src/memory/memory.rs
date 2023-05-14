@@ -382,6 +382,15 @@ impl Memory {
         graphics::Resource::new(&[self.view(index)], resource_type, stage)
     }
 
+    /// Create [`VertexView`](crate::graphics::VertexView) for the buffer
+    ///
+    /// About `offset` read docs for [`VertexInputCfg`](graphics::VertexInputCfg)
+    ///
+    /// Buffer must contain `VERTEX_BUFFER` flag
+    pub fn vertex_view(&self, index: usize, offset: u32) -> graphics::VertexView {
+        graphics::VertexView::with_offset(self.view(index), offset)
+    }
+
     /// Return offset for the selected buffer
     pub fn buffer_offset(&self, index: usize) -> u64 {
         self.i_pos[index].0

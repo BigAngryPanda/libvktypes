@@ -326,11 +326,11 @@ impl<'a> Buffer<'a> {
     /// Update vertex bindings
     ///
     /// Updating starts from **first** binding
-    pub fn bind_vertex_buffers(&self, buffers: &[memory::View]) {
+    pub fn bind_vertex_buffers(&self, buffers: &[graphics::VertexView]) {
         let dev = self.i_pool.device();
 
         let vertex_buffers: Vec<vk::Buffer> = buffers.iter().map(|x| x.buffer()).collect();
-        let offsets: Vec<vk::DeviceSize> = vec![0; vertex_buffers.len()];
+        let offsets: Vec<vk::DeviceSize> = buffers.iter().map(|x| x.offset() as u64).collect();
 
         unsafe {
             dev.cmd_bind_vertex_buffers(self.i_buffer, 0, vertex_buffers.as_slice(), offsets.as_slice())

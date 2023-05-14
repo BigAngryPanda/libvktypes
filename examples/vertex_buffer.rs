@@ -146,7 +146,7 @@ fn main() {
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    cmd_buffer.bind_vertex_buffers(&[vertex_data.view(0)]);
+    cmd_buffer.bind_vertex_buffers(&[vertex_data.vertex_view(0, 0)]);
 
     cmd_buffer.draw(4, 1, 0, 0);
 
