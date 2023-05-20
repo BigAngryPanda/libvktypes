@@ -116,6 +116,10 @@ pub type Topology = vk::PrimitiveTopology;
 ///
 /// Vertices must be in counterclockwise order
 ///
+/// # Topology
+/// A good explanation about topologies may be found
+/// [here](https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#drawing-primitive-topology-class)
+///
 /// # Depth test
 /// Set [`enable_depth_test`](PipelineCfg::enable_depth_test) to perform depth test
 ///
