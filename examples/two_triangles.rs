@@ -116,7 +116,7 @@ fn main() {
             offset: 0,
         }],
         frag_shader: &frag_shader,
-        topology: graphics::Topology::TRIANGLE_STRIP,
+        topology: graphics::Topology::TRIANGLE_LIST,
         extent: capabilities.extent2d(),
         push_constant_size: 0,
         render_pass: &render_pass,

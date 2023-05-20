@@ -80,7 +80,7 @@ fn main() {
         filter: &hw::any,
         buffers: &[
             &memory::BufferCfg {
-                size: 16*7,
+                size: 16*9,
                 usage: memory::VERTEX,
                 queue_families: &[queue.index()],
                 simultaneous_access: false,
@@ -92,13 +92,17 @@ fn main() {
     let vertex_data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
 
     let mut set_vrtx_buffer = |bytes: &mut [f32]| {
-        bytes.clone_from_slice(&[0.5f32, 0.5f32, 0.0f32, 1.0f32,
-                     0.5f32, -0.5f32, 0.0f32, 1.0f32,
-                     -0.5f32, 0.5f32, 0.0f32, 1.0f32,
-                     1.0f32, 0.0f32, 1.0f32, 1.0f32,
-                     -1.0f32, 0.0f32, 1.0f32, 1.0f32,
-                     1.0f32, 1.0f32, 1.0f32, 1.0f32,
-                     -1.0f32, 1.0f32, 1.0f32, 1.0f32,]);
+        bytes.clone_from_slice(&[
+            0.5f32, 0.5f32, 0.0f32, 1.0f32,
+            0.5f32, -0.5f32, 0.0f32, 1.0f32,
+            -0.5f32, 0.5f32, 0.0f32, 1.0f32,
+            1.0f32, 0.0f32, 1.0f32, 1.0f32,
+            -1.0f32, 0.0f32, 1.0f32, 1.0f32,
+            1.0f32, 1.0f32, 1.0f32, 1.0f32,
+            -1.0f32, 0.0f32, 1.0f32, 1.0f32,
+            -1.0f32, 1.0f32, 1.0f32, 1.0f32,
+            1.0f32, 1.0f32, 1.0f32, 1.0f32,
+        ]);
     };
 
     vertex_data.access(&mut set_vrtx_buffer, 0).expect("Failed to fill the buffer");
@@ -128,7 +132,7 @@ fn main() {
             offset: 0,
         }],
         frag_shader: &frag_shader,
-        topology: graphics::Topology::TRIANGLE_STRIP,
+        topology: graphics::Topology::TRIANGLE_LIST,
         extent: capabilities.extent2d(),
         push_constant_size: 0,
         render_pass: &render_pass,
@@ -169,7 +173,7 @@ fn main() {
 
     cmd_buffer.bind_vertex_buffers(&[vertex_data.vertex_view(0, 0)]);
 
-    cmd_buffer.draw(7, 1, 0, 0);
+    cmd_buffer.draw(9, 1, 0, 0);
 
     cmd_buffer.end_render_pass();
 
