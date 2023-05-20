@@ -134,6 +134,7 @@ fn main() {
         render_pass: &render_pass,
         subpass_index: 0,
         enable_depth_test: true,
+        enable_primitive_restart: false,
         sets: &[]
     };
 

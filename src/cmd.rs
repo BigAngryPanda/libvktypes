@@ -369,6 +369,14 @@ impl<'a> Buffer<'a> {
         }
     }
 
+    pub fn bind_index_buffer(&self, view: memory::View, offset: u64, it: memory::IndexBufferType) {
+        let dev = self.i_pool.device();
+
+        unsafe {
+            dev.cmd_bind_index_buffer(self.i_buffer, view.buffer(), offset, it)
+        }
+    }
+
     /// Add `vkCmdDraw` call to the buffer
     ///
     /// About args see [more](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCmdDraw.html)
@@ -377,6 +385,41 @@ impl<'a> Buffer<'a> {
 
         unsafe {
             dev.cmd_draw(self.i_buffer, vc, ic, fv, fi);
+        }
+    }
+
+    /// Draw primitives with indexed vertices
+    ///
+    /// `index_count` is the number of vertices to draw
+    ///
+    /// `instance_count` is the number of instances to draw
+    ///
+    /// `first_index` is the base index within the index buffer
+    ///
+    /// `vertex_offset` is the value added to the vertex index before indexing into the vertex buffer
+    ///
+    /// `first_instance` is the instance ID of the first instance to draw
+    ///
+    /// See [more](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCmdDrawIndexed.html)
+    pub fn draw_indexed(
+        &self,
+        index_count: u32,
+        instance_count: u32,
+        first_index: u32,
+        vertex_offset: i32,
+        first_instance: u32,
+    ) {
+        let dev = self.i_pool.device();
+
+        unsafe {
+            dev.cmd_draw_indexed(
+                self.i_buffer,
+                index_count,
+                instance_count,
+                first_index,
+                vertex_offset,
+                first_instance,
+            );
         }
     }
 

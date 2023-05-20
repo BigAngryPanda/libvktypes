@@ -132,6 +132,17 @@ pub type Topology = vk::PrimitiveTopology;
 /// If you want to "skip" some bindings use [`Resource::empty()`](crate::graphics::Resource::empty())
 ///
 /// More detailed information can be found in `Resource` [documentation](crate::graphics::Resource)
+///
+/// # Assembly restarting
+/// Affects [indexed drawing](crate::cmd::Buffer::draw_indexed)
+///
+/// `enable_depth_test` controls whether a special vertex index value is treated as restarting the assembly of primitives
+///
+/// For example the special index value is
+/// [`INDEX_REASSEMBLY_UINT32`](memory::INDEX_REASSEMBLY_UINT32) for `IndexBufferType::UINT32`
+/// and so on
+///
+/// Read more [here](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPipelineInputAssemblyStateCreateInfo.html)
 pub struct PipelineCfg<'a, 'b : 'a> {
     pub vertex_shader: &'a shader::Shader,
     /// Size of every vertex
@@ -145,6 +156,7 @@ pub struct PipelineCfg<'a, 'b : 'a> {
     /// Subpass index inside [`RenderPass`](PipelineCfg::render_pass)
     pub subpass_index: u32,
     pub enable_depth_test: bool,
+    pub enable_primitive_restart: bool,
     pub sets: &'a [&'a [&'a graphics::Resource<'b>]]
 }
 
@@ -268,7 +280,7 @@ impl Pipeline {
             p_next: ptr::null(),
             flags: vk::PipelineInputAssemblyStateCreateFlags::empty(),
             topology: pipe_cfg.topology,
-            primitive_restart_enable: ash::vk::FALSE,
+            primitive_restart_enable: pipe_cfg.enable_primitive_restart as ash::vk::Bool32,
         };
 
         let viewports = [vk::Viewport {

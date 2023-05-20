@@ -34,6 +34,24 @@ pub const VERTEX: BufferUsageFlags = BufferUsageFlags::from_raw(
     FULL_TRANSFER.as_raw() | (BufferUsageFlags::VERTEX_BUFFER).as_raw()
 );
 
+pub const INDEX: BufferUsageFlags = BufferUsageFlags::from_raw(
+    FULL_TRANSFER.as_raw() | (BufferUsageFlags::INDEX_BUFFER).as_raw()
+);
+
+/// Size of the indices
+///
+#[doc = "Ash documentation about possible values <https://docs.rs/ash/latest/ash/vk/struct.IndexType.html>"]
+///
+#[doc = "Vulkan documentation <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkIndexType.html>"]
+pub type IndexBufferType = vk::IndexType;
+
+/// Special value for starting reassembly
+pub const INDEX_REASSEMBLY_UINT32: u32 = 0xffffffff;
+/// Special value for starting reassembly
+pub const INDEX_REASSEMBLY_UINT16: u16 = 0xffff;
+/// Special value for starting reassembly
+pub const INDEX_REASSEMBLY_UINT8: u8 = 0xff;
+
 /// Errors during memory allocation, initialization and access
 #[derive(Debug)]
 pub enum MemoryError {

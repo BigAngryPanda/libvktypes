@@ -21,6 +21,7 @@ mod graphics_pipeline {
             render_pass: test_context::get_render_pass(),
             subpass_index: 0,
             enable_depth_test: false,
+            enable_primitive_restart: false,
             sets: &[]
         };
 
@@ -62,6 +63,7 @@ mod graphics_pipeline {
             render_pass: test_context::get_render_pass(),
             subpass_index: 0,
             enable_depth_test: false,
+            enable_primitive_restart: false,
             sets: &[
                 &[
                     &uniform_data.resource(

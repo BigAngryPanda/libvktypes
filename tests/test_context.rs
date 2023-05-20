@@ -323,6 +323,7 @@ pub fn get_graphics_pipeline() -> &'static graphics::Pipeline {
                 render_pass: get_render_pass(),
                 subpass_index: 0,
                 enable_depth_test: false,
+                enable_primitive_restart: false,
                 sets: &[]
             };
 
