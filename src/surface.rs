@@ -3,7 +3,7 @@
 use ash::vk;
 use ash::extensions::khr;
 
-use winit::platform::unix::WindowExtUnix;
+use winit::platform::x11::WindowExtX11;
 
 use crate::{libvk, window, hw, memory, swapchain};
 use crate::{on_error_ret, on_option};

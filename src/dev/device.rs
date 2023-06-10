@@ -65,6 +65,8 @@ impl Device {
             })
             .collect();
 
+        // Warnng: enabled_layer_count and pp_enabled_layer_names is deprecated
+        #[allow(deprecated)]
         let create_info = vk::DeviceCreateInfo {
             s_type: vk::StructureType::DEVICE_CREATE_INFO,
             p_next: ptr::null(),

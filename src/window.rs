@@ -1,7 +1,7 @@
 //! Helper functions around `winit` library
 
 use winit::event_loop::EventLoopBuilder;
-use winit::platform::unix::EventLoopBuilderExtUnix;
+use winit::platform::x11::EventLoopBuilderExtX11;
 use winit::error::OsError;
 
 pub type EventLoop = winit::event_loop::EventLoop<()>;
