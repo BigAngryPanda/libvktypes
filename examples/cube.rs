@@ -92,8 +92,8 @@ const INDICES: &[u32] = &[
     3, 7, 5,
     3, 5, 1,
 
-    2, 6, 4,
-    2, 4, 0,
+    6, 2, 4,
+    4, 2, 0,
 ];
 
 const ROT_ANGLE: f32 = std::f32::consts::FRAC_PI_4;
