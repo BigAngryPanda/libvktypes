@@ -365,6 +365,7 @@ fn main() {
         subpass_index: 0,
         enable_depth_test: true,
         enable_primitive_restart: false,
+        cull_mode: graphics::CullMode::BACK,
         sets: &[&set],
     };
 

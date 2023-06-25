@@ -100,6 +100,13 @@ impl From<&VertexInputCfg> for vk::VertexInputAttributeDescription {
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPrimitiveTopology.html>"]
 pub type Topology = vk::PrimitiveTopology;
 
+/// Specifies which triangles will be discarderd based on their orientation
+///
+#[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.CullModeFlags.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkCullModeFlagBits.html>"]
+pub type CullMode = vk::CullModeFlags;
+
 /// Pipeline configuration
 ///
 /// # Vertex stage configuration
@@ -161,6 +168,7 @@ pub struct PipelineCfg<'a, 'b : 'a> {
     pub subpass_index: u32,
     pub enable_depth_test: bool,
     pub enable_primitive_restart: bool,
+    pub cull_mode: CullMode,
     pub sets: &'a [&'a [&'a graphics::Resource<'b>]]
 }
 
@@ -326,7 +334,7 @@ impl Pipeline {
             depth_clamp_enable: ash::vk::FALSE,
             rasterizer_discard_enable: ash::vk::FALSE,
             polygon_mode: vk::PolygonMode::FILL,
-            cull_mode: vk::CullModeFlags::BACK,
+            cull_mode: pipe_cfg.cull_mode,
             front_face: vk::FrontFace::COUNTER_CLOCKWISE,
             depth_bias_enable: ash::vk::FALSE,
             depth_bias_constant_factor: 0.0,

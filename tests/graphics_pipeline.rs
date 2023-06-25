@@ -22,6 +22,7 @@ mod graphics_pipeline {
             subpass_index: 0,
             enable_depth_test: false,
             enable_primitive_restart: false,
+            cull_mode: graphics::CullMode::BACK,
             sets: &[]
         };
 
@@ -64,6 +65,7 @@ mod graphics_pipeline {
             subpass_index: 0,
             enable_depth_test: false,
             enable_primitive_restart: false,
+            cull_mode: graphics::CullMode::BACK,
             sets: &[
                 &[
                     &uniform_data.resource(
