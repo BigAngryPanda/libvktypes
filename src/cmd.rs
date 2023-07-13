@@ -8,7 +8,6 @@ use crate::on_error_ret;
 
 use std::{ptr, cmp};
 use std::iter::Iterator;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use std::fmt;
 
@@ -38,11 +37,34 @@ pub enum PoolError {
     Creating
 }
 
-/// All command buffers are allocated from `Pool`
-pub struct Pool {
+struct CorePool {
     i_core: Arc<dev::Core>,
     i_pool: vk::CommandPool
 }
+
+impl fmt::Debug for CorePool {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Pool")
+        .field("i_core", &self.i_core)
+        .field("i_pool", &(&self.i_pool as *const vk::CommandPool))
+        .finish()
+    }
+}
+
+impl Drop for CorePool {
+    fn drop(&mut self) {
+        unsafe {
+            self.i_core.device()
+                .destroy_command_pool(
+                    self.i_pool, self.i_core.allocator()
+                );
+        }
+    }
+}
+
+/// All command buffers are allocated from `Pool`
+#[derive(Debug, Clone)]
+pub struct Pool(Arc<CorePool>);
 
 impl Pool {
     pub fn new(dev: &dev::Device, pool_type: &PoolCfg) -> Result<Pool, PoolError> {
@@ -58,26 +80,26 @@ impl Pool {
             PoolError::Creating
         );
 
-        Ok(
-            Pool {
-                i_core: dev.core().clone(),
-                i_pool: cmd_pool
+        Ok(Pool(
+            Arc::new(CorePool {
+            i_core: dev.core().clone(),
+            i_pool: cmd_pool
             }
-        )
+        )))
     }
 
     /// Allocate new command buffer
-    pub fn allocate<'a>(&'a self) -> Result<Buffer<'a>, BufferError> {
+    pub fn allocate(&self) -> Result<Buffer, BufferError> {
         let cmd_buff_info = vk::CommandBufferAllocateInfo {
             s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
             p_next: ptr::null(),
-            command_pool: self.i_pool,
+            command_pool: self.0.i_pool,
             level: vk::CommandBufferLevel::PRIMARY,
             command_buffer_count: 1,
         };
 
         let cmd_buffers = on_error_ret!(
-            unsafe { self.i_core.device().allocate_command_buffers(&cmd_buff_info) },
+            unsafe { self.0.i_core.device().allocate_command_buffers(&cmd_buff_info) },
             BufferError::Creating
         );
 
@@ -89,41 +111,21 @@ impl Pool {
         };
 
         on_error_ret!(
-            unsafe { self.i_core.device().begin_command_buffer(cmd_buffers[0], &cmd_begin_info) },
+            unsafe { self.0.i_core.device().begin_command_buffer(cmd_buffers[0], &cmd_begin_info) },
             BufferError::Begin
         );
 
         Ok(
             Buffer {
                 i_buffer: cmd_buffers[0],
-                i_pool: self,
+                i_pool: self.clone(),
             }
         )
     }
 
     #[doc(hidden)]
     fn device(&self) -> &ash::Device {
-        self.i_core.device()
-    }
-}
-
-impl fmt::Debug for Pool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Pool")
-        .field("i_core", &self.i_core)
-        .field("i_pool", &(&self.i_pool as *const vk::CommandPool))
-        .finish()
-    }
-}
-
-impl Drop for Pool {
-    fn drop(&mut self) {
-        unsafe {
-            self.i_core.device()
-                .destroy_command_pool(
-                    self.i_pool, self.i_core.allocator()
-                );
-        }
+        self.0.i_core.device()
     }
 }
 
@@ -148,16 +150,16 @@ pub enum BufferError {
 /// Note: this buffer is not ready for execution "as is"
 ///
 /// For that you have to complete buffer via (`commit`)[crate::cmd::Buffer::commit]
-pub struct Buffer<'a> {
-    i_pool: &'a Pool,
+pub struct Buffer {
+    i_pool: Pool,
     i_buffer: vk::CommandBuffer
 }
 
-impl<'a> Buffer<'a> {
+impl Buffer {
     /// Modify buffer into executable
     ///
     /// Original buffer will not be available
-    pub fn commit(self) -> Result<ExecutableBuffer<'a>, BufferError> {
+    pub fn commit(self) -> Result<ExecutableBuffer, BufferError> {
         let dev = self.i_pool.device();
 
         on_error_ret!(
@@ -168,7 +170,7 @@ impl<'a> Buffer<'a> {
         Ok(
             ExecutableBuffer {
                 i_buffer: self.i_buffer,
-                _marker: PhantomData
+                i_pool: self.i_pool,
             }
         )
     }
@@ -435,32 +437,33 @@ impl<'a> Buffer<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Buffer<'a> {
+impl fmt::Debug for Buffer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Buffer")
-        .field("i_pool", self.i_pool)
+        .field("i_pool", &self.i_pool)
         .field("i_buffer", &self.i_buffer)
         .finish()
     }
 }
 
 /// Buffer which is ready for execution
-pub struct ExecutableBuffer<'a> {
+pub struct ExecutableBuffer {
     i_buffer: vk::CommandBuffer,
-    _marker: PhantomData<&'a Pool>
+    i_pool: Pool,
 }
 
 #[doc(hidden)]
-impl<'a> ExecutableBuffer<'a> {
+impl ExecutableBuffer {
     pub fn buffer(&self) -> &vk::CommandBuffer {
         &self.i_buffer
     }
 }
 
-impl<'a> fmt::Debug for ExecutableBuffer<'a> {
+impl fmt::Debug for ExecutableBuffer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Buffer")
         .field("i_buffer", &self.i_buffer)
+        .field("i_pool", &self.i_pool)
         .finish()
     }
 }

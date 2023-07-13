@@ -9,8 +9,8 @@ use std::error::Error;
 use crate::{on_error_ret, data_ptr};
 use crate::{dev, cmd, sync, swapchain};
 
-pub struct ExecInfo<'a, 'b : 'a> {
-    pub buffer: &'a cmd::ExecutableBuffer<'b>,
+pub struct ExecInfo<'a> {
+    pub buffer: &'a cmd::ExecutableBuffer,
     pub wait_stage: cmd::PipelineStage,
     pub timeout: u64,
     pub wait: &'a [&'a sync::Semaphore],
