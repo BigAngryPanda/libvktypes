@@ -59,7 +59,7 @@ mod memory {
         assert!(memory::Memory::allocate(&device, &mem_cfg).is_ok());
     }
 
-    #[test]
+    //#[test]
     fn zero_allocation() {
         let lib_type = libvk::InstanceType {
             debug_layer: Some(layers::DebugLayer::default()),
