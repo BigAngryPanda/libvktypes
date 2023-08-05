@@ -60,6 +60,7 @@ g++
 cmake
 libfontconfig
 libfontconfig-dev
+build-essential
 ```
 
 Also maybe you will need following packages
