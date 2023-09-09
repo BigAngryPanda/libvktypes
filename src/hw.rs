@@ -208,7 +208,7 @@ pub type MemoryProperty = vk::MemoryPropertyFlags;
 /// Represents information about each heap
 ///
 #[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html>"]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct MemoryDescription {
     i_mem_index: u32,
     /// Heap size in bytes
@@ -284,6 +284,11 @@ impl MemoryDescription {
     pub fn is_lazily_allocated(&self) -> bool {
         self.i_property
             .contains(vk::MemoryPropertyFlags::LAZILY_ALLOCATED)
+    }
+
+    /// Return memory property flags
+    pub fn flags(&self) -> MemoryProperty {
+        self.i_property
     }
 }
 
