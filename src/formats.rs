@@ -3,7 +3,7 @@ use crate::memory::ImageFormat;
 /// Return block size in bytes for the selected format
 /// according to the [specification](https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#formats-compatibility)
 ///
-/// If format is unknown for the library returns 0
+/// If format is unknown to the library returns 0
 pub fn block_size(format: ImageFormat) -> u64 {
     match format {
         ImageFormat::R4G4_UNORM_PACK8 |
@@ -13,8 +13,7 @@ pub fn block_size(format: ImageFormat) -> u64 {
         ImageFormat::R8_UINT |
         ImageFormat::R8_SINT |
         ImageFormat::R8_SRGB |
-        ImageFormat::S8_UINT |
-        ImageFormat::R8_UNORM => 1,
+        ImageFormat::S8_UINT => 1,
         ImageFormat::D16_UNORM => 2,
         ImageFormat::R8G8B8_UNORM |
         ImageFormat::R8G8B8_SNORM |
