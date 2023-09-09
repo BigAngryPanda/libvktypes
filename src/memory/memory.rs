@@ -7,7 +7,6 @@ use crate::{dev, hw, memory, graphics};
 use core::ffi::c_void;
 use std::sync::Arc;
 use std::ptr;
-use std::error::Error;
 use std::fmt;
 
 /// Purpose of buffer
@@ -51,55 +50,6 @@ pub const INDEX_REASSEMBLY_UINT32: u32 = 0xffffffff;
 pub const INDEX_REASSEMBLY_UINT16: u16 = 0xffff;
 /// Special value for starting reassembly
 pub const INDEX_REASSEMBLY_UINT8: u8 = 0xff;
-
-/// Errors during memory allocation, initialization and access
-#[derive(Debug)]
-pub enum MemoryError {
-    /// Failed to [create](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateBuffer.html) buffer
-    Buffer,
-    /// Failed to find suitable memory
-    NoSuitableMemory,
-    /// Failed to [allocate](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAllocateMemory.html) memory
-    DeviceMemory,
-    /// Failed to
-    /// [map](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkMapMemory.html) memory
-    MapAccess,
-    /// Failed to
-    /// [flush](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkFlushMappedMemoryRanges.html) memory
-    Flush,
-    /// Failed to
-    /// [bind](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkBindBufferMemory.html) memory
-    Bind
-}
-
-impl fmt::Display for MemoryError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let err_msg = match self {
-            MemoryError::Buffer => {
-                "Failed to create buffer (vkCreateBuffer call failed)"
-            },
-            MemoryError::NoSuitableMemory => {
-                "Failed to find suitable memory"
-            },
-            MemoryError::DeviceMemory => {
-                "Failed to allocate memory for buffer (vkAllocateMemory call failed)"
-            },
-            MemoryError::MapAccess => {
-                "Failed to map memory (vkMapMemory call failed)"
-            },
-            MemoryError::Flush => {
-                "Failed to flush memory (vkFlushMappedMemoryRanges call failed)"
-            },
-            MemoryError::Bind => {
-                "Failed to bind memory (vkBindBufferMemory call failed)"
-            }
-        };
-
-        write!(f, "{:?}", err_msg)
-    }
-}
-
-impl Error for MemoryError {}
 
 /// Configuration struct for memory region
 #[derive(Debug, Clone)]
@@ -162,7 +112,7 @@ impl Memory {
     pub fn allocate(
         device: &dev::Device,
         cfg: &MemoryCfg
-    ) -> Result<Memory, MemoryError> {
+    ) -> Result<Memory, memory::MemoryError> {
         let mut buffers: Vec<vk::Buffer> = Vec::new();
         let mut memory_type_bits = 0xffffffffu32;
         let mut last = 0u64;
@@ -221,7 +171,7 @@ impl Memory {
                     total_size += requirements.size + alignment;
                 } else {
                     free_buffers(device.core(), &buffers);
-                    return Err(MemoryError::Buffer);
+                    return Err(memory::MemoryError::Buffer);
                 }
             }
         }
@@ -237,7 +187,7 @@ impl Memory {
             device.hw().find_first_memory(filter),
             {
                 free_buffers(device.core(), &buffers);
-                return Err(MemoryError::Buffer);
+                return Err(memory::MemoryError::Buffer);
             }
         );
 
@@ -253,7 +203,7 @@ impl Memory {
                 device.device().allocate_memory(&memory_info, device.allocator()),
                 {
                     free_buffers(device.core(), &buffers);
-                    return Err(MemoryError::DeviceMemory);
+                    return Err(memory::MemoryError::DeviceMemory);
                 }
             )
         };
@@ -285,7 +235,7 @@ impl Memory {
                     {
                         device.device().free_memory(dev_memory, device.allocator());
                         free_buffers(device.core(), &buffers);
-                        return Err(MemoryError::MapAccess);
+                        return Err(memory::MemoryError::MapAccess);
                     }
                 );
 
@@ -296,7 +246,7 @@ impl Memory {
                     {
                         device.device().free_memory(dev_memory, device.allocator());
                         free_buffers(device.core(), &buffers);
-                        return Err(MemoryError::Flush);
+                        return Err(memory::MemoryError::Flush);
                     }
                 );
 
@@ -316,7 +266,7 @@ impl Memory {
                         device.device().free_memory(dev_memory, device.allocator())
                     };
                     free_buffers(device.core(), &buffers);
-                    return Err(MemoryError::Bind);
+                    return Err(memory::MemoryError::Bind);
                 }
             )
         }
