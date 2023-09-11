@@ -120,13 +120,19 @@ impl Memory {
         let mut total_size = 0u64;
 
         for cfg in cfg.buffers {
+            let sharing_mode = if cfg.simultaneous_access {
+                vk::SharingMode::CONCURRENT
+            } else {
+                vk::SharingMode::EXCLUSIVE
+            };
+
             let buffer_info = vk::BufferCreateInfo {
                 s_type: vk::StructureType::BUFFER_CREATE_INFO,
                 p_next: ptr::null(),
                 flags: vk::BufferCreateFlags::empty(),
                 size: cfg.size,
                 usage: cfg.usage,
-                sharing_mode: vk::SharingMode::EXCLUSIVE,
+                sharing_mode: sharing_mode,
                 queue_family_index_count: cfg.queue_families.len() as u32,
                 p_queue_family_indices: cfg.queue_families.as_ptr(),
             };
