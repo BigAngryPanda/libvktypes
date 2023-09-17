@@ -9,7 +9,7 @@ use crate::{dev, hw, memory};
 
 use std::ptr;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct Subregion {
     pub offset: u64,
     pub size: u64,
@@ -102,7 +102,7 @@ impl Region {
 
         // Without coherency we have to manually synchronize memory between host and device
         if !desc.is_compatible(vk::MemoryPropertyFlags::HOST_COHERENT)
-            && desc.is_compatible(vk::MemoryPropertyFlags::HOST_COHERENT)
+            && desc.is_compatible(vk::MemoryPropertyFlags::HOST_VISIBLE)
         {
             let mem_range = vk::MappedMemoryRange {
                 s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
@@ -148,8 +148,8 @@ impl Region {
         })
     }
 
-    pub(crate) fn find_memory(hw: &hw::HWDevice, memory_bits: u32, properties: hw::MemoryProperty) -> Option<&hw::MemoryDescription> {
-        let memory_filter = |m: &hw::MemoryDescription| -> Option<&hw::MemoryDescription> {
+    pub(crate) fn find_memory<'a, 'b : 'a>(hw: &'b hw::HWDevice, memory_bits: u32, properties: hw::MemoryProperty) -> Option<&'a hw::MemoryDescription> {
+        let memory_filter = |m: &'b hw::MemoryDescription| -> Option<&'a hw::MemoryDescription> {
             if ((memory_bits >> m.index()) & 1) == 1
                 && m.is_compatible(properties)
             {
@@ -187,6 +187,9 @@ impl Region {
         if !self
             .i_flags
             .contains(vk::MemoryPropertyFlags::HOST_COHERENT)
+            && self
+            .i_flags
+            .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
         {
             let mem_range = vk::MappedMemoryRange {
                 s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
@@ -221,16 +224,18 @@ impl Region {
     }
 
     pub(crate) fn is_empty(&self) -> bool {
-        self.i_memory != vk::DeviceMemory::null()
+        self.i_memory == vk::DeviceMemory::null()
     }
 }
 
 impl Drop for Region {
     fn drop(&mut self) {
         if !self.is_empty() {
-            self.i_core
-            .device()
-            .free_memory(self.i_memory, self.i_core.allocator());
+            unsafe {
+                self.i_core
+                .device()
+                .free_memory(self.i_memory, self.i_core.allocator());
+            }
         }
     }
 }
