@@ -72,6 +72,9 @@ impl fmt::Display for MemoryError {
             },
             MemoryError::ImageView => {
                 "Failed to create image view (vkCreateImageView call failed)"
+            },
+            MemoryError::ImageBind => {
+                "Failed to bind image memory (vkBindImageMemory call failed)"
             }
         };
 

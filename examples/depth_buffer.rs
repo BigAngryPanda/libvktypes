@@ -107,17 +107,24 @@ fn main() {
 
     vertex_data.access(&mut set_vrtx_buffer, 0).expect("Failed to fill the buffer");
 
-    let depth_type = memory::ImageCfg {
+    let depth_buffer_cfg = memory::ImageCfg {
         queue_families: &[queue.index()],
+        simultaneous_access: false,
         format: memory::ImageFormat::D32_SFLOAT,
         extent: capabilities.extent3d(1),
         usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
         layout: graphics::ImageLayout::UNDEFINED,
         aspect: memory::ImageAspect::DEPTH,
-        properties: hw::MemoryProperty::DEVICE_LOCAL,
+        tiling: memory::Tiling::OPTIMAL
     };
 
-    let depth_buffer = memory::Image::new(&device, &depth_type).expect("Failed to allocate depth buffer");
+    let alloc_info = memory::ImagesAllocationInfo {
+        properties: hw::MemoryProperty::DEVICE_LOCAL,
+        filter: &hw::any,
+        image_cfgs: &[depth_buffer_cfg]
+    };
+
+    let depth_buffer = memory::ImageMemory::allocate(&device, &alloc_info).expect("Failed to allocate depth buffer");
 
     let render_pass = graphics::RenderPass::with_depth_buffers(&device, surf_format, memory::ImageFormat::D32_SFLOAT, 1)
         .expect("Failed to create render pass");
@@ -161,7 +168,7 @@ fn main() {
     let img_index = swapchain.next_image(u64::MAX, Some(&img_sem), None).expect("Failed to get image index");
 
     let framebuffer_cfg = memory::FramebufferCfg {
-        images: &[&images[img_index as usize], &depth_buffer],
+        images: &[images[img_index as usize].view(0), depth_buffer.view(0)],
         extent: capabilities.extent2d(),
         render_pass: &render_pass,
     };

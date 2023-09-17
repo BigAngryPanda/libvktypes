@@ -170,17 +170,26 @@ mod memory {
 
         let caps = test_context::get_surface_capabilities();
 
-        let img_type = memory::ImageCfg {
-            queue_families: &[queue.index()],
-            format: memory::ImageFormat::D32_SFLOAT,
-            extent: caps.extent3d(1),
-            usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-            layout: graphics::ImageLayout::UNDEFINED,
-            aspect: memory::ImageAspect::DEPTH,
+        let depth_buffer_cfg = [
+            memory::ImageCfg {
+                queue_families: &[queue.index()],
+                simultaneous_access: false,
+                format: memory::ImageFormat::D32_SFLOAT,
+                extent: caps.extent3d(1),
+                usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+                layout: graphics::ImageLayout::UNDEFINED,
+                aspect: memory::ImageAspect::DEPTH,
+                tiling: memory::Tiling::OPTIMAL
+            }
+        ];
+
+        let alloc_info = memory::ImagesAllocationInfo {
             properties: hw::MemoryProperty::DEVICE_LOCAL,
+            filter: &hw::any,
+            image_cfgs: &depth_buffer_cfg
         };
 
-        assert!(memory::Image::new(test_context::get_graphics_device(), &img_type).is_ok());
+        assert!(memory::ImageMemory::allocate(test_context::get_graphics_device(), &alloc_info).is_ok());
     }
 
     #[test]
@@ -189,13 +198,13 @@ mod memory {
 
         let rp = test_context::get_render_pass();
 
-        let img = test_context::get_image_list();
+        let images = test_context::get_image_list();
 
         let capabilities = test_context::get_surface_capabilities();
 
         let framebuffer_cfg = memory::FramebufferCfg {
             render_pass: rp,
-            images: &[&img[0]],
+            images: &[images[0].view(0)],
             extent: capabilities.extent2d()
         };
 
@@ -263,6 +272,76 @@ mod memory {
         let result = memory.access(&mut |bytes: &mut [u8]| {
             bytes.clone_from_slice(&[0xff; 137]);
         }, 1);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn multiple_images() {
+        let queue = test_context::get_graphics_queue();
+
+        let images_cfg = [
+            memory::ImageCfg {
+                queue_families: &[queue.index()],
+                simultaneous_access: false,
+                format: memory::ImageFormat::D32_SFLOAT,
+                extent: memory::Extent3D {height: 800, width: 600, depth: 1 },
+                usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+                layout: graphics::ImageLayout::UNDEFINED,
+                aspect: memory::ImageAspect::DEPTH,
+                tiling: memory::Tiling::OPTIMAL
+            },
+            memory::ImageCfg {
+                queue_families: &[queue.index()],
+                simultaneous_access: false,
+                format: memory::ImageFormat::R8G8B8A8_SNORM,
+                extent: memory::Extent3D {height: 1920, width: 1080, depth: 1 },
+                usage: memory::ImageUsageFlags::COLOR_ATTACHMENT,
+                layout: graphics::ImageLayout::UNDEFINED,
+                aspect: memory::ImageAspect::COLOR,
+                tiling: memory::Tiling::OPTIMAL
+            }
+        ];
+
+        let alloc_info = memory::ImagesAllocationInfo {
+            properties: hw::MemoryProperty::DEVICE_LOCAL,
+            filter: &hw::any,
+            image_cfgs: &images_cfg
+        };
+
+        assert!(memory::ImageMemory::allocate(test_context::get_graphics_device(), &alloc_info).is_ok());
+    }
+
+    #[test]
+    fn write_to_image() {
+        let queue = test_context::get_graphics_queue();
+
+        let capabilities = test_context::get_surface_capabilities();
+
+        let images_cfg = [
+            memory::ImageCfg {
+                queue_families: &[queue.index()],
+                simultaneous_access: false,
+                format: capabilities.formats().next().expect("No available formats").format,
+                extent: memory::Extent3D {height: 1920, width: 1080, depth: 1 },
+                usage: memory::ImageUsageFlags::STORAGE | memory::ImageUsageFlags::TRANSFER_SRC | memory::ImageUsageFlags::TRANSFER_DST,
+                layout: graphics::ImageLayout::UNDEFINED,
+                aspect: memory::ImageAspect::COLOR,
+                tiling: memory::Tiling::LINEAR
+            }
+        ];
+
+        let alloc_info = memory::ImagesAllocationInfo {
+            properties: hw::MemoryProperty::HOST_VISIBLE,
+            filter: &hw::any,
+            image_cfgs: &images_cfg
+        };
+
+        let memory = memory::ImageMemory::allocate(test_context::get_graphics_device(), &alloc_info).expect("Failed to allocate image memory");
+
+        let result = memory.view(0).access(&mut |bytes: &mut [u8]| {
+            bytes.fill(0x42);
+        });
 
         assert!(result.is_ok());
     }

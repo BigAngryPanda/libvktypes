@@ -148,13 +148,13 @@ mod cmd {
 
         let pipeline = test_context::get_graphics_pipeline();
 
-        let framebuffer = &test_context::get_framebuffers()[0];
+        let framebuffers = &test_context::get_framebuffers();
 
         let pool = test_context::get_cmd_pool();
 
         let cmd_buffer = pool.allocate().expect("Failed to allocate cmd buffer");
 
-        cmd_buffer.begin_render_pass(render_pass, framebuffer);
+        cmd_buffer.begin_render_pass(render_pass, &framebuffers[0]);
 
         cmd_buffer.bind_graphics_pipeline(pipeline);
 

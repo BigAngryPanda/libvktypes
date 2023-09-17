@@ -1,3 +1,4 @@
+/// Framebuffer represents a collection of images which will be used in render pass
 use ash::vk;
 
 use crate::on_error_ret;
@@ -21,13 +22,12 @@ impl fmt::Display for FramebufferError {
 
 impl Error for FramebufferError {}
 
-pub struct FramebufferCfg<'a, 'b> {
-    pub images: &'a [&'b memory::Image],
+pub struct FramebufferCfg<'a, 'b : 'a> {
+    pub images: &'a [memory::ImageView<'b>],
     pub extent: memory::Extent2D,
     pub render_pass: &'a graphics::RenderPass
 }
 
-/// Framebuffer represents a collection of specific memory attachments that a render pass instance uses
 pub struct Framebuffer {
     i_core: Arc<dev::Core>,
     i_frame: vk::Framebuffer,
@@ -35,9 +35,9 @@ pub struct Framebuffer {
 }
 
 impl Framebuffer {
-    /// Create new framebuffer from existing [image](crate::memory::Image)
+    /// Create new framebuffer from existing [image](crate::memory::ImageMemory)
     pub fn new(device: &dev::Device, cfg: &FramebufferCfg) -> Result<Framebuffer, FramebufferError> {
-        let img_views: Vec<vk::ImageView> = cfg.images.iter().map(|img| img.view()).collect();
+        let img_views: Vec<vk::ImageView> = cfg.images.iter().map(|img| img.image_view()).collect();
 
         let create_info = vk::FramebufferCreateInfo {
             s_type: vk::StructureType::FRAMEBUFFER_CREATE_INFO,

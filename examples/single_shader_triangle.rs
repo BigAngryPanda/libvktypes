@@ -108,7 +108,7 @@ fn main() {
 
     let frames_cfg = memory::FramebufferCfg {
         render_pass: &render_pass,
-        images: &[&images[img_index as usize]],
+        images: &[images[img_index as usize].view(0)],
         extent: capabilities.extent2d(),
     };
 

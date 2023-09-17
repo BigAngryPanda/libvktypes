@@ -97,7 +97,8 @@ pub struct Swapchain {
     i_core: Arc<dev::Core>,
     i_loader: khr::Swapchain,
     i_swapchain: vk::SwapchainKHR,
-    i_format: vk::Format
+    i_format: vk::Format,
+    i_extent: memory::Extent2D
 }
 
 impl Swapchain {
@@ -138,6 +139,7 @@ impl Swapchain {
                 i_loader: loader,
                 i_swapchain: swapchain,
                 i_format: swp_type.format,
+                i_extent: swp_type.extent
             }
         )
     }
@@ -168,7 +170,9 @@ impl Swapchain {
         Ok(image_index)
     }
 
-    pub fn images(&self) -> Result<Vec<memory::Image>, SwapchainError> {
+    pub fn images(&self) -> Result<Vec<memory::ImageMemory>, SwapchainError> {
+        let mut result: Vec<memory::ImageMemory> = Vec::new();
+
         let swapchain_images = on_error_ret!(
             unsafe {
                 self.i_loader
@@ -177,13 +181,12 @@ impl Swapchain {
             SwapchainError::Images
         );
 
-        let mut result = Vec::<memory::Image>::new();
+        for image in swapchain_images {
+            let memory = on_error_ret!(
+                memory::ImageMemory::preallocated(&self.i_core, image, self.i_format, self.i_extent),
+                SwapchainError::Images);
 
-        for img in swapchain_images {
-            match memory::Image::preallocated(&self.i_core, img, self.i_format) {
-                Ok(val) => result.push(val),
-                Err(_) => return Err(SwapchainError::Images),
-            }
+            result.push(memory);
         }
 
         Ok(result)

@@ -65,7 +65,7 @@ static mut RENDER_PASS: MaybeUninit<graphics::RenderPass> = MaybeUninit::<graphi
 
 static INIT_IMAGE_LIST: Once = Once::new();
 
-static mut IMAGE_LIST: MaybeUninit<Vec<memory::Image>> = MaybeUninit::<Vec<memory::Image>>::uninit();
+static mut IMAGE_LIST: MaybeUninit<Vec<memory::ImageMemory>> = MaybeUninit::<Vec<memory::ImageMemory>>::uninit();
 
 static INIT_CMD_POOL: Once = Once::new();
 
@@ -271,7 +271,7 @@ pub fn get_render_pass() -> &'static graphics::RenderPass {
     }
 }
 
-pub fn get_image_list() -> &'static Vec<memory::Image> {
+pub fn get_image_list() -> &'static Vec<memory::ImageMemory> {
     unsafe {
         INIT_IMAGE_LIST.call_once(|| {
             let swp = get_swapchain();
@@ -350,7 +350,7 @@ pub fn get_framebuffers() -> &'static Vec<memory::Framebuffer> {
                 imgs.iter().map(|img| {
                     let framebuffer_cfg = memory::FramebufferCfg {
                         render_pass: rp,
-                        images: &[&img],
+                        images: &[img.view(0)],
                         extent: capabilities.extent2d(),
                     };
 
