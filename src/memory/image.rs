@@ -162,7 +162,10 @@ pub struct ImagesAllocationInfo<'a, 'b : 'a> {
 /// [`Swapchain::images`](crate::swapchain::Swapchain::images) provides already allocated images
 /// so no extra allocation will be performed
 ///
-/// However as [`ImageMemory`] does not own image memory you must not call [`access`](crate::memory::ImageView::access) on such images
+/// However as [`ImageMemory`] does not own image memory
+/// you must not call [`access`](crate::memory::ImageView::access) on such images
+///
+/// Nonetheless size of such memory may be non-zero
 pub struct ImageMemory {
     i_core: Arc<dev::Core>,
     i_images: Vec<vk::Image>,
@@ -285,6 +288,11 @@ impl ImageMemory {
         memory::ImageView::new(self, index)
     }
 
+    /// Create and return view to the selected image buffer
+    pub fn size(&self) -> u64 {
+        self.i_memory.size()
+    }
+
     pub(crate) fn access<T, F>(&self, f: &mut F, index: usize) -> Result<(), memory::MemoryError>
     where
         F: FnMut(&mut [T])
@@ -292,7 +300,6 @@ impl ImageMemory {
         self.i_memory.access(
             f,
             self.i_subregions[index].offset,
-            self.i_subregions[index].size,
             self.i_subregions[index].allocated_size
         )
     }
@@ -349,7 +356,6 @@ impl ImageMemory {
 
         let img_region = memory::Subregion {
             offset: 0,
-            size: requirements.size,
             allocated_size: requirements.size
         };
 
@@ -363,7 +369,7 @@ impl ImageMemory {
                 height: extent.height,
                 depth: 1,
             }],
-            i_memory: memory::Region::empty(core)
+            i_memory: memory::Region::empty(core, requirements.size)
         })
     }
 }
@@ -402,18 +408,14 @@ impl fmt::Display for ImageMemory {
         for i in 0..self.i_subregions.len() {
             write!(f,
                 "---------------\n\
+                id: {:?}\n\
                 image {:?}\n\
                 image view {:?}\n\
-                id: {:?}\n\
-                offset: {:?} ({:#x})\n\
-                size: {:?} ({:#x})\n\
-                allocated size: {:?} ({:#x})\n",
+                subregion: {:?}\n",
+                i,
                 self.i_images[i],
                 self.i_image_views[i],
-                i,
-                self.i_subregions[i].offset, self.i_subregions[i].offset,
-                self.i_subregions[i].size, self.i_subregions[i].size,
-                self.i_subregions[i].allocated_size, self.i_subregions[i].allocated_size
+                self.i_subregions[i]
             ).expect("Failed to print Memory");
         }
 
