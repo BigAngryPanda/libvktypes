@@ -12,15 +12,26 @@ use std::ptr;
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Subregion {
     pub offset: u64,
-    pub size: u64,
     pub allocated_size: u64
 }
 
+impl fmt::Display for Subregion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,
+            "offset: {:?} ({:#x})\n\
+            allocated size: {:?} ({:#x})\n",
+            self.offset, self.offset,
+            self.allocated_size, self.allocated_size
+        ).expect("Failed to print Subregion");
+
+        Ok(())
+    }
+}
+
 impl Subregion {
-    fn new(offset: u64, size: u64, allocated_size: u64) -> Subregion {
+    fn new(offset: u64, allocated_size: u64) -> Subregion {
         Subregion {
             offset: offset,
-            size: size,
             allocated_size: allocated_size
         }
     }
@@ -69,7 +80,7 @@ impl Region {
             let aligned_size = requirement.size + end_offset;
 
             last += begin_offset;
-            pos.push(Subregion::new(last, requirement.size, aligned_size));
+            pos.push(Subregion::new(last, requirement.size));
 
             memory_type_bits &= requirement.memory_type_bits;
 
@@ -166,7 +177,7 @@ impl Region {
         self.i_memory
     }
 
-    pub(crate) fn access<T, F>(&self, f: &mut F, offset: u64, size: u64, alloc_size: u64) -> Result<(), memory::MemoryError>
+    pub(crate) fn access<T, F>(&self, f: &mut F, offset: u64, size: u64) -> Result<(), memory::MemoryError>
     where
         F: FnMut(&mut [T]),
     {
@@ -175,7 +186,7 @@ impl Region {
                 self.i_core.device().map_memory(
                     self.i_memory,
                     offset,
-                    alloc_size,
+                    size,
                     vk::MemoryMapFlags::empty(),
                 )
             },
@@ -196,7 +207,7 @@ impl Region {
                 p_next: ptr::null(),
                 memory: self.i_memory,
                 offset: offset,
-                size: alloc_size,
+                size: size,
             };
 
             on_error_ret!(
@@ -214,17 +225,21 @@ impl Region {
         Ok(())
     }
 
-    pub(crate) fn empty(core: &Arc<dev::Core>) -> Region {
+    pub(crate) fn empty(core: &Arc<dev::Core>, size: u64) -> Region {
         Region {
             i_core: core.clone(),
             i_memory: vk::DeviceMemory::null(),
-            i_size: 0,
+            i_size: size,
             i_flags: vk::MemoryPropertyFlags::empty()
         }
     }
 
     pub(crate) fn is_empty(&self) -> bool {
         self.i_memory == vk::DeviceMemory::null()
+    }
+
+    pub(crate) fn size(&self) -> u64 {
+        self.i_size
     }
 }
 
