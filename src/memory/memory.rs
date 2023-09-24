@@ -1,10 +1,9 @@
 //! Represents memory for various purposes such as vertex buffer, uniform buffer etc.
 use ash::vk;
 
-use crate::{on_error, on_error_ret, on_option};
+use crate::{on_error};
 use crate::{dev, hw, memory, graphics};
 
-use core::ffi::c_void;
 use std::sync::Arc;
 use std::ptr;
 use std::fmt;
@@ -101,11 +100,10 @@ pub struct MemoryCfg<'a, 'b : 'a> {
 /// To help with managing regions [`Memory View`](crate::memory::View) struct was provided
 pub struct Memory {
     i_core: Arc<dev::Core>,
-    i_device_memory: vk::DeviceMemory,
     i_buffers: Vec<vk::Buffer>,
-    i_pos: Vec<(u64, u64, u64)>, // (offset, size, allocated size)
-    i_size: u64,
-    i_flags: hw::MemoryProperty
+    i_subregions: Vec<memory::Subregion>,
+    i_sizes: Vec<u64>,
+    i_memory: memory::Region
 }
 
 impl Memory {
@@ -114,10 +112,8 @@ impl Memory {
         cfg: &MemoryCfg
     ) -> Result<Memory, memory::MemoryError> {
         let mut buffers: Vec<vk::Buffer> = Vec::new();
-        let mut memory_type_bits = 0xffffffffu32;
-        let mut last = 0u64;
-        let mut pos: Vec<(u64, u64, u64)> = Vec::new();
-        let mut total_size = 0u64;
+        let mut memory_requirements: Vec<vk::MemoryRequirements> = Vec::new();
+        let mut sizes: Vec<u64> = Vec::new();
 
         for cfg in cfg.buffers {
             let sharing_mode = if cfg.simultaneous_access {
@@ -138,80 +134,43 @@ impl Memory {
             };
 
             for _ in 0..cfg.count {
-                if let Ok(buffer) = unsafe {
+                sizes.push(cfg.size);
+
+                let buffer = on_error!(unsafe {
                     device.device().create_buffer(&buffer_info, device.allocator())
-                } {
-                    buffers.push(buffer);
-
-                    let requirements: vk::MemoryRequirements = unsafe {
-                        device
-                        .device()
-                        .get_buffer_memory_requirements(buffer)
-                    };
-
-                    // On one hand memory should be aligned for nonCoherentAtomSize
-                    // On the other side for requirements.alignment
-                    // So resulting alignment will be hcf(nonCoherentAtomSize, requirements.alignment)
-                    // Spec states that both of them are power of two so calculation may be reduced
-                    // To calculating max of the values
-                    // See https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#limits
-                    // https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#VkMemoryRequirements
-                    // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkMemoryRequirements.html
-                    let alignment = std::cmp::max(device.hw().memory_alignment(), requirements.alignment);
-
-                    // How many bytes we need after *previous* buffer
-                    let begin_offset = offset(last, alignment);
-
-                    // How many bytes we need after *current* buffer
-                    let end_offset = offset(requirements.size, alignment);
-
-                    let aligned_size = requirements.size + end_offset;
-
-                    last += begin_offset;
-                    pos.push((last, cfg.size, aligned_size));
-
-                    memory_type_bits &= requirements.memory_type_bits;
-
-                    last += aligned_size;
-
-                    total_size += requirements.size + alignment;
-                } else {
+                }, {
                     free_buffers(device.core(), &buffers);
                     return Err(memory::MemoryError::Buffer);
-                }
+                });
+
+                buffers.push(buffer);
+
+                let requirements: vk::MemoryRequirements = unsafe {
+                    device
+                    .device()
+                    .get_buffer_memory_requirements(buffer)
+                };
+
+                memory_requirements.push(requirements);
             }
         }
 
-        let filter = |desc: &hw::MemoryDescription| -> bool {
-            (cfg.filter)(desc)
-            && ((memory_type_bits >> desc.index()) & 1) == 1
-            && desc.is_compatible(cfg.properties)
-            && desc.heap_size() >= total_size
-        };
+        let regions_info = memory::Region::calculate_subregions(device, &memory_requirements);
 
-        let memory = on_option!(
-            device.hw().find_first_memory(filter),
-            {
+        let mem_desc = match memory::Region::find_memory(device.hw(), regions_info.memory_bits, cfg.properties) {
+            Some(val) => val,
+            None => {
                 free_buffers(device.core(), &buffers);
-                return Err(memory::MemoryError::Buffer);
-            }
-        );
-
-        let memory_info = vk::MemoryAllocateInfo {
-            s_type: vk::StructureType::MEMORY_ALLOCATE_INFO,
-            p_next: ptr::null(),
-            allocation_size: total_size,
-            memory_type_index: memory.index(),
+                return Err(memory::MemoryError::NoSuitableMemory)
+            },
         };
 
-        let dev_memory: vk::DeviceMemory = unsafe {
-            on_error!(
-                device.device().allocate_memory(&memory_info, device.allocator()),
-                {
-                    free_buffers(device.core(), &buffers);
-                    return Err(memory::MemoryError::DeviceMemory);
-                }
-            )
+        let dev_memory = match memory::Region::allocate(device, regions_info.total_size, mem_desc) {
+            Ok(val) => val,
+            Err(err) => {
+                free_buffers(device.core(), &buffers);
+                return Err(err);
+            }
         };
 
         // Without coherency we have to manually synchronize memory between host and device
@@ -225,7 +184,7 @@ impl Memory {
             let mem_range = vk::MappedMemoryRange {
                 s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
                 p_next: ptr::null(),
-                memory: dev_memory,
+                memory: dev_memory.memory(),
                 offset: 0,
                 size: vk::WHOLE_SIZE,
             };
@@ -233,13 +192,12 @@ impl Memory {
             unsafe {
                 on_error!(
                     device.device().map_memory(
-                        dev_memory,
+                        dev_memory.memory(),
                         0,
-                        total_size,
+                        dev_memory.size(),
                         vk::MemoryMapFlags::empty()
                     ),
                     {
-                        device.device().free_memory(dev_memory, device.allocator());
                         free_buffers(device.core(), &buffers);
                         return Err(memory::MemoryError::MapAccess);
                     }
@@ -250,13 +208,12 @@ impl Memory {
                         .device()
                         .flush_mapped_memory_ranges(&[mem_range]),
                     {
-                        device.device().free_memory(dev_memory, device.allocator());
                         free_buffers(device.core(), &buffers);
                         return Err(memory::MemoryError::Flush);
                     }
                 );
 
-                device.device().unmap_memory(dev_memory);
+                device.device().unmap_memory(dev_memory.memory());
             }
         }
 
@@ -265,12 +222,9 @@ impl Memory {
                 unsafe {
                     device
                     .device()
-                    .bind_buffer_memory(buffers[i], dev_memory, pos[i].0)
+                    .bind_buffer_memory(buffers[i], dev_memory.memory(), regions_info.subregions[i].offset)
                 },
                 {
-                    unsafe {
-                        device.device().free_memory(dev_memory, device.allocator())
-                    };
                     free_buffers(device.core(), &buffers);
                     return Err(memory::MemoryError::Bind);
                 }
@@ -279,11 +233,10 @@ impl Memory {
 
         Ok(Memory {
             i_core: device.core().clone(),
-            i_device_memory: dev_memory,
+            i_memory: dev_memory,
             i_buffers: buffers,
-            i_pos: pos,
-            i_size: total_size,
-            i_flags: cfg.properties
+            i_sizes: sizes,
+            i_subregions: regions_info.subregions
         })
     }
 
@@ -291,50 +244,16 @@ impl Memory {
     where
         F: FnMut(&mut [T]),
     {
-        let data: *mut c_void = on_error_ret!(
-            unsafe {
-                self.i_core.device().map_memory(
-                    self.i_device_memory,
-                    self.i_pos[index].0,
-                    self.i_pos[index].2,
-                    vk::MemoryMapFlags::empty(),
-                )
-            },
-            memory::MemoryError::MapAccess
-        );
-
-        f(unsafe { std::slice::from_raw_parts_mut(data as *mut T, (self.i_pos[index].1 as usize)/std::mem::size_of::<T>()) });
-
-        if !self
-            .i_flags
-            .contains(vk::MemoryPropertyFlags::HOST_COHERENT)
-        {
-            let mem_range = vk::MappedMemoryRange {
-                s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
-                p_next: ptr::null(),
-                memory: self.i_device_memory,
-                offset: self.i_pos[index].0,
-                size: self.i_pos[index].2,
-            };
-
-            on_error_ret!(
-                unsafe {
-                    self.i_core
-                        .device()
-                        .flush_mapped_memory_ranges(&[mem_range])
-                },
-                memory::MemoryError::Flush
-            );
-        }
-
-        unsafe { self.i_core.device().unmap_memory(self.i_device_memory) };
-
-        Ok(())
+        self.i_memory.access(
+            f,
+            self.i_subregions[index].offset,
+            self.i_sizes[index]
+        )
     }
 
     /// Return whole size of the memory in bytes
     pub fn size(&self) -> u64 {
-        self.i_size
+        self.i_memory.size()
     }
 
     /// Create and return views to the buffers
@@ -365,21 +284,6 @@ impl Memory {
         graphics::VertexView::with_offset(self.view(index), offset)
     }
 
-    /// Return offset for the selected buffer
-    pub fn buffer_offset(&self, index: usize) -> u64 {
-        self.i_pos[index].0
-    }
-
-    /// Return size for the selected buffer
-    pub fn buffer_size(&self, index: usize) -> u64 {
-        self.i_pos[index].1
-    }
-
-    /// Return size of the buffer with respect to the alignment
-    pub fn buffer_allocated_size(&self, index: usize) -> u64 {
-        self.i_pos[index].2
-    }
-
     /// Create and return view to the selected buffer
     pub fn view(&self, index: usize) -> memory::View {
         memory::View::new(self, index)
@@ -389,22 +293,20 @@ impl Memory {
     pub(crate) fn buffer(&self, index: usize) -> vk::Buffer {
         self.i_buffers[index]
     }
+
+    pub(crate) fn subregions(&self) -> &Vec<memory::Subregion> {
+        &self.i_subregions
+    }
+
+    pub(crate) fn sizes(&self) -> &Vec<u64> {
+        &self.i_sizes
+    }
 }
 
 impl Drop for Memory {
     fn drop(&mut self) {
-        unsafe {
-            free_buffers(&self.i_core, &self.i_buffers);
-            self.i_core
-                .device()
-                .free_memory(self.i_device_memory, self.i_core.allocator());
-        };
+        free_buffers(&self.i_core, &self.i_buffers);
     }
-}
-
-#[inline]
-fn offset(last: u64, alignment: u64) -> u64 {
-    ((last % alignment != 0) as u64)*(alignment - last % alignment)
 }
 
 fn free_buffers(device: &dev::Core, buffers: &Vec<vk::Buffer>) {
@@ -419,11 +321,9 @@ impl fmt::Debug for Memory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Memory")
         .field("i_core", &self.i_core)
-        .field("i_device_memory", &(&self.i_device_memory as *const vk::DeviceMemory))
+        .field("i_device_memory", &self.i_memory)
         .field("i_buffers", &self.i_buffers)
-        .field("i_pos", &self.i_pos)
-        .field("i_size", &self.i_size)
-        .field("i_flags", &self.i_flags)
+        .field("i_pos", &self.i_subregions)
         .finish()
     }
 }
@@ -432,30 +332,22 @@ impl fmt::Display for Memory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,
             "core: {:?}\n\
-            memory: {:?}\n\
-            id: {:?}\n\
-            size: {:?} ({:#x})\n\
-            flags: {:#?}\n",
+            memory: {:?}\n",
             self.i_core,
-            &(&self.i_device_memory as *const vk::DeviceMemory),
-            self.i_device_memory,
-            self.i_size, self.i_size,
-            self.i_flags
+            self.i_memory,
         ).expect("Failed to print Memory");
 
-        for i in 0..self.i_pos.len() {
+        for i in 0..self.i_subregions.len() {
             write!(f,
                 "---------------\n\
-                buffer {:?}\n\
-                id: {:?}\n\
-                offset: {:?} ({:#x})\n\
-                size: {:?} ({:#x})\n\
-                allocated size: {:?} ({:#x})\n",
+                index: {:?}\n\
+                buffer: {:?}\n\
+                subregion: {:?}\n\
+                size: {:?}\n",
                 i,
                 self.i_buffers[i],
-                self.i_pos[i].0, self.i_pos[i].0,
-                self.i_pos[i].1, self.i_pos[i].1,
-                self.i_pos[i].2, self.i_pos[i].2
+                self.i_subregions[i],
+                self.i_sizes[i]
             ).expect("Failed to print Memory");
         }
 

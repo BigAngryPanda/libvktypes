@@ -12,8 +12,7 @@ pub struct View<'a> {
 }
 
 impl<'a> View<'a> {
-    /// Create new view
-    pub fn new(storage: &memory::Memory, index: usize) -> View {
+    pub(crate) fn new(storage: &memory::Memory, index: usize) -> View {
         View {
             i_memory: storage,
             i_index: index
@@ -21,22 +20,20 @@ impl<'a> View<'a> {
     }
 
     /// Return offset of the buffer
-    ///
-    /// Same as [`buffer_offset`](crate::memory::Memory::buffer_offset)
     pub fn offset(&self) -> u64 {
-        self.i_memory.buffer_offset(self.i_index)
+        self.i_memory.subregions()[self.i_index].offset
     }
 
     /// Return size of the buffer
     ///
     /// Same as [`buffer_size`](crate::memory::Memory::buffer_size)
     pub fn size(&self) -> u64 {
-        self.i_memory.buffer_size(self.i_index)
+        self.i_memory.sizes()[self.i_index]
     }
 
     /// Return size of the buffer with respect to the alignment
     pub fn allocated_size(&self) -> u64 {
-        self.i_memory.buffer_allocated_size(self.i_index)
+        self.i_memory.subregions()[self.i_index].allocated_size
     }
 
     /// Execute 'f' over selected buffer
@@ -68,21 +65,12 @@ impl<'a> ImageView<'a> {
         }
     }
 
-    /// Return offset of the buffer
-    ///
-    /// Same as [`buffer_offset`](crate::memory::Memory::buffer_offset)
+    /// Return offset of the image buffer
     pub fn offset(&self) -> u64 {
         self.i_memory.subregions()[self.i_index].offset
     }
 
-    /// Return size of the buffer
-    ///
-    /// Same as [`buffer_size`](crate::memory::Memory::buffer_size)
-    pub fn size(&self) -> u64 {
-        self.i_memory.subregions()[self.i_index].size
-    }
-
-    /// Return size of the buffer with respect to the alignment
+    /// Return size of the image buffer
     pub fn allocated_size(&self) -> u64 {
         self.i_memory.subregions()[self.i_index].allocated_size
     }
