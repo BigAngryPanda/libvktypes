@@ -140,7 +140,14 @@ pub struct ImageCfg<'a> {
     pub usage: ImageUsageFlags,
     pub layout: graphics::ImageLayout,
     pub aspect: ImageAspect,
-    pub tiling: Tiling
+    pub tiling: Tiling,
+    /// How many of the image buffers we want to allocate one by one
+    ///
+    /// For example
+    /// `[<image cfg, count == 1>, <image cfg, count == 1>]` is equivalent to `[<image cfg, count == 2>]`
+    ///
+    /// Hence each image buffer will be handled separately (e.g. for alignment)
+    pub count: usize
 }
 
 pub struct ImagesAllocationInfo<'a, 'b : 'a> {
@@ -208,23 +215,25 @@ impl ImageMemory {
                 initial_layout: cfg.layout,
             };
 
-            let img = on_error!(
-                unsafe { device.device().create_image(&image_info, device.allocator()) },
-                {
-                    free_images(device.core(), &images);
-                    return Err(memory::MemoryError::Image)
-                }
-            );
+            for _ in 0..cfg.count {
+                let img = on_error!(
+                    unsafe { device.device().create_image(&image_info, device.allocator()) },
+                    {
+                        free_images(device.core(), &images);
+                        return Err(memory::MemoryError::Image)
+                    }
+                );
 
-            images.push(img);
+                images.push(img);
 
-            let requirements = unsafe {
-                device
-                .device()
-                .get_image_memory_requirements(img)
-            };
+                let requirements = unsafe {
+                    device
+                    .device()
+                    .get_image_memory_requirements(img)
+                };
 
-            memory_requirements.push(requirements);
+                memory_requirements.push(requirements);
+            }
         }
 
         let regions_info = memory::Region::calculate_subregions(device, &memory_requirements);
@@ -443,43 +452,49 @@ fn free_image_views(core: &Arc<dev::Core>, images: &Vec<vk::ImageView>) {
     }
 }
 
-fn create_image_views(core: &Arc<dev::Core>, images: &Vec<vk::Image>, cfg: &[ImageCfg])
+fn create_image_views(core: &Arc<dev::Core>, images: &Vec<vk::Image>, cfgs: &[ImageCfg])
     -> Result<Vec<vk::ImageView>, memory::MemoryError>
 {
     let mut views: Vec<vk::ImageView> = Vec::new();
 
-    for i in 0..images.len() {
-        let iw_info = vk::ImageViewCreateInfo {
-            s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
-            p_next: ptr::null(),
-            flags: vk::ImageViewCreateFlags::empty(),
-            view_type: vk::ImageViewType::TYPE_2D,
-            format: cfg[i].format,
-            components: vk::ComponentMapping {
-                r: vk::ComponentSwizzle::R,
-                g: vk::ComponentSwizzle::G,
-                b: vk::ComponentSwizzle::B,
-                a: vk::ComponentSwizzle::A,
-            },
-            subresource_range: vk::ImageSubresourceRange {
-                aspect_mask: cfg[i].aspect,
-                base_mip_level: 0,
-                level_count: 1,
-                base_array_layer: 0,
-                layer_count: 1,
-            },
-            image: images[i],
-        };
+    let mut img_idx = 0;
 
-        let img_view = on_error!(
-            unsafe { core.device().create_image_view(&iw_info, core.allocator()) },
-            {
-                free_image_views(core, &views);
-                return Err(memory::MemoryError::ImageView)
-            }
-        );
+    for cfg in cfgs {
+        for _ in 0..cfg.count {
+            let iw_info = vk::ImageViewCreateInfo {
+                s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
+                p_next: ptr::null(),
+                flags: vk::ImageViewCreateFlags::empty(),
+                view_type: vk::ImageViewType::TYPE_2D,
+                format: cfg.format,
+                components: vk::ComponentMapping {
+                    r: vk::ComponentSwizzle::R,
+                    g: vk::ComponentSwizzle::G,
+                    b: vk::ComponentSwizzle::B,
+                    a: vk::ComponentSwizzle::A,
+                },
+                subresource_range: vk::ImageSubresourceRange {
+                    aspect_mask: cfg.aspect,
+                    base_mip_level: 0,
+                    level_count: 1,
+                    base_array_layer: 0,
+                    layer_count: 1,
+                },
+                image: images[img_idx],
+            };
 
-        views.push(img_view);
+            let img_view = on_error!(
+                unsafe { core.device().create_image_view(&iw_info, core.allocator()) },
+                {
+                    free_image_views(core, &views);
+                    return Err(memory::MemoryError::ImageView)
+                }
+            );
+
+            views.push(img_view);
+
+            img_idx += 1;
+        }
     }
 
     Ok(views)

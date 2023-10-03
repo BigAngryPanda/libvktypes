@@ -338,7 +338,8 @@ fn main() {
             usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
             layout: graphics::ImageLayout::UNDEFINED,
             aspect: memory::ImageAspect::DEPTH,
-            tiling: memory::Tiling::OPTIMAL
+            tiling: memory::Tiling::OPTIMAL,
+            count: 1
         }
     ];
 

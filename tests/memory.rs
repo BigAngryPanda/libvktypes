@@ -134,7 +134,8 @@ mod memory {
                 usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
                 layout: graphics::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::DEPTH,
-                tiling: memory::Tiling::OPTIMAL
+                tiling: memory::Tiling::OPTIMAL,
+                count: 1
             }
         ];
 
@@ -244,7 +245,8 @@ mod memory {
                 usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
                 layout: graphics::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::DEPTH,
-                tiling: memory::Tiling::OPTIMAL
+                tiling: memory::Tiling::OPTIMAL,
+                count: 1
             },
             memory::ImageCfg {
                 queue_families: &[queue.index()],
@@ -254,7 +256,8 @@ mod memory {
                 usage: memory::ImageUsageFlags::COLOR_ATTACHMENT,
                 layout: graphics::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::COLOR,
-                tiling: memory::Tiling::OPTIMAL
+                tiling: memory::Tiling::OPTIMAL,
+                count: 2
             }
         ];
 
@@ -282,7 +285,8 @@ mod memory {
                 usage: memory::ImageUsageFlags::STORAGE | memory::ImageUsageFlags::TRANSFER_SRC | memory::ImageUsageFlags::TRANSFER_DST,
                 layout: graphics::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::COLOR,
-                tiling: memory::Tiling::LINEAR
+                tiling: memory::Tiling::LINEAR,
+                count: 1
             }
         ];
 
