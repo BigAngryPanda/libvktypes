@@ -24,9 +24,7 @@ impl<'a> View<'a> {
         self.i_memory.subregions()[self.i_index].offset
     }
 
-    /// Return size of the buffer
-    ///
-    /// Same as [`buffer_size`](crate::memory::Memory::buffer_size)
+    /// Return requested size of the buffer
     pub fn size(&self) -> u64 {
         self.i_memory.sizes()[self.i_index]
     }
@@ -75,9 +73,9 @@ impl<'a> ImageView<'a> {
         self.i_memory.subregions()[self.i_index].allocated_size
     }
 
-    /// REturn image extent
+    /// Return image extent
     pub fn extent(&self) -> memory::Extent3D {
-        self.i_memory.extents()[self.i_index]
+        self.i_memory.info()[self.i_index].extent
     }
 
     /// Execute 'f' over selected buffer
@@ -88,7 +86,38 @@ impl<'a> ImageView<'a> {
         self.i_memory.access(f, self.i_index)
     }
 
+    /// Return image aspect
+    ///
+    /// For swapchain images returns `ImageAspect::COLOR`
+    pub fn aspect(&self) -> memory::ImageAspect {
+        self.i_memory.info()[self.i_index].subresource.aspect_mask
+    }
+
+    /// Return image layout
+    pub fn layout(&self) -> memory::ImageLayout {
+        self.i_memory.info()[self.i_index].layout
+    }
+
+    pub(crate) fn subresource_range(&self) -> vk::ImageSubresourceRange {
+        self.i_memory.info()[self.i_index].subresource
+    }
+
+    pub(crate) fn subresource_layer(&self) -> vk::ImageSubresourceLayers {
+        let subres = self.i_memory.info()[self.i_index].subresource;
+
+        vk::ImageSubresourceLayers {
+            aspect_mask: subres.aspect_mask,
+            mip_level: subres.base_mip_level,
+            base_array_layer: subres.base_array_layer,
+            layer_count: subres.layer_count
+        }
+    }
+
     pub(crate) fn image_view(&self) -> vk::ImageView {
         self.i_memory.image_views()[self.i_index]
+    }
+
+    pub(crate) fn image(&self) -> vk::Image {
+        self.i_memory.images()[self.i_index]
     }
 }

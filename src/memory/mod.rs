@@ -23,6 +23,13 @@ pub(crate) use region::*;
 use std::error::Error;
 use std::fmt;
 
+/// Layout of image and image subresources
+///
+#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.ImageLayout.html>"]
+///
+#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkImageLayout.html>"]
+pub type ImageLayout = ash::vk::ImageLayout;
+
 /// Errors during memory allocation, initialization and access
 #[derive(Debug)]
 pub enum MemoryError {

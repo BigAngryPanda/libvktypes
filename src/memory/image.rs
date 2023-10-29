@@ -3,7 +3,7 @@
 use ash::vk;
 
 use crate::{on_error, on_error_ret};
-use crate::{dev, graphics, hw, memory};
+use crate::{dev, hw, memory};
 
 use std::error::Error;
 use std::fmt;
@@ -138,7 +138,7 @@ pub struct ImageCfg<'a> {
     pub format: ImageFormat,
     pub extent: Extent3D,
     pub usage: ImageUsageFlags,
-    pub layout: graphics::ImageLayout,
+    pub layout: memory::ImageLayout,
     pub aspect: ImageAspect,
     pub tiling: Tiling,
     /// How many of the image buffers we want to allocate one by one
@@ -154,6 +154,37 @@ pub struct ImagesAllocationInfo<'a, 'b : 'a> {
     pub properties: hw::MemoryProperty,
     pub filter: &'a dyn Fn(&hw::MemoryDescription) -> bool,
     pub image_cfgs: &'a [ImageCfg<'b>]
+}
+
+#[derive(Debug)]
+pub(crate) struct ImageInfo {
+    pub extent: Extent3D,
+    pub subresource: vk::ImageSubresourceRange,
+    pub layout: memory::ImageLayout,
+    pub format: ImageFormat,
+}
+
+impl fmt::Display for ImageInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,
+            "extent: {:?}\n\
+            aspect: {:?}\n\
+            mip level: {:?}\n\
+            level count: {:?}\n\
+            base array layer: {:?}\n\
+            layer count: {:?}\n\
+            format: {:?}\n",
+            self.extent,
+            self.subresource.aspect_mask,
+            self.subresource.base_mip_level,
+            self.subresource.level_count,
+            self.subresource.base_array_layer,
+            self.subresource.layer_count,
+            self.format
+        ).expect("Failed to print ImageInfo");
+
+        Ok(())
+    }
 }
 
 /// Images represent multidimensional - up to 3 - arrays of data
@@ -178,7 +209,7 @@ pub struct ImageMemory {
     i_images: Vec<vk::Image>,
     i_image_views: Vec<vk::ImageView>,
     i_subregions: Vec<memory::Subregion>,
-    i_extents: Vec<Extent3D>,
+    i_info: Vec<ImageInfo>,
     i_memory: memory::Region
 }
 
@@ -186,11 +217,10 @@ impl ImageMemory {
     pub fn allocate(device: &dev::Device, cfg: &ImagesAllocationInfo) -> Result<ImageMemory, memory::MemoryError> {
         let mut images: Vec<vk::Image> = Vec::new();
         let mut memory_requirements: Vec<vk::MemoryRequirements> = Vec::new();
-        let mut extents: Vec<Extent3D> = Vec::new();
+
+        let mut info: Vec<ImageInfo> = Vec::new();
 
         for cfg in cfg.image_cfgs {
-            extents.push(cfg.extent);
-
             let sharing_mode = if cfg.simultaneous_access {
                 vk::SharingMode::CONCURRENT
             } else {
@@ -216,6 +246,23 @@ impl ImageMemory {
             };
 
             for _ in 0..cfg.count {
+                let subres = vk::ImageSubresourceRange {
+                    aspect_mask: cfg.aspect,
+                    base_mip_level: 0,
+                    level_count: 1,
+                    base_array_layer: 0,
+                    layer_count: 1,
+                };
+
+                let img_info = ImageInfo {
+                    extent: cfg.extent,
+                    subresource: subres,
+                    layout: cfg.layout,
+                    format: cfg.format
+                };
+
+                info.push(img_info);
+
                 let img = on_error!(
                     unsafe { device.device().create_image(&image_info, device.allocator()) },
                     {
@@ -267,7 +314,7 @@ impl ImageMemory {
             );
         }
 
-        let views = match create_image_views(device.core(), &images, cfg.image_cfgs) {
+        let views = match create_image_views(device.core(), &images, &info) {
             Ok(val) => val,
             Err(err) => {
                 free_images(device.core(), &images);
@@ -281,7 +328,7 @@ impl ImageMemory {
                 i_images: images,
                 i_image_views: views,
                 i_subregions: regions_info.subregions,
-                i_extents: extents,
+                i_info: info,
                 i_memory: img_memory
             }
         )
@@ -321,8 +368,12 @@ impl ImageMemory {
         &self.i_image_views
     }
 
-    pub(crate) fn extents(&self) -> &Vec<Extent3D> {
-        &self.i_extents
+    pub(crate) fn info(&self) -> &Vec<ImageInfo> {
+        &self.i_info
+    }
+
+    pub(crate) fn images(&self) -> &Vec<vk::Image> {
+        &self.i_images
     }
 
     pub(crate) fn preallocated(
@@ -368,16 +419,29 @@ impl ImageMemory {
             allocated_size: requirements.size
         };
 
+        let img_info = ImageInfo {
+            extent: Extent3D {
+                width: extent.width,
+                height: extent.height,
+                depth: 1,
+            },
+            subresource: vk::ImageSubresourceRange {
+                aspect_mask: ImageAspect::COLOR,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            layout: memory::ImageLayout::PRESENT_SRC_KHR,
+            format: img_format
+        };
+
         Ok(ImageMemory {
             i_core: core.clone(),
             i_images: vec![image],
             i_image_views: vec![img_view],
             i_subregions: vec![img_region],
-            i_extents: vec![Extent3D {
-                width: extent.width,
-                height: extent.height,
-                depth: 1,
-            }],
+            i_info: vec![img_info],
             i_memory: memory::Region::empty(core, requirements.size)
         })
     }
@@ -398,9 +462,7 @@ impl fmt::Debug for ImageMemory {
         f.debug_struct("Memory")
         .field("i_core", &self.i_core)
         .field("i_memory", &self.i_memory)
-        .field("i_images", &self.i_images)
-        .field("i_image_views", &self.i_image_views)
-        .field("i_subregions", &self.i_subregions)
+        .field("i_info", &self.i_info)
         .finish()
     }
 }
@@ -414,17 +476,13 @@ impl fmt::Display for ImageMemory {
             self.i_memory
         ).expect("Failed to print Memory");
 
-        for i in 0..self.i_subregions.len() {
+        for i in 0..self.i_info.len() {
             write!(f,
                 "---------------\n\
                 id: {:?}\n\
-                image {:?}\n\
-                image view {:?}\n\
-                subregion: {:?}\n",
+                {:?}",
                 i,
-                self.i_images[i],
-                self.i_image_views[i],
-                self.i_subregions[i]
+                self.i_info[i]
             ).expect("Failed to print Memory");
         }
 
@@ -452,49 +510,37 @@ fn free_image_views(core: &Arc<dev::Core>, images: &Vec<vk::ImageView>) {
     }
 }
 
-fn create_image_views(core: &Arc<dev::Core>, images: &Vec<vk::Image>, cfgs: &[ImageCfg])
+fn create_image_views(core: &Arc<dev::Core>, images: &Vec<vk::Image>, cfgs: &[ImageInfo])
     -> Result<Vec<vk::ImageView>, memory::MemoryError>
 {
     let mut views: Vec<vk::ImageView> = Vec::new();
 
-    let mut img_idx = 0;
+    for (&img, cfg) in images.iter().zip(cfgs.iter()) {
+        let iw_info = vk::ImageViewCreateInfo {
+            s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
+            p_next: ptr::null(),
+            flags: vk::ImageViewCreateFlags::empty(),
+            view_type: vk::ImageViewType::TYPE_2D,
+            format: cfg.format,
+            components: vk::ComponentMapping {
+                r: vk::ComponentSwizzle::R,
+                g: vk::ComponentSwizzle::G,
+                b: vk::ComponentSwizzle::B,
+                a: vk::ComponentSwizzle::A,
+            },
+            subresource_range: cfg.subresource,
+            image: img,
+        };
 
-    for cfg in cfgs {
-        for _ in 0..cfg.count {
-            let iw_info = vk::ImageViewCreateInfo {
-                s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
-                p_next: ptr::null(),
-                flags: vk::ImageViewCreateFlags::empty(),
-                view_type: vk::ImageViewType::TYPE_2D,
-                format: cfg.format,
-                components: vk::ComponentMapping {
-                    r: vk::ComponentSwizzle::R,
-                    g: vk::ComponentSwizzle::G,
-                    b: vk::ComponentSwizzle::B,
-                    a: vk::ComponentSwizzle::A,
-                },
-                subresource_range: vk::ImageSubresourceRange {
-                    aspect_mask: cfg.aspect,
-                    base_mip_level: 0,
-                    level_count: 1,
-                    base_array_layer: 0,
-                    layer_count: 1,
-                },
-                image: images[img_idx],
-            };
+        let img_view = on_error!(
+            unsafe { core.device().create_image_view(&iw_info, core.allocator()) },
+            {
+                free_image_views(core, &views);
+                return Err(memory::MemoryError::ImageView)
+            }
+        );
 
-            let img_view = on_error!(
-                unsafe { core.device().create_image_view(&iw_info, core.allocator()) },
-                {
-                    free_image_views(core, &views);
-                    return Err(memory::MemoryError::ImageView)
-                }
-            );
-
-            views.push(img_view);
-
-            img_idx += 1;
-        }
+        views.push(img_view);
     }
 
     Ok(views)

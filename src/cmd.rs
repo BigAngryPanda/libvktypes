@@ -25,6 +25,9 @@ pub type AccessType = vk::AccessFlags;
 #[doc = "Vulkan documentation <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkPipelineStageFlagBits.html>"]
 pub type PipelineStage = vk::PipelineStageFlags;
 
+/// Special value for barriers to ignore specific queue family
+pub const QUEUE_FAMILY_IGNORED: u32 = vk::QUEUE_FAMILY_IGNORED;
+
 pub struct PoolCfg {
     pub queue_index: u32,
 }
@@ -199,7 +202,7 @@ impl Buffer {
         }
     }
 
-    // Copy `src` buffer into `dst`
+    /// Copy `src` buffer into `dst`
     ///
     /// If `dst` has less capacity then copy only first (`dst.size()`)[crate::memory::View::size()] bytes
     ///
@@ -215,6 +218,38 @@ impl Buffer {
 
         unsafe {
             dev.cmd_copy_buffer(self.i_buffer, src.buffer(), dst.buffer(), &[copy_info]);
+        }
+    }
+
+    /// Copy `src` buffer into `dst`
+    ///
+    /// Function does not check size of the buffers
+    ///
+    /// `dst` image must has layout [`TRANSFER_DST_OPTIMAL`](memory::ImageLayout::TRANSFER_DST_OPTIMAL)
+    /// or [`GENERAL`](memory::ImageLayout::GENERAL) on creation or via [barrier](Buffer::set_image_barrier)
+    pub fn copy_buffer_to_image(&self, src: memory::View, dst: memory::ImageView) {
+        let dev = self.i_pool.device();
+
+        let copy_info = vk::BufferImageCopy {
+            buffer_offset: 0,
+            buffer_row_length: 0,
+            buffer_image_height: 0,
+            image_subresource: dst.subresource_layer(),
+            image_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
+            image_extent: dst.extent(),
+        };
+
+        let transfer_layout = memory::ImageLayout::from_raw(
+            (memory::ImageLayout::TRANSFER_DST_OPTIMAL).as_raw() | (memory::ImageLayout::GENERAL).as_raw()
+        );
+
+        unsafe {
+            dev.cmd_copy_buffer_to_image(
+                self.i_buffer,
+                src.buffer(),
+                dst.image(),
+                transfer_layout,
+                &[copy_info]);
         }
     }
 
@@ -244,7 +279,9 @@ impl Buffer {
         src_type: AccessType,
         dst_type: AccessType,
         src_stage: PipelineStage,
-        dst_stage: PipelineStage)
+        dst_stage: PipelineStage,
+        src_queue_family: u32,
+        dst_queue_family: u32)
     {
         let dev = self.i_pool.device();
 
@@ -253,11 +290,11 @@ impl Buffer {
             p_next: ptr::null(),
             src_access_mask: src_type,
             dst_access_mask: dst_type,
-            src_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-            dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+            src_queue_family_index: src_queue_family,
+            dst_queue_family_index: dst_queue_family,
             buffer: mem.buffer(),
-            offset: 0,
-            size: vk::WHOLE_SIZE,
+            offset: mem.offset(),
+            size: mem.size(),
         };
 
         unsafe {
@@ -269,6 +306,54 @@ impl Buffer {
                 &[],
                 &[mem_barrier],
                 &[]
+            )
+        }
+    }
+
+    /// Set image memory barrier
+    /// ([see more](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkBufferMemoryBarrier.html))
+    ///
+    /// `src` is what should be before barrier (e.g. write to memory)
+    ///
+    /// `dst` is what should be after barrier (e.g. read)
+    ///
+    /// For more types see [AccessType]
+    ///
+    /// If you don't care for specific queue family use [`QUEUE_FAMILY_IGNORED`](QUEUE_FAMILY_IGNORED)
+    pub fn set_image_barrier(&self,
+        view: memory::ImageView,
+        src_type: AccessType,
+        dst_type: AccessType,
+        src_layout: memory::ImageLayout,
+        dst_layout: memory::ImageLayout,
+        src_stage: PipelineStage,
+        dst_stage: PipelineStage,
+        src_queue_family: u32,
+        dst_queue_family: u32)
+    {
+        let img_barrier = vk::ImageMemoryBarrier {
+            s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
+            p_next: ptr::null(),
+            src_access_mask: src_type,
+            dst_access_mask: dst_type,
+            old_layout: src_layout,
+            new_layout: dst_layout,
+            src_queue_family_index: src_queue_family,
+            dst_queue_family_index: dst_queue_family,
+            image: view.image(),
+            subresource_range: view.subresource_range(),
+        };
+
+        unsafe {
+            self.i_pool.device()
+            .cmd_pipeline_barrier(
+                self.i_buffer,
+                src_stage,
+                dst_stage,
+                vk::DependencyFlags::empty(),
+                &[],
+                &[],
+                &[img_barrier]
             )
         }
     }

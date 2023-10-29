@@ -2,7 +2,7 @@ mod test_context;
 
 #[cfg(test)]
 mod render_pass {
-    use libvktypes::graphics;
+    use libvktypes::{graphics, memory};
 
     use super::test_context;
 
@@ -38,8 +38,8 @@ mod render_pass {
                 store_op: graphics::AttachmentStoreOp::STORE,
                 stencil_load_op: graphics::AttachmentLoadOp::DONT_CARE,
                 stencil_store_op: graphics::AttachmentStoreOp::DONT_CARE,
-                initial_layout: graphics::ImageLayout::PRESENT_SRC_KHR,
-                final_layout: graphics::ImageLayout::PRESENT_SRC_KHR,
+                initial_layout: memory::ImageLayout::PRESENT_SRC_KHR,
+                final_layout: memory::ImageLayout::PRESENT_SRC_KHR,
             }
         ];
 

@@ -336,7 +336,7 @@ fn main() {
             format: memory::ImageFormat::D32_SFLOAT,
             extent: capabilities.extent3d(1),
             usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-            layout: graphics::ImageLayout::UNDEFINED,
+            layout: memory::ImageLayout::UNDEFINED,
             aspect: memory::ImageAspect::DEPTH,
             tiling: memory::Tiling::OPTIMAL,
             count: 1

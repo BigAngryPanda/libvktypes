@@ -8,8 +8,7 @@ mod memory {
         hw,
         layers,
         libvk,
-        memory,
-        graphics
+        memory
     };
 
     use super::test_context;
@@ -132,7 +131,7 @@ mod memory {
                 format: memory::ImageFormat::D32_SFLOAT,
                 extent: caps.extent3d(1),
                 usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-                layout: graphics::ImageLayout::UNDEFINED,
+                layout: memory::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::DEPTH,
                 tiling: memory::Tiling::OPTIMAL,
                 count: 1
@@ -243,7 +242,7 @@ mod memory {
                 format: memory::ImageFormat::D32_SFLOAT,
                 extent: memory::Extent3D {height: 800, width: 600, depth: 1 },
                 usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-                layout: graphics::ImageLayout::UNDEFINED,
+                layout: memory::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::DEPTH,
                 tiling: memory::Tiling::OPTIMAL,
                 count: 1
@@ -254,7 +253,7 @@ mod memory {
                 format: memory::ImageFormat::R8G8B8A8_SNORM,
                 extent: memory::Extent3D {height: 1920, width: 1080, depth: 1 },
                 usage: memory::ImageUsageFlags::COLOR_ATTACHMENT,
-                layout: graphics::ImageLayout::UNDEFINED,
+                layout: memory::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::COLOR,
                 tiling: memory::Tiling::OPTIMAL,
                 count: 2
@@ -283,7 +282,7 @@ mod memory {
                 format: capabilities.formats().next().expect("No available formats").format,
                 extent: memory::Extent3D {height: 1920, width: 1080, depth: 1 },
                 usage: memory::ImageUsageFlags::STORAGE | memory::ImageUsageFlags::TRANSFER_SRC | memory::ImageUsageFlags::TRANSFER_DST,
-                layout: graphics::ImageLayout::UNDEFINED,
+                layout: memory::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::COLOR,
                 tiling: memory::Tiling::LINEAR,
                 count: 1

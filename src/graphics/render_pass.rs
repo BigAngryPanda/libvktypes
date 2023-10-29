@@ -49,13 +49,6 @@ pub type AttachmentLoadOp = vk::AttachmentLoadOp;
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkAttachmentStoreOp.html>"]
 pub type AttachmentStoreOp = vk::AttachmentStoreOp;
 
-/// Layout of image and image subresources
-///
-#[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.ImageLayout.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkImageLayout.html>"]
-pub type ImageLayout = vk::ImageLayout;
-
 /// Pipeline stages
 ///
 #[doc = "Values: <https://docs.rs/ash/latest/ash/vk/struct.PipelineStageFlags.html>"]
@@ -82,8 +75,8 @@ pub struct AttachmentInfo {
     pub store_op: AttachmentStoreOp,
     pub stencil_load_op: AttachmentLoadOp,
     pub stencil_store_op: AttachmentStoreOp,
-    pub initial_layout: ImageLayout,
-    pub final_layout: ImageLayout,
+    pub initial_layout: memory::ImageLayout,
+    pub final_layout: memory::ImageLayout,
 }
 
 impl Default for AttachmentInfo {
@@ -94,8 +87,8 @@ impl Default for AttachmentInfo {
             store_op: AttachmentStoreOp::DONT_CARE,
             stencil_load_op: AttachmentLoadOp::DONT_CARE,
             stencil_store_op: AttachmentStoreOp::DONT_CARE,
-            initial_layout: ImageLayout::PRESENT_SRC_KHR,
-            final_layout: ImageLayout::PRESENT_SRC_KHR,
+            initial_layout: memory::ImageLayout::PRESENT_SRC_KHR,
+            final_layout: memory::ImageLayout::PRESENT_SRC_KHR,
         }
     }
 }
@@ -311,8 +304,8 @@ impl RenderPass {
                 store_op: AttachmentStoreOp::STORE,
                 stencil_load_op: AttachmentLoadOp::DONT_CARE,
                 stencil_store_op: AttachmentStoreOp::DONT_CARE,
-                initial_layout: ImageLayout::UNDEFINED,
-                final_layout: ImageLayout::PRESENT_SRC_KHR,
+                initial_layout: memory::ImageLayout::UNDEFINED,
+                final_layout: memory::ImageLayout::PRESENT_SRC_KHR,
             }
         ];
 
@@ -370,8 +363,8 @@ impl RenderPass {
                 store_op: AttachmentStoreOp::STORE,
                 stencil_load_op: AttachmentLoadOp::DONT_CARE,
                 stencil_store_op: AttachmentStoreOp::DONT_CARE,
-                initial_layout: ImageLayout::UNDEFINED,
-                final_layout: ImageLayout::PRESENT_SRC_KHR
+                initial_layout: memory::ImageLayout::UNDEFINED,
+                final_layout: memory::ImageLayout::PRESENT_SRC_KHR
             }
         ];
 
@@ -383,8 +376,8 @@ impl RenderPass {
                     store_op: AttachmentStoreOp::DONT_CARE,
                     stencil_load_op: AttachmentLoadOp::DONT_CARE,
                     stencil_store_op: AttachmentStoreOp::DONT_CARE,
-                    initial_layout: ImageLayout::UNDEFINED,
-                    final_layout: ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                    initial_layout: memory::ImageLayout::UNDEFINED,
+                    final_layout: memory::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 }
             );
         }
