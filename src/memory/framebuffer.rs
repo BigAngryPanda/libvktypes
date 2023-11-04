@@ -1,4 +1,8 @@
-/// Framebuffer represents a collection of images which will be used in render pass
+//! Framebuffer represents a collection of images which will be used in render pass
+//!
+//! [`Framebuffer`] connects [`render pass`](graphics::render_pass::RenderPass) and [`images`](memory::image::ImageMemory)
+//!
+//! Detailed info you can found [here](https://stackoverflow.com/questions/39557141/what-is-the-difference-between-framebuffer-and-image-in-vulkan)
 use ash::vk;
 
 use crate::on_error_ret;
