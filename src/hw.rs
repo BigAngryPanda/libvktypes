@@ -18,43 +18,10 @@ pub enum HWError {
 
 /// Represents GPU type
 ///
+#[doc = "Ash documentation about possible values <https://docs.rs/ash/latest/ash/vk/struct.BorderColor.html>"]
+///
 #[doc = "See more <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceType.html>"]
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum HWType {
-    Unknown,
-    Integrated,
-    Discrete,
-    Virtualized,
-    CPU,
-}
-
-impl HWType {
-    fn new(t: vk::PhysicalDeviceType) -> HWType {
-        match t {
-            vk::PhysicalDeviceType::INTEGRATED_GPU => HWType::Integrated,
-            vk::PhysicalDeviceType::DISCRETE_GPU => HWType::Discrete,
-            vk::PhysicalDeviceType::VIRTUAL_GPU => HWType::Virtualized,
-            vk::PhysicalDeviceType::CPU => HWType::CPU,
-            _ => HWType::Unknown,
-        }
-    }
-}
-
-impl fmt::Display for HWType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                HWType::Unknown => "Unknown",
-                HWType::Integrated => "Integrated GPU",
-                HWType::Discrete => "Discrete GPU",
-                HWType::Virtualized => "Virtual GPU",
-                HWType::CPU => "CPU",
-            }
-        )
-    }
-}
+pub type HWType = vk::PhysicalDeviceType;
 
 /// Represent information about single queue family
 ///
@@ -331,17 +298,10 @@ pub type Features = vk::PhysicalDeviceFeatures;
 #[derive(Clone)]
 pub struct HWDevice {
     i_device: vk::PhysicalDevice,
+    i_properties: vk::PhysicalDeviceProperties,
     i_features: Features,
-    i_name: String,
-    i_hw_type: HWType,
-    i_hw_id: u32,
-    i_version: u32,
-    i_vendor_id: u32,
     i_queues: Vec<QueueFamilyDescription>,
     i_heap_info: Vec<MemoryDescription>,
-    i_min_ub_offset: u64,
-    i_min_storage_offset: u64,
-    i_memory_alignment: u64
 }
 
 impl HWDevice {
@@ -387,25 +347,13 @@ impl HWDevice {
         HWDevice {
             i_device: hw,
             i_features: unsafe { lib.instance().get_physical_device_features(hw) },
-            i_name: unsafe {
-                CStr::from_ptr(&properties.device_name[0])
-                    .to_str()
-                    .unwrap()
-                    .to_owned()
-            },
-            i_hw_type: HWType::new(properties.device_type),
-            i_hw_id: properties.device_id,
-            i_version: properties.api_version,
-            i_vendor_id: properties.vendor_id,
+            i_properties: properties,
             i_queues: queue_desc,
             i_heap_info: memory_desc,
-            i_min_ub_offset: properties.limits.min_uniform_buffer_offset_alignment,
-            i_min_storage_offset: properties.limits.min_storage_buffer_offset_alignment,
-            i_memory_alignment: properties.limits.non_coherent_atom_size
         }
     }
 
-    pub fn device(&self) -> vk::PhysicalDevice {
+    pub(crate) fn device(&self) -> vk::PhysicalDevice {
         self.i_device
     }
 
@@ -415,51 +363,56 @@ impl HWDevice {
     }
 
     /// Device name
-    pub fn name(&self) -> &String {
-        &self.i_name
+    pub fn name(&self) -> String {
+        unsafe {
+            CStr::from_ptr(&self.i_properties.device_name[0])
+                .to_str()
+                .unwrap()
+                .to_owned()
+        }
     }
 
     /// Return device type
     pub fn device_type(&self) -> HWType {
-        self.i_hw_type
+        self.i_properties.device_type
     }
 
     /// Hardware id
     pub fn hw_id(&self) -> u32 {
-        self.i_hw_id
+        self.i_properties.device_id
     }
 
     /// Return packed version
     ///
     #[doc = "About version <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#extendingvulkan-coreversions-versionnumbers>"]
     pub fn version(&self) -> u32 {
-        self.i_version
+        self.i_properties.api_version
     }
 
     /// Return API major version number
     ///
     #[doc = "About version <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VK_API_VERSION_MAJOR.html>"]
     pub fn version_major(&self) -> u32 {
-        vk::api_version_major(self.i_version)
+        vk::api_version_major(self.version())
     }
 
     /// Return API minor version number
     ///
     #[doc = "About version <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VK_API_VERSION_MINOR.html>"]
     pub fn version_minor(&self) -> u32 {
-        vk::api_version_minor(self.i_version)
+        vk::api_version_minor(self.version())
     }
 
     /// Return API patch version number
     ///
     #[doc = "About version <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VK_API_VERSION_PATCH.html>"]
     pub fn version_patch(&self) -> u32 {
-        vk::api_version_patch(self.i_version)
+        vk::api_version_patch(self.version())
     }
 
     /// Return vendor id
     pub fn vendor_id(&self) -> u32 {
-        self.i_vendor_id
+        self.i_properties.vendor_id
     }
 
     /// Return true if GPU type is `Discrete`
@@ -468,7 +421,7 @@ impl HWDevice {
     ///
     /// See HWType
     pub fn is_discrete_gpu(&self) -> bool {
-        self.i_hw_type == HWType::Discrete
+        self.device_type() == HWType::DISCRETE_GPU
     }
 
     /// Return true if GPU type is `Integrated`
@@ -477,7 +430,7 @@ impl HWDevice {
     ///
     /// See HWType
     pub fn is_integrated_gpu(&self) -> bool {
-        self.i_hw_type == HWType::Integrated
+        self.device_type() == HWType::INTEGRATED_GPU
     }
 
     /// Return true if GPU type is `Integrated` or `Discrete`
@@ -491,17 +444,22 @@ impl HWDevice {
 
     /// Minimal offset for uniform buffer binding
     pub fn ub_offset(&self) -> u64 {
-        self.i_min_ub_offset
+        self.i_properties.limits.min_uniform_buffer_offset_alignment
     }
 
     /// Minimal offset for storage buffer binding
     pub fn storage_offset(&self) -> u64 {
-        self.i_min_storage_offset
+        self.i_properties.limits.min_storage_buffer_offset_alignment
     }
 
     /// Memory mapping alignment
     pub fn memory_alignment(&self) -> u64 {
-        self.i_memory_alignment
+        self.i_properties.limits.non_coherent_atom_size
+    }
+
+    /// Max sampler anisotropy
+    pub fn max_anisotropy(&self) -> f32 {
+        self.i_properties.limits.max_sampler_anisotropy
     }
 
     /// Return iterator over available queues
@@ -554,17 +512,17 @@ impl fmt::Display for HWDevice {
             f,
             "*****************************\n\
             Device: {}\n\
-            Device type: {}\n\
+            Device type: {:#?}\n\
             Device id:   {}\n\
             Vendor id:   {}\n\n\
             Supported API information:\n\
             Version major: {}\n\
             Version minor: {}\n\
             Version patch: {}\n",
-            self.i_name,
-            self.i_hw_type,
-            self.i_hw_id,
-            self.i_vendor_id,
+            self.name(),
+            self.device_type(),
+            self.hw_id(),
+            self.vendor_id(),
             self.version_major(),
             self.version_minor(),
             self.version_patch()
@@ -635,9 +593,9 @@ impl fmt::Display for HWDevice {
             Min uniform buffer offset: {}\n\
             Min storage buffer offset: {}\n\
             Memory alignment: {}\n",
-            self.i_min_ub_offset,
-            self.i_min_storage_offset,
-            self.i_memory_alignment
+            self.ub_offset(),
+            self.storage_offset(),
+            self.memory_alignment()
         )
         .unwrap();
 
