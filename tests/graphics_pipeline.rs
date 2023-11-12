@@ -79,4 +79,13 @@ mod graphics_pipeline {
 
         assert!(graphics::Pipeline::new(device, &pipe_type).is_ok());
     }
+
+    #[test]
+    fn default_sampler() {
+        let device = test_context::get_graphics_device();
+
+        let cfg = graphics::SamplerCfg::default();
+
+        assert!(graphics::Sampler::new(device, &cfg).is_ok());
+    }
 }
