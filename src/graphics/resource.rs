@@ -65,7 +65,7 @@ pub struct Resource<'a> {
 
 impl<'a> Resource<'a> {
     /// Create new resource from selected views
-    pub fn new(
+    pub fn from_memory(
         buffers: &[memory::View<'a>],
         resource_type: ResourceType,
         stage: graphics::ShaderStage
@@ -92,7 +92,7 @@ impl<'a> Resource<'a> {
         resource_type: ResourceType,
         stage: graphics::ShaderStage
     ) -> Resource<'a> {
-        Resource::new(&[], resource_type, stage)
+        Resource::from_memory(&[], resource_type, stage)
     }
 
     /// How resource should be used in pipeline

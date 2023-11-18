@@ -272,7 +272,7 @@ impl Memory {
         resource_type: graphics::ResourceType,
         stage: graphics::ShaderStage
     ) -> graphics::Resource {
-        graphics::Resource::new(&[self.view(index)], resource_type, stage)
+        graphics::Resource::from_memory(&[self.view(index)], resource_type, stage)
     }
 
     /// Create [`VertexView`](crate::graphics::VertexView) for the buffer

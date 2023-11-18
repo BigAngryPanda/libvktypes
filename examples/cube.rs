@@ -321,7 +321,7 @@ fn main() {
     }, 7)
     .expect("Failed to write the translation matrix");
 
-    let z_rotation = graphics::Resource::new(&[data.view(1)], graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX);
+    let z_rotation = graphics::Resource::from_memory(&[data.view(1)], graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX);
     let transformation = data.resource(3, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX);
     let color_data = data.resource(4, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::FRAGMENT);
     let scale = data.resource(5, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX);

@@ -164,7 +164,7 @@ fn main() {
     }, 2)
     .expect("Failed to fill the ubo");
 
-    let ubo = graphics::Resource::new(&[data.view(1), data.view(2)], graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::FRAGMENT);
+    let ubo = graphics::Resource::from_memory(&[data.view(1), data.view(2)], graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::FRAGMENT);
 
     let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");
