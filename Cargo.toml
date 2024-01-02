@@ -7,5 +7,11 @@ edition = "2021"
 
 [dependencies]
 ash = { version = "*", features = ["linked", "loaded"] }
-winit = "*"
+winit = "0.28.0"
 shaderc = "*"
+ash-window = "*"
+
+raw-window-handle = "0.5"
+
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
+raw-window-metal = "0.3"

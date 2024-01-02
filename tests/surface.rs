@@ -2,46 +2,26 @@ mod test_context;
 
 #[cfg(test)]
 mod surface {
-    use libvktypes::{libvk, layers, extensions, hw, surface};
+    use libvktypes::{hw, surface};
 
     use super::test_context;
 
-    #[cfg(target_os = "linux")]
     #[test]
     fn init_surface() {
         let window_ref = test_context::get_window();
 
-        let lib_type = libvk::InstanceType {
-            debug_layer: Some(layers::DebugLayer::default()),
-            extensions: &[extensions::DEBUG_EXT_NAME,
-                extensions::SURFACE_EXT_NAME,
-                extensions::XLIB_SURFACE_EXT_NAME
-            ],
-            ..libvk::InstanceType::default()
-        };
-
-        let lib = libvk::Instance::new(&lib_type).expect("Failed to create instance");
+        let lib = test_context::get_graphics_instance();
 
         assert!(surface::Surface::new(&lib, window_ref).is_ok());
     }
 
-    #[cfg(target_os = "linux")]
     #[test]
     fn get_capabilities() {
-        let window_ref = test_context::get_window();
+        let window = test_context::get_window();
 
-        let lib_type = libvk::InstanceType {
-            debug_layer: Some(layers::DebugLayer::default()),
-            extensions: &[extensions::DEBUG_EXT_NAME,
-                extensions::SURFACE_EXT_NAME,
-                extensions::XLIB_SURFACE_EXT_NAME
-            ],
-            ..libvk::InstanceType::default()
-        };
+        let lib = test_context::get_graphics_instance();
 
-        let lib = libvk::Instance::new(&lib_type).expect("Failed to create instance");
-
-        let surface = surface::Surface::new(&lib, window_ref).expect("Failed to create surface");
+        let surface = surface::Surface::new(&lib, window).expect("Failed to create surface");
 
         let hw_list = hw::Description::poll(&lib, Some(&surface)).expect("Failed to list hardware");
 

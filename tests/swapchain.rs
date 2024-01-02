@@ -6,7 +6,6 @@ mod swapchain {
 
     use super::test_context;
 
-    #[cfg(target_os = "linux")]
     #[test]
     fn init_swapchain() {
         let lib_ref = test_context::get_graphics_instance();

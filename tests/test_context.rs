@@ -82,24 +82,25 @@ static mut FRAMEBUFFER: MaybeUninit<Vec<memory::Framebuffer>> = MaybeUninit::<Ve
 pub fn get_window() -> &'static window::Window {
     unsafe {
         INIT_WINDOW.call_once(|| {
-            WINDOW.write(window::create_window(&window::eventloop()).expect("Failed to create window"));
+            WINDOW.write(window::create_window(
+                &window::eventloop()
+            ).expect("Failed to create window"));
         });
 
         WINDOW.assume_init_ref()
     }
 }
 
-#[cfg(target_os = "linux")]
 pub fn get_graphics_instance() -> &'static libvk::Instance {
     unsafe {
         INIT_GRAPHICS_INSTANCE.call_once(|| {
+            let mut extensions = extensions::required_extensions(get_window());
+            extensions.push(extensions::DEBUG_EXT_NAME);
+            extensions.push(extensions::SURFACE_EXT_NAME);
+
             let lib_type = libvk::InstanceType {
                 debug_layer: Some(layers::DebugLayer::default()),
-                extensions: &[
-                    extensions::DEBUG_EXT_NAME,
-                    extensions::SURFACE_EXT_NAME,
-                    extensions::XLIB_SURFACE_EXT_NAME,
-                ],
+                extensions: &extensions,
                 ..libvk::InstanceType::default()
             };
 
@@ -303,6 +304,7 @@ pub fn get_cmd_pool() -> &'static cmd::Pool {
 pub fn get_graphics_pipeline() -> &'static graphics::Pipeline {
     unsafe {
         INIT_GRAPHICS_PIPELINE.call_once(|| {
+            let dev = get_graphics_device();
             let capabilities = get_surface_capabilities();
 
             let vertex_cfg = graphics::VertexInputCfg {
@@ -325,10 +327,10 @@ pub fn get_graphics_pipeline() -> &'static graphics::Pipeline {
                 enable_depth_test: false,
                 enable_primitive_restart: false,
                 cull_mode: graphics::CullMode::BACK,
-                sets: &[]
+                descriptor: &graphics::PipelineDescriptor::empty(dev)
             };
 
-            GRAPHICS_PIPELINE.write(graphics::Pipeline::new(get_graphics_device(), &pipe_type).expect("Failed to create pipeline"));
+            GRAPHICS_PIPELINE.write(graphics::Pipeline::new(dev, &pipe_type).expect("Failed to create pipeline"));
         });
 
         GRAPHICS_PIPELINE.assume_init_ref()

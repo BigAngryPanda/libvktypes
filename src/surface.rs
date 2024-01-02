@@ -3,30 +3,22 @@
 use ash::vk;
 use ash::extensions::khr;
 
-use winit::platform::x11::WindowExtX11;
-
+use raw_window_handle::HasRawDisplayHandle;
+use raw_window_handle::HasRawWindowHandle;
 use crate::{libvk, window, hw, memory, swapchain};
-use crate::{on_error_ret, on_option};
+use crate::on_error_ret;
 
 use std::error::Error;
-use std::{ptr, fmt};
-use std::os::raw::{
-    c_void,
-    c_ulong,
-};
+use std::fmt;
 
 #[derive(Debug)]
 pub enum SurfaceError {
-    XLibIsNotSupported,
     Create
 }
 
 impl fmt::Display for SurfaceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let err_msg = match self {
-            SurfaceError::XLibIsNotSupported => {
-                "Xlib display is not supported"
-            },
             SurfaceError::Create => {
                 "Failed to create Xlib surface (vkCreateXlibSurfaceKHR call failed)"
             }
@@ -45,34 +37,23 @@ pub struct Surface {
 }
 
 impl Surface {
-    #[cfg(target_os = "linux")]
-    /// Only for Linux with X11
     pub fn new(lib: &libvk::Instance, window: &window::Window) -> Result<Surface, SurfaceError> {
-	    let x11_display: *mut c_void = on_option!(window.xlib_display(), return Err(SurfaceError::XLibIsNotSupported));
-
-	    let x11_window: c_ulong = window.xlib_window().unwrap();
-
-	    let x11_create_info:vk::XlibSurfaceCreateInfoKHR = vk::XlibSurfaceCreateInfoKHR {
-	        s_type: vk::StructureType::XLIB_SURFACE_CREATE_INFO_KHR,
-	        p_next: ptr::null(),
-	        flags: vk::XlibSurfaceCreateFlagsKHR::empty(),
-	        window: x11_window as vk::Window,
-	        dpy: x11_display as *mut vk::Display,
-	    };
-
-	    let xlib_surface_loader = khr::XlibSurface::new(lib.entry(), lib.instance());
-
-        let surface_khr: vk::SurfaceKHR = on_error_ret!(
-            unsafe { xlib_surface_loader.create_xlib_surface(&x11_create_info, None) },
-            SurfaceError::Create
-        );
+        let surface = unsafe { ash_window::create_surface(
+            lib.entry(),
+            lib.instance(),
+            window.raw_display_handle(),
+            window.raw_window_handle(),
+            None,
+        ).unwrap() };
 
         let surface_loader = khr::Surface::new(lib.entry(), lib.instance());
 
-        Ok(Surface {
-            i_loader: surface_loader,
-            i_surface: surface_khr,
-        })
+        Ok(
+            Surface {
+                i_loader: surface_loader,
+                i_surface: surface,
+            }
+        )
     }
 
     #[doc(hidden)]

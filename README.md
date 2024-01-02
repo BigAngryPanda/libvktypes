@@ -72,7 +72,12 @@ vulkan-icd
 
 ## Platforms
 
-- GNU/Linux (X11)
+Theoretically following platforms are supported:
+
+- Windows (not tested)
+- MacOS, iOS (not tested)
+- Linux: X11 (tested), Wayland (not tested)
+- Android (not tested)
 
 ## Contributing
 
