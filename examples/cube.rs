@@ -321,14 +321,6 @@ fn main() {
     }, 7)
     .expect("Failed to write the translation matrix");
 
-    let z_rotation = graphics::Resource::from_memory(&[data.view(1)], graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX);
-    let transformation = data.resource(3, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX);
-    let color_data = data.resource(4, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::FRAGMENT);
-    let scale = data.resource(5, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX);
-    let y_rotation = data.resource(6, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX);
-    let translation = data.resource(7, graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::VERTEX);
-    let set = [&z_rotation, &transformation, &color_data, &scale, &y_rotation, &translation];
-
     let depth_buffer_cfg = [
         memory::ImageCfg {
             queue_families: &[queue.index()],
@@ -363,6 +355,39 @@ fn main() {
         }
     ];
 
+    let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
+        graphics::BindingCfg {
+            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            stage: graphics::ShaderStage::VERTEX,
+            count: 1,
+        },
+        graphics::BindingCfg {
+            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            stage: graphics::ShaderStage::VERTEX,
+            count: 1,
+        },
+        graphics::BindingCfg {
+            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            stage: graphics::ShaderStage::FRAGMENT,
+            count: 1,
+        },
+        graphics::BindingCfg {
+            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            stage: graphics::ShaderStage::VERTEX,
+            count: 1,
+        },
+        graphics::BindingCfg {
+            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            stage: graphics::ShaderStage::VERTEX,
+            count: 1,
+        },
+        graphics::BindingCfg {
+            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            stage: graphics::ShaderStage::VERTEX,
+            count: 1,
+        },
+    ]]).expect("Failed to allocate resources");
+
     let pipe_type = graphics::PipelineCfg {
         vertex_shader: &vert_shader,
         vertex_size: std::mem::size_of::<[f32; 4]>() as u32,
@@ -376,12 +401,19 @@ fn main() {
         enable_depth_test: true,
         enable_primitive_restart: false,
         cull_mode: graphics::CullMode::BACK,
-        sets: &[&set],
+        descriptor: &descs,
     };
 
     let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
-    pipeline.update(&[&set]);
+    descs.update_set(&[
+        &[&data.view(1)],
+        &[&data.view(3)],
+        &[&data.view(4)],
+        &[&data.view(5)],
+        &[&data.view(6)],
+        &[&data.view(7)]
+    ], 0);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
@@ -414,7 +446,7 @@ fn main() {
 
     cmd_buffer.bind_index_buffer(data.view(2), 0, memory::IndexBufferType::UINT32);
 
-    cmd_buffer.bind_resources(&pipeline, &[]);
+    cmd_buffer.bind_resources(&pipeline, &descs, &[]);
 
     cmd_buffer.draw_indexed(INDICES.len() as u32, 1, 0, 0, 0);
 

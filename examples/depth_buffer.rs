@@ -148,7 +148,7 @@ fn main() {
         enable_depth_test: true,
         enable_primitive_restart: false,
         cull_mode: graphics::CullMode::BACK,
-        sets: &[]
+        descriptor: &graphics::PipelineDescriptor::empty(&device)
     };
 
     let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");

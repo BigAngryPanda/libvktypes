@@ -5,6 +5,7 @@ use ash::vk;
 use crate::{
     dev,
     graphics,
+    memory,
     on_error_ret
 };
 
@@ -78,25 +79,25 @@ pub struct SamplerCfg {
     pub unnormalized_coordinates: bool,
 }
 
-/// Default values are:
-/// ```
-/// mipmap_mode: LINEAR
-/// address_mode_u: REPEAT
-/// address_mode_v: REPEAT
-/// address_mode_w: REPEAT
-/// mag_filter: LINEAR
-/// min_filter: LINEAR
-/// mip_lod_bias: 0.0
-/// anisotropy_enable: false
-/// max_anisotropy: 0.0
-/// compare_enable: false
-/// compare_op: ALWAYS
-/// min_lod: 0.0
-/// max_lod: 0.0
-/// border_color: INT_OPAQUE_BLACK
-/// unnormalized_coordinates: false
-/// ```
 impl Default for SamplerCfg {
+    /// Default values are:
+    /// ```ignore
+    /// mipmap_mode: LINEAR
+    /// address_mode_u: REPEAT
+    /// address_mode_v: REPEAT
+    /// address_mode_w: REPEAT
+    /// mag_filter: LINEAR
+    /// min_filter: LINEAR
+    /// mip_lod_bias: 0.0
+    /// anisotropy_enable: false
+    /// max_anisotropy: 0.0
+    /// compare_enable: false
+    /// compare_op: ALWAYS
+    /// min_lod: 0.0
+    /// max_lod: 0.0
+    /// border_color: INT_OPAQUE_BLACK
+    /// unnormalized_coordinates: false
+    /// ```
     fn default() -> Self {
         SamplerCfg {
             mipmap_mode: SamplerMipmapMode::LINEAR,
@@ -159,6 +160,10 @@ impl Sampler {
             }
         )
     }
+
+    pub(crate) fn sampler(&self) -> vk::Sampler {
+        self.i_sampler
+    }
 }
 
 impl Drop for Sampler {
@@ -166,5 +171,28 @@ impl Drop for Sampler {
         unsafe {
             self.i_core.device().destroy_sampler(self.i_sampler, self.i_core.allocator());
         }
+    }
+}
+
+/// Combination of Sampler and image memory
+pub struct CombinedSampler<'a, 'b>(pub memory::ImageView<'a>, pub &'b Sampler);
+
+impl<'a, 'b> graphics::ShaderBinding for CombinedSampler<'a, 'b> {
+    fn buffer_info(&self) -> Option<vk::DescriptorBufferInfo> {
+        None
+    }
+
+    fn image_info(&self) -> Option<vk::DescriptorImageInfo> {
+        Some(
+            vk::DescriptorImageInfo {
+                sampler: self.1.sampler(),
+                image_view: self.0.image_view(),
+                image_layout: self.0.layout(),
+            }
+        )
+    }
+
+    fn texel_info(&self) -> Option<vk::BufferView> {
+        None
     }
 }

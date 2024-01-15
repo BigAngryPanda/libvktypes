@@ -1,7 +1,6 @@
 //! Pipeline configuration
 
 use ash::vk;
-use ash::prelude::VkResult;
 
 use crate::{
     dev,
@@ -154,7 +153,7 @@ pub type CullMode = vk::CullModeFlags;
 /// and so on
 ///
 /// Read more [here](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPipelineInputAssemblyStateCreateInfo.html)
-pub struct PipelineCfg<'a, 'b : 'a> {
+pub struct PipelineCfg<'a> {
     pub vertex_shader: &'a shader::Shader,
     /// Size of every vertex
     pub vertex_size: u32,
@@ -169,7 +168,7 @@ pub struct PipelineCfg<'a, 'b : 'a> {
     pub enable_depth_test: bool,
     pub enable_primitive_restart: bool,
     pub cull_mode: CullMode,
-    pub sets: &'a [&'a [&'a graphics::Resource<'b>]]
+    pub descriptor: &'a graphics::PipelineDescriptor
 }
 
 #[derive(Debug)]
@@ -201,10 +200,7 @@ impl Error for PipelineError { }
 pub struct Pipeline {
     i_core: Arc<dev::Core>,
     i_layout: vk::PipelineLayout,
-    i_pipeline: vk::Pipeline,
-    i_desc_pool: vk::DescriptorPool,
-    i_desc_sets: Vec<vk::DescriptorSet>,
-    i_desc_layouts: Vec<vk::DescriptorSetLayout>
+    i_pipeline: vk::Pipeline
 }
 
 impl Pipeline {
@@ -250,41 +246,6 @@ impl Pipeline {
             p_vertex_binding_descriptions: data_ptr!(vertex_binding_descriptions),
             vertex_attribute_description_count: vertex_attribute_descriptions.len() as u32,
             p_vertex_attribute_descriptions: data_ptr!(vertex_attribute_descriptions),
-        };
-
-        let desc_pool = if !pipe_cfg.sets.is_empty() {
-            on_error_ret!(
-                create_descriptor_pool(device, pipe_cfg.sets),
-                PipelineError::DescriptorPool
-            )
-        } else {
-            vk::DescriptorPool::null()
-        };
-
-        let mut sets_layout: Vec<vk::DescriptorSetLayout> = Vec::new();
-
-        if !pipe_cfg.sets.is_empty() {
-            for res in pipe_cfg.sets {
-                match create_set_layout(device, res) {
-                    Ok(set) => sets_layout.push(set),
-                    Err(_) => {
-                        clear_sets_layout(device, &sets_layout, desc_pool);
-                        return Err(PipelineError::DescriptorSet);
-                    }
-                }
-            }
-        }
-
-        let sets = if !pipe_cfg.sets.is_empty() {
-            on_error!(
-                allocate_descriptor_sets(device, &sets_layout, desc_pool),
-                {
-                    clear_sets_layout(device, &sets_layout, desc_pool);
-                    return Err(PipelineError::DescriptorAllocation);
-                }
-            )
-        } else {
-            Vec::new()
         };
 
         let input_assembly_state_create_info = vk::PipelineInputAssemblyStateCreateInfo {
@@ -393,8 +354,8 @@ impl Pipeline {
             s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
             p_next: ptr::null(),
             flags: vk::PipelineLayoutCreateFlags::empty(),
-            set_layout_count: sets_layout.len() as u32,
-            p_set_layouts: data_ptr!(sets_layout),
+            set_layout_count: pipe_cfg.descriptor.descriptor_layouts().len() as u32,
+            p_set_layouts: data_ptr!(pipe_cfg.descriptor.descriptor_layouts()),
             push_constant_range_count: if pipe_cfg.push_constant_size != 0 {
                 1
             } else {
@@ -407,12 +368,9 @@ impl Pipeline {
             },
         };
 
-        let pipeline_layout = unsafe { on_error!(
+        let pipeline_layout = unsafe { on_error_ret!(
 		    device.device().create_pipeline_layout(&layout_create_info, device.allocator()),
-            {
-                clear_sets_layout(device, &sets_layout, desc_pool);
-                return Err(PipelineError::Layout);
-            }
+            PipelineError::Layout
         )};
 
         let depth_cfg = vk::PipelineDepthStencilStateCreateInfo {
@@ -465,7 +423,6 @@ impl Pipeline {
                 device.allocator()
             ),
             {
-                clear_sets_layout(device, &sets_layout, desc_pool);
                 device.device().destroy_pipeline_layout(pipeline_layout, device.allocator());
                 return Err(PipelineError::Pipeline);
             }
@@ -476,73 +433,9 @@ impl Pipeline {
             Pipeline {
                 i_core: device.core().clone(),
                 i_layout: pipeline_layout,
-                i_pipeline: pipeline[0],
-                i_desc_pool: desc_pool,
-                i_desc_sets: sets,
-                i_desc_layouts: sets_layout
+                i_pipeline: pipeline[0]
             }
         )
-    }
-
-    /// # Description
-    ///
-    /// Specify what resources should use pipeline
-    ///
-    /// Note: do not confuse with [`bind_resources`](crate::cmd::Buffer::bind_resources)
-    ///
-    /// The latest method just bind together pipeline with "pointers to resources"
-    ///
-    /// Which contains in [`Pipeline`] according to [`PipelineCfg::sets`]
-    ///
-    /// `update` on the other hand overwrite "pointers" to the selected resource
-    ///
-    /// # Resource compatibility
-    ///
-    /// Each resource in `data` must be compatiable with corresponding [set](PipelineCfg::sets)
-    ///
-    /// `data[0][0]` with `sets[0][0]` and so on
-    pub fn update(&self, data: &[&[&graphics::Resource]]) {
-        for i in 0..self.i_desc_sets.len() {
-            self.update_set(data[i], i);
-        }
-    }
-
-    /// Update selected set
-    ///
-    /// For requirements see [`Pipeline::update`]
-    pub fn update_set(&self, resources: &[&graphics::Resource], set_index: usize) {
-        let mut buffer_descs: Vec<vk::DescriptorBufferInfo> = Vec::new();
-
-        for resource in resources {
-            for view in resource.views() {
-                buffer_descs.push(
-                    vk::DescriptorBufferInfo {
-                        buffer: view.buffer(),
-                        offset: 0,
-                        range: vk::WHOLE_SIZE
-                    }
-                );
-            }
-        }
-
-        let write_desc: Vec<vk::WriteDescriptorSet> = resources.iter().enumerate().map(
-            |(i, res)| vk::WriteDescriptorSet {
-                s_type: vk::StructureType::WRITE_DESCRIPTOR_SET,
-                p_next: ptr::null(),
-                dst_set: self.i_desc_sets[set_index],
-                dst_binding: i as u32,
-                dst_array_element: 0,
-                descriptor_count: res.count(),
-                descriptor_type: res.resource_type(),
-                p_image_info: ptr::null(),
-                p_buffer_info: &buffer_descs[i],
-                p_texel_buffer_view: ptr::null()
-            }
-        ).collect();
-
-        unsafe {
-            self.i_core.device().update_descriptor_sets(&write_desc, &[])
-        };
     }
 
     #[doc(hidden)]
@@ -554,126 +447,13 @@ impl Pipeline {
     pub fn layout(&self) -> vk::PipelineLayout {
         self.i_layout
     }
-
-    #[doc(hidden)]
-    pub fn descriptor_set(&self) -> &[vk::DescriptorSet] {
-        &self.i_desc_sets
-    }
 }
 
 impl Drop for Pipeline {
     fn drop(&mut self) {
         unsafe {
-            if self.i_desc_pool != vk::DescriptorPool::null() {
-                self
-                .i_core
-                .device()
-                .destroy_descriptor_pool(self.i_desc_pool, self.i_core.allocator());
-                for &set in &self.i_desc_layouts {
-                    self
-                    .i_core
-                    .device()
-                    .destroy_descriptor_set_layout(set, self.i_core.allocator());
-                }
-            }
             self.i_core.device().destroy_pipeline_layout(self.i_layout, self.i_core.allocator());
             self.i_core.device().destroy_pipeline(self.i_pipeline, self.i_core.allocator());
         }
-    }
-}
-
-fn create_descriptor_pool(
-    device: &dev::Device,
-    resources: &[&[&graphics::Resource]]
-) -> VkResult<vk::DescriptorPool> {
-    let mut desc_size: Vec<vk::DescriptorPoolSize> = Vec::new();
-
-    for &set in resources {
-        for binding in set {
-            desc_size.push(vk::DescriptorPoolSize {
-                ty: binding.resource_type(),
-                descriptor_count: binding.count()
-            });
-        }
-    }
-
-    let desc_info = vk::DescriptorPoolCreateInfo {
-        s_type: vk::StructureType::DESCRIPTOR_POOL_CREATE_INFO,
-        p_next: ptr::null(),
-        flags: vk::DescriptorPoolCreateFlags::empty(),
-        max_sets: resources.len() as u32,
-        pool_size_count: desc_size.len() as u32,
-        p_pool_sizes: desc_size.as_ptr(),
-    };
-
-    unsafe {
-        device.device().create_descriptor_pool(&desc_info, device.allocator())
-    }
-}
-
-fn create_set_layout(
-    device: &dev::Device,
-    resources: &[&graphics::Resource]
-) -> VkResult<vk::DescriptorSetLayout> {
-    let bindings: Vec<vk::DescriptorSetLayoutBinding> = resources.iter().enumerate().map(
-        |(i, binding)| vk::DescriptorSetLayoutBinding {
-            binding: i as u32,
-            descriptor_type: binding.resource_type(),
-            descriptor_count: binding.count(),
-            stage_flags: binding.stage(),
-            p_immutable_samplers: ptr::null()
-        }
-    ).collect();
-
-    let desc_layout_info = vk::DescriptorSetLayoutCreateInfo {
-        s_type: vk::StructureType::DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        p_next: ptr::null(),
-        flags: vk::DescriptorSetLayoutCreateFlags::empty(),
-        binding_count: bindings.len() as u32,
-        p_bindings: bindings.as_ptr(),
-    };
-
-    unsafe {
-        device.device().create_descriptor_set_layout(&desc_layout_info, device.allocator())
-    }
-}
-
-fn clear_sets_layout(
-    device: &dev::Device,
-    sets: &Vec<vk::DescriptorSetLayout>,
-    pool: vk::DescriptorPool)
-{
-    if pool == vk::DescriptorPool::null() {
-        return;
-    }
-
-    unsafe {
-        device
-        .device()
-        .destroy_descriptor_pool(pool, device.allocator());
-
-        for &set in sets {
-            device
-            .device()
-            .destroy_descriptor_set_layout(set, device.allocator());
-        }
-    }
-}
-
-fn allocate_descriptor_sets(
-    device: &dev::Device,
-    sets: &Vec<vk::DescriptorSetLayout>,
-    pool: vk::DescriptorPool
-) -> VkResult<Vec<vk::DescriptorSet>> {
-    let alloc_info = vk::DescriptorSetAllocateInfo {
-        s_type: vk::StructureType::DESCRIPTOR_SET_ALLOCATE_INFO,
-        p_next: ptr::null(),
-        descriptor_pool: pool,
-        descriptor_set_count: sets.len() as u32,
-        p_set_layouts: sets.as_ptr()
-    };
-
-    unsafe {
-        device.device().allocate_descriptor_sets(&alloc_info)
     }
 }

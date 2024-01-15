@@ -319,7 +319,7 @@ impl Buffer {
     ///
     /// For more types see [AccessType]
     ///
-    /// If you don't care for specific queue family use [`QUEUE_FAMILY_IGNORED`](QUEUE_FAMILY_IGNORED)
+    /// If you don't care for specific queue family use [`cmd::QUEUE_FAMILY_IGNORED`](QUEUE_FAMILY_IGNORED)
     pub fn set_image_barrier(&self,
         view: memory::ImageView,
         src_type: AccessType,
@@ -355,7 +355,9 @@ impl Buffer {
                 &[],
                 &[img_barrier]
             )
-        }
+        };
+
+        view.set_layout(dst_layout);
     }
 
     /// Update push constatnts with raw data
@@ -437,10 +439,8 @@ impl Buffer {
 
     /// Enable resource usage for the `pipeline`
     ///
-    /// `offsets` for now has no effect so leave it as `&[]`
-    ///
-    /// Note: do not confuse with [`update`](graphics::Pipeline::update) method
-    pub fn bind_resources(&self, pipe: &graphics::Pipeline, offsets: &[u32]) {
+    /// If you do not care about `offsets` leave it as `&[]`
+    pub fn bind_resources(&self, pipe: &graphics::Pipeline, res: &graphics::PipelineDescriptor, offsets: &[u32]) {
         unsafe {
             self
             .i_pool
@@ -450,7 +450,7 @@ impl Buffer {
                 vk::PipelineBindPoint::GRAPHICS,
                 pipe.layout(),
                 0,
-                pipe.descriptor_set(),
+                res.descriptor_sets(),
                 offsets
             );
         }

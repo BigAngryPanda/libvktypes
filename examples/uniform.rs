@@ -164,10 +164,16 @@ fn main() {
     }, 2)
     .expect("Failed to fill the ubo");
 
-    let ubo = graphics::Resource::from_memory(&[data.view(1), data.view(2)], graphics::ResourceType::UNIFORM_BUFFER, graphics::ShaderStage::FRAGMENT);
-
     let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");
+
+    let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
+        graphics::BindingCfg {
+            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            stage: graphics::ShaderStage::FRAGMENT,
+            count: 1,
+        }
+    ]]).expect("Failed to allocate resources");
 
     let pipe_type = graphics::PipelineCfg {
         vertex_shader: &vert_shader,
@@ -187,12 +193,12 @@ fn main() {
         enable_depth_test: false,
         enable_primitive_restart: false,
         cull_mode: graphics::CullMode::BACK,
-        sets: &[&[&ubo]]
+        descriptor: &descs
     };
 
     let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
-    pipeline.update(&[&[&ubo]]);
+    descs.update(&[&[&[&data.view(1), &data.view(2)]]]);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
@@ -223,7 +229,7 @@ fn main() {
 
     cmd_buffer.bind_vertex_buffers(&[data.vertex_view(0, 0)]);
 
-    cmd_buffer.bind_resources(&pipeline, &[]);
+    cmd_buffer.bind_resources(&pipeline, &descs, &[]);
 
     cmd_buffer.draw(4, 1, 0, 0);
 

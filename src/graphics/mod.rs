@@ -4,20 +4,20 @@ use ash::vk;
 
 pub mod render_pass;
 pub mod pipeline;
-pub mod resource;
 pub mod vertex_view;
 pub mod sampler;
+pub mod pipeline_descriptor;
 
 #[doc(hidden)]
 pub use crate::graphics::render_pass::*;
 #[doc(hidden)]
 pub use crate::graphics::pipeline::*;
 #[doc(hidden)]
-pub use resource::*;
-#[doc(hidden)]
 pub use vertex_view::*;
 #[doc(hidden)]
 pub use sampler::*;
+#[doc(hidden)]
+pub use pipeline_descriptor::*;
 
 /// ShaderStage specifies shader stage within single pipeline
 ///

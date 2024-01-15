@@ -266,15 +266,6 @@ impl Memory {
         .collect()
     }
 
-    /// Create [`resource`](crate::graphics::Resource) handler from selected buffer
-    pub fn resource(&self,
-        index: usize,
-        resource_type: graphics::ResourceType,
-        stage: graphics::ShaderStage
-    ) -> graphics::Resource {
-        graphics::Resource::from_memory(&[self.view(index)], resource_type, stage)
-    }
-
     /// Create [`VertexView`](crate::graphics::VertexView) for the buffer
     ///
     /// About `offset` read docs for [`VertexInputCfg`](graphics::VertexInputCfg)

@@ -1,6 +1,6 @@
 //! Provide handler to the part of the [`Memory`](crate::memory::Memory)
 
-use crate::memory;
+use crate::{memory, graphics};
 
 use ash::vk;
 
@@ -45,6 +45,26 @@ impl<'a> View<'a> {
     #[doc(hidden)]
     pub(crate) fn buffer(&self) -> vk::Buffer {
         self.i_memory.buffer(self.i_index)
+    }
+}
+
+impl<'a> graphics::ShaderBinding for View<'a> {
+    fn buffer_info(&self) -> Option<vk::DescriptorBufferInfo> {
+        Some(
+            vk::DescriptorBufferInfo {
+                buffer: self.buffer(),
+                offset: 0,
+                range: vk::WHOLE_SIZE,
+            }
+        )
+    }
+
+    fn image_info(&self) -> Option<vk::DescriptorImageInfo> {
+        None
+    }
+
+    fn texel_info(&self) -> Option<vk::BufferView> {
+        None
     }
 }
 
@@ -95,7 +115,11 @@ impl<'a> ImageView<'a> {
 
     /// Return image layout
     pub fn layout(&self) -> memory::ImageLayout {
-        self.i_memory.info()[self.i_index].layout
+        self.i_memory.info()[self.i_index].layout.get()
+    }
+
+    pub(crate) fn set_layout(&self, new_layout: memory::ImageLayout) {
+        self.i_memory.info()[self.i_index].layout.set(new_layout)
     }
 
     pub(crate) fn subresource_range(&self) -> vk::ImageSubresourceRange {
