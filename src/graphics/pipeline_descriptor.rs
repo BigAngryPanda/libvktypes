@@ -28,23 +28,23 @@ pub trait ShaderBinding {
 }
 
 #[derive(Debug)]
-pub enum ResourceError {
+pub enum PipelineDescriptorError {
     DescriptorPool,
     DescriptorSet,
     DescriptorAllocation
 }
 
-impl fmt::Display for ResourceError {
+impl fmt::Display for PipelineDescriptorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ResourceError::DescriptorPool => write!(f, "Failed to create descriptor pool (vkCreateDescriptorPool call failed)"),
-            ResourceError::DescriptorSet => write!(f, "Failed to create descriptor set layout (vkCreateDescriptorSetLayout call failed)"),
-            ResourceError::DescriptorAllocation => write!(f, "Failed to allocate descriptor set (vkDescriptorSetAllocateInfo call failed)"),
+            PipelineDescriptorError::DescriptorPool => write!(f, "Failed to create descriptor pool (vkCreateDescriptorPool call failed)"),
+            PipelineDescriptorError::DescriptorSet => write!(f, "Failed to create descriptor set layout (vkCreateDescriptorSetLayout call failed)"),
+            PipelineDescriptorError::DescriptorAllocation => write!(f, "Failed to allocate descriptor set (vkDescriptorSetAllocateInfo call failed)"),
         }
     }
 }
 
-impl Error for ResourceError { }
+impl Error for PipelineDescriptorError { }
 
 /// Specifies how pipeline should treat region of memory
 ///
@@ -62,10 +62,10 @@ pub struct BindingCfg {
 
 /// Represents information about how many and what type of bindings will be used
 ///
-/// From the creating `PipelineResource` does not contain any information about
+/// From the creating `PipelineDescriptor` does not contain any information about
 /// what exactly memory will be used
 ///
-/// Call [`update`](PipelineResource::update) to write information into `PipelineResource`
+/// Call [`update`](PipelineDescriptor::update) to write information into `PipelineDescriptor`
 #[derive(Debug)]
 pub struct PipelineDescriptor {
     i_core: Arc<dev::Core>,
@@ -77,7 +77,7 @@ pub struct PipelineDescriptor {
 
 impl PipelineDescriptor {
     /// Create new `PipelineResource` with fully specified bindings
-    pub fn allocate(device: &dev::Device, cfg: &[&[BindingCfg]]) -> Result<PipelineDescriptor, ResourceError> {
+    pub fn allocate(device: &dev::Device, cfg: &[&[BindingCfg]]) -> Result<PipelineDescriptor, PipelineDescriptorError> {
         let mut desc_size: Vec<vk::DescriptorPoolSize> = Vec::new();
         let mut desc_types: Vec<Vec<ResourceType>> = Vec::new();
 
@@ -98,7 +98,7 @@ impl PipelineDescriptor {
 
         let desc_pool = match create_descriptor_pool(device, &desc_size) {
             Ok(val) => if val == vk::DescriptorPool::null() { return Ok(PipelineDescriptor::empty(device)) } else { val },
-            Err(..) => return Err(ResourceError::DescriptorPool),
+            Err(..) => return Err(PipelineDescriptorError::DescriptorPool),
         };
 
         let mut sets_layout: Vec<vk::DescriptorSetLayout> = Vec::new();
@@ -108,7 +108,7 @@ impl PipelineDescriptor {
                 Ok(set) => sets_layout.push(set),
                 Err(_) => {
                     clear_sets_layout(device, &sets_layout, desc_pool);
-                    return Err(ResourceError::DescriptorSet);
+                    return Err(PipelineDescriptorError::DescriptorSet);
                 }
             }
         };
@@ -117,7 +117,7 @@ impl PipelineDescriptor {
             allocate_descriptor_sets(device, &sets_layout, desc_pool),
             {
                 clear_sets_layout(device, &sets_layout, desc_pool);
-                return Err(ResourceError::DescriptorAllocation);
+                return Err(PipelineDescriptorError::DescriptorAllocation);
             }
         );
 
@@ -142,7 +142,7 @@ impl PipelineDescriptor {
     ///
     /// // X == count
     /// ```
-    pub fn with_set(device: &dev::Device, set: &[BindingCfg], count: usize) -> Result<PipelineDescriptor, ResourceError> {
+    pub fn with_set(device: &dev::Device, set: &[BindingCfg], count: usize) -> Result<PipelineDescriptor, PipelineDescriptorError> {
         let cfg = vec![set; count];
 
         PipelineDescriptor::allocate(device, &cfg)
@@ -168,7 +168,7 @@ impl PipelineDescriptor {
         cfg: BindingCfg,
         sets_num: usize,
         count: usize
-    ) -> Result<PipelineDescriptor, ResourceError> {
+    ) -> Result<PipelineDescriptor, PipelineDescriptorError> {
         let cfg = vec![cfg; sets_num];
 
         PipelineDescriptor::with_set(device, &cfg, count)
