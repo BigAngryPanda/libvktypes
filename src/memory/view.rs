@@ -1,6 +1,6 @@
 //! Provide handler to the part of the [`Memory`](crate::memory::Memory)
 
-use crate::{memory, graphics};
+use crate::memory;
 
 use ash::vk;
 
@@ -45,26 +45,6 @@ impl<'a> View<'a> {
     #[doc(hidden)]
     pub(crate) fn buffer(&self) -> vk::Buffer {
         self.i_memory.buffer(self.i_index)
-    }
-}
-
-impl<'a> graphics::TShaderBinding for View<'a> {
-    fn buffer_info(&self) -> Option<vk::DescriptorBufferInfo> {
-        Some(
-            vk::DescriptorBufferInfo {
-                buffer: self.buffer(),
-                offset: 0,
-                range: vk::WHOLE_SIZE,
-            }
-        )
-    }
-
-    fn image_info(&self) -> Option<vk::DescriptorImageInfo> {
-        None
-    }
-
-    fn texel_info(&self) -> Option<vk::BufferView> {
-        None
     }
 }
 

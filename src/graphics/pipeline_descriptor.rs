@@ -21,13 +21,6 @@ use std::{
 use std::error::Error;
 use std::sync::Arc;
 
-/// Marks that type may be used as binding for shaders
-pub trait TShaderBinding: fmt::Debug {
-    fn buffer_info(&self) -> Option<vk::DescriptorBufferInfo>;
-    fn image_info(&self) -> Option<vk::DescriptorImageInfo>;
-    fn texel_info(&self) -> Option<vk::BufferView>;
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum ShaderBinding<'a, 'b> {
     Buffers(&'a [memory::View<'b>]),

@@ -5,7 +5,6 @@ use ash::vk;
 use crate::{
     dev,
     graphics,
-    memory,
     on_error_ret
 };
 
@@ -171,29 +170,5 @@ impl Drop for Sampler {
         unsafe {
             self.i_core.device().destroy_sampler(self.i_sampler, self.i_core.allocator());
         }
-    }
-}
-
-/// Combination of Sampler and image memory
-#[derive(Debug)]
-pub struct CombinedSampler<'a, 'b>(pub memory::ImageView<'a>, pub &'b Sampler);
-
-impl<'a, 'b> graphics::TShaderBinding for CombinedSampler<'a, 'b> {
-    fn buffer_info(&self) -> Option<vk::DescriptorBufferInfo> {
-        None
-    }
-
-    fn image_info(&self) -> Option<vk::DescriptorImageInfo> {
-        Some(
-            vk::DescriptorImageInfo {
-                sampler: self.1.sampler(),
-                image_view: self.0.image_view(),
-                image_layout: self.0.layout(),
-            }
-        )
-    }
-
-    fn texel_info(&self) -> Option<vk::BufferView> {
-        None
     }
 }
