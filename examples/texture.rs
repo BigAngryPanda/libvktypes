@@ -291,6 +291,7 @@ fn main() {
         vertex_size: size_of::<[f32; 6]>() as u32,
         vert_input: &vert_input,
         frag_shader: &frag_shader,
+        geom_shader: None,
         topology: graphics::Topology::TRIANGLE_LIST,
         extent: capabilities.extent2d(),
         push_constant_size: 0,

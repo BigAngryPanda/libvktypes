@@ -116,6 +116,7 @@ fn main() {
             offset: 0,
         }],
         frag_shader: &frag_shader,
+        geom_shader: None,
         topology: graphics::Topology::TRIANGLE_LIST,
         extent: capabilities.extent2d(),
         push_constant_size: 0,

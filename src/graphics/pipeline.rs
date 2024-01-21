@@ -147,6 +147,7 @@ pub struct PipelineCfg<'a> {
     pub vertex_size: u32,
     pub vert_input: &'a [VertexInputCfg],
     pub frag_shader: &'a shader::Shader,
+    pub geom_shader: Option<&'a shader::Shader>,
     pub topology: Topology,
     pub extent: memory::Extent2D,
     pub push_constant_size: u32,
@@ -193,7 +194,7 @@ pub struct Pipeline {
 
 impl Pipeline {
     pub fn new(device: &dev::Device, pipe_cfg: &PipelineCfg) -> Result<Pipeline, PipelineError> {
-        let shader_stage_create_infos = [
+        let mut shader_stage_create_infos = vec![
             vk::PipelineShaderStageCreateInfo {
                 s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
                 p_next: ptr::null(),
@@ -213,6 +214,20 @@ impl Pipeline {
                 p_specialization_info: ptr::null(),
             },
         ];
+
+        if let Some(geom_shader) = pipe_cfg.geom_shader {
+            shader_stage_create_infos.push(
+                vk::PipelineShaderStageCreateInfo {
+                    s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
+                    p_next: ptr::null(),
+                    flags: vk::PipelineShaderStageCreateFlags::empty(),
+                    stage: vk::ShaderStageFlags::GEOMETRY,
+                    module: geom_shader.module(),
+                    p_name: geom_shader.entry().as_ptr(),
+                    p_specialization_info: ptr::null(),
+                }
+            );
+        }
 
         let vertex_binding_descriptions: Vec<vk::VertexInputBindingDescription> =
             (0..pipe_cfg.vert_input.len() as u32)

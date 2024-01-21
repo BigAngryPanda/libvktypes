@@ -393,6 +393,7 @@ fn main() {
         vertex_size: std::mem::size_of::<[f32; 4]>() as u32,
         vert_input: &vertex_cfg,
         frag_shader: &frag_shader,
+        geom_shader: None,
         topology: graphics::Topology::TRIANGLE_LIST,
         extent: capabilities.extent2d(),
         push_constant_size: 0,

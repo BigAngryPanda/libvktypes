@@ -319,6 +319,7 @@ pub fn get_graphics_pipeline() -> &'static graphics::Pipeline {
                 vertex_size: std::mem::size_of::<[f32; 2]>() as u32,
                 vert_input: &[vertex_cfg],
                 frag_shader: get_frag_shader(),
+                geom_shader: None,
                 topology: graphics::Topology::TRIANGLE_STRIP,
                 extent: capabilities.extent2d(),
                 push_constant_size: 0,
