@@ -48,7 +48,7 @@ impl<'a> View<'a> {
     }
 }
 
-impl<'a> graphics::ShaderBinding for View<'a> {
+impl<'a> graphics::TShaderBinding for View<'a> {
     fn buffer_info(&self) -> Option<vk::DescriptorBufferInfo> {
         Some(
             vk::DescriptorBufferInfo {

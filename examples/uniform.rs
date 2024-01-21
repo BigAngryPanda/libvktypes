@@ -169,9 +169,9 @@ fn main() {
 
     let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
         graphics::BindingCfg {
-            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
             stage: graphics::ShaderStage::FRAGMENT,
-            count: 1,
+            count: 2,
         }
     ]]).expect("Failed to allocate resources");
 
@@ -198,7 +198,12 @@ fn main() {
 
     let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
-    descs.update(&[&[&[&data.view(1), &data.view(2)]]]);
+    descs.update(&[graphics::UpdateInfo {
+        set: 0,
+        binding: 0,
+        starting_array_element: 0,
+        resources: graphics::ShaderBinding::Buffers(&[data.view(1), data.view(2)]),
+    }]);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");

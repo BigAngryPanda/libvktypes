@@ -39,7 +39,7 @@ mod graphics_pipeline {
 
         let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
             graphics::BindingCfg {
-                resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+                resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
                 stage: graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT,
                 count: 1,
             }
@@ -88,13 +88,18 @@ mod graphics_pipeline {
 
         let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
             graphics::BindingCfg {
-                resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+                resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
                 stage: graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT,
                 count: 1,
             }
         ]]).expect("Failed to allocate resources");
 
-        descs.update(&[&[&[&uniform_data.view(0)]]])
+        descs.update(&[graphics::UpdateInfo {
+            set: 0,
+            binding: 0,
+            starting_array_element: 0,
+            resources: graphics::ShaderBinding::Buffers(&[uniform_data.view(0)]),
+        }])
     }
 
     #[test]

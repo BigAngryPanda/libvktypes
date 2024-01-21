@@ -10,7 +10,8 @@ use crate::{
     dev,
     graphics,
     on_error,
-    data_ptr
+    data_ptr,
+    memory
 };
 
 use std::{
@@ -21,10 +22,25 @@ use std::error::Error;
 use std::sync::Arc;
 
 /// Marks that type may be used as binding for shaders
-pub trait ShaderBinding {
+pub trait TShaderBinding: fmt::Debug {
     fn buffer_info(&self) -> Option<vk::DescriptorBufferInfo>;
     fn image_info(&self) -> Option<vk::DescriptorImageInfo>;
     fn texel_info(&self) -> Option<vk::BufferView>;
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ShaderBinding<'a, 'b> {
+    Buffers(&'a [memory::View<'b>]),
+    Samplers(&'a [(&'a graphics::Sampler, memory::ImageView<'b>)]),
+}
+
+impl<'a, 'b> ShaderBinding<'a, 'b> {
+    pub fn len(&self) -> u32 {
+        match self {
+            Self::Buffers(val)  => val.len() as u32,
+            Self::Samplers(val) => val.len() as u32,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -51,11 +67,25 @@ impl Error for PipelineDescriptorError { }
 #[doc = "Ash documentation about possible values <https://docs.rs/ash/latest/ash/vk/struct.DescriptorType.html>"]
 ///
 #[doc = "Vulkan documentation <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDescriptorType.html>"]
-pub type ResourceType = vk::DescriptorType;
+pub type DescriptorType = vk::DescriptorType;
+
+/// Information about what Descriptor to write
+#[derive(Debug, Clone, Copy)]
+pub struct UpdateInfo<'a, 'b> {
+    /// Which set in layout(set=X, ...) to update
+    pub set: usize,
+    /// Which binding in layout(set=X, binding=Y) to update
+    pub binding: u32,
+    /// Starting array element in binding `layout(...) ... data[N]`
+    /// `starting_array_element` < N
+    pub starting_array_element: u32,
+    /// What buffer or image to use
+    pub resources: ShaderBinding<'a, 'b>,
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct BindingCfg {
-    pub resource_type: ResourceType,
+    pub resource_type: DescriptorType,
     pub stage: graphics::ShaderStage,
     pub count: u32,
 }
@@ -69,7 +99,7 @@ pub struct BindingCfg {
 #[derive(Debug)]
 pub struct PipelineDescriptor {
     i_core: Arc<dev::Core>,
-    i_desc_types: Vec<Vec<ResourceType>>,
+    i_desc_types: Vec<Vec<DescriptorType>>,
     i_desc_pool: vk::DescriptorPool,
     i_desc_sets: Vec<vk::DescriptorSet>,
     i_desc_layouts: Vec<vk::DescriptorSetLayout>
@@ -77,12 +107,18 @@ pub struct PipelineDescriptor {
 
 impl PipelineDescriptor {
     /// Create new `PipelineResource` with fully specified bindings
+    ///
+    /// `PipelineDescriptor` supports `cfg.len()` sets
+    ///
+    /// Each set supports `cfg[i].len()` bindings
+    ///
+    /// Each binding within set supports `BindingCfg::count` array elements
     pub fn allocate(device: &dev::Device, cfg: &[&[BindingCfg]]) -> Result<PipelineDescriptor, PipelineDescriptorError> {
         let mut desc_size: Vec<vk::DescriptorPoolSize> = Vec::new();
-        let mut desc_types: Vec<Vec<ResourceType>> = Vec::new();
+        let mut desc_types: Vec<Vec<DescriptorType>> = Vec::new();
 
         for &set in cfg {
-            let mut set_types: Vec<ResourceType> = Vec::new();
+            let mut set_types: Vec<DescriptorType> = Vec::new();
 
             for binding in set {
                 desc_size.push(vk::DescriptorPoolSize {
@@ -190,101 +226,38 @@ impl PipelineDescriptor {
         self.i_desc_pool == vk::DescriptorPool::null()
     }
 
-    /// Update all sets
+    /// Update selected elements in bindings
     ///
-    /// Each element in `sets` will be bound to the corresponding set
+    /// `UpdateInfo::set` `UpdateInfo::binding` `UpdateInfo::starting_array_element`
+    /// must be within supported range
     ///
-    /// Example in glsl
-    ///
-    /// Element sets[X][Y] will be bound to
-    ///
-    /// ```ignore
-    ///     layout(set=X, binding=Y) ...
-    /// ```
-    ///
-    /// Note: order is important
-    ///
-    /// `layout(set=X, binding=Y) ...` must be before `layout(set=X+1, binding=Y)`
-    ///
-    /// Otherwise sets[X][Y] will be bound with `layout(set=X+1, binding=Y)`
-    ///
-    /// If you want to skip any set leave corresponding array empty
-    ///
-    /// Each array `&[&dyn ShaderBinding]` corresponding to the single binding
-    ///
-    /// ```ignore
-    ///     layout(set=X, binding=Y) ... <binding name>[<count, omit if count == 1>];
-    /// ```
-    ///
-    /// ```len(&[&dyn ShaderBinding]) == count```
-    pub fn update(&self, sets: &[&[&[&dyn ShaderBinding]]]) {
-        for i in 0..sets.len() {
-            self.update_set(sets[i], i);
-        }
-    }
-
-
-    /// Update selected set `layout(set=X, binding=...) ...`
-    ///
-    /// See [`update`] for the detailed docs
-    pub fn update_set(&self, set: &[&[&dyn ShaderBinding]], set_index: usize) {
-        // info for the whole set
+    /// About supported ranges see [`PipelineDescriptor::allocate`]
+    pub fn update(&self, update_info: &[UpdateInfo]) {
         let mut buffer_info: Vec<Vec<vk::DescriptorBufferInfo>> = Vec::new();
         let mut image_info: Vec<Vec<vk::DescriptorImageInfo>> = Vec::new();
-        let mut texel_info: Vec<Vec<vk::BufferView>> = Vec::new();
 
-        for &binding in set {
-            // info for each binding
-            let infos = binding_infos(binding);
-
-            buffer_info.push(infos.0);
-            image_info.push(infos.1);
-            texel_info.push(infos.2);
+        for info in update_info {
+            buffer_info.push(create_buffer_info(info.resources));
+            image_info.push(create_image_info(info.resources));
         }
 
-        let write_desc: Vec<vk::WriteDescriptorSet> = set.iter().enumerate().map(
-            |(i, _)| vk::WriteDescriptorSet {
+        let write_desc: Vec<vk::WriteDescriptorSet> = update_info.iter().enumerate().map(
+            |(i, info)| vk::WriteDescriptorSet {
                 s_type: vk::StructureType::WRITE_DESCRIPTOR_SET,
                 p_next: ptr::null(),
-                dst_set: self.i_desc_sets[set_index],
-                dst_binding: i as u32,
-                dst_array_element: 0,
-                descriptor_count: std::cmp::max(buffer_info.len(), std::cmp::max(image_info.len(), texel_info.len())) as u32,
-                descriptor_type: self.i_desc_types[set_index][i],
+                dst_set: self.i_desc_sets[info.set],
+                dst_binding: info.binding,
+                dst_array_element: info.starting_array_element,
+                descriptor_count: info.resources.len(),
+                descriptor_type: self.i_desc_types[info.set][info.binding as usize],
                 p_image_info: data_ptr!(image_info[i]),
                 p_buffer_info: data_ptr!(buffer_info[i]),
-                p_texel_buffer_view: data_ptr!(texel_info[i])
+                p_texel_buffer_view: ptr::null()
             }
         ).collect();
 
         unsafe {
             self.i_core.device().update_descriptor_sets(&write_desc, &[])
-        };
-    }
-
-    /// Update single binding
-    ///
-    /// From performance side
-    /// if you want to update the whole set better to use [`update_set`]
-    pub fn update_binding(&self, binding: &[&dyn ShaderBinding], set_index: usize, binding_index: usize) {
-        let infos = binding_infos(binding);
-
-        let write_info = vk::WriteDescriptorSet {
-            s_type: vk::StructureType::WRITE_DESCRIPTOR_SET,
-            p_next: ptr::null(),
-            dst_set: self.i_desc_sets[set_index],
-            dst_binding: binding_index as u32,
-            dst_array_element: 0,
-            descriptor_count: std::cmp::max(infos.0.len(), std::cmp::max(infos.1.len(), infos.2.len())) as u32,
-            descriptor_type: self.i_desc_types[set_index][binding_index],
-            p_image_info: data_ptr!(infos.1),
-            p_buffer_info: data_ptr!(infos.0),
-            p_texel_buffer_view: data_ptr!(infos.2)
-        };
-
-
-        unsafe {
-            self.i_core.device().update_descriptor_sets(&[write_info], &[])
         };
     }
 
@@ -401,25 +374,48 @@ fn allocate_descriptor_sets(
     }
 }
 
-fn binding_infos(binding: &[&dyn ShaderBinding])
--> (Vec<vk::DescriptorBufferInfo>, Vec<vk::DescriptorImageInfo>, Vec<vk::BufferView>) {
-    let mut buffer_info: Vec<vk::DescriptorBufferInfo> = Vec::new();
-    let mut image_info: Vec<vk::DescriptorImageInfo> = Vec::new();
-    let mut texel_info: Vec<vk::BufferView> = Vec::new();
-
-    for &elem in binding {
-        if let Some(info) = elem.buffer_info() {
-            buffer_info.push(info);
+fn create_image_info(bindings: ShaderBinding) -> Vec<vk::DescriptorImageInfo> {
+    match bindings {
+        ShaderBinding::Buffers(_) => {
+            Vec::new()
         }
-
-        if let Some(info) = elem.image_info() {
-            image_info.push(info);
-        }
-
-        if let Some(info) = elem.texel_info() {
-            texel_info.push(info);
+        ShaderBinding::Samplers(samplers) => {
+            descriptor_image_info(&samplers)
         }
     }
+}
 
-    (buffer_info, image_info, texel_info)
+fn descriptor_image_info(samplers: &[(&graphics::Sampler, memory::ImageView)]) -> Vec<vk::DescriptorImageInfo> {
+    samplers
+    .iter()
+    .map(|(sampler, memory)| {
+        vk::DescriptorImageInfo {
+            sampler: sampler.sampler(),
+            image_view: memory.image_view(),
+            image_layout: memory.layout(),
+        }
+    }).collect()
+}
+
+fn create_buffer_info(bindings: ShaderBinding) -> Vec<vk::DescriptorBufferInfo> {
+    match bindings {
+        ShaderBinding::Buffers(buffers) => {
+            descriptor_buffer_info(&buffers)
+        }
+        ShaderBinding::Samplers(_) => {
+            Vec::new()
+        }
+    }
+}
+
+fn descriptor_buffer_info(buffers: &[memory::View]) -> Vec<vk::DescriptorBufferInfo>  {
+    buffers
+    .iter()
+    .map(|v| {
+        vk::DescriptorBufferInfo {
+            buffer: v.buffer(),
+            offset: 0,
+            range: vk::WHOLE_SIZE,
+        }
+    }).collect()
 }

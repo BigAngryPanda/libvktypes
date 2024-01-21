@@ -37,7 +37,7 @@ const FRAG_SHADER: &str = "
 layout (location = 0) in vec2 uv;
 layout (location = 0) out vec4 out_color;
 
-layout (binding = 0) uniform sampler2D samplerColor;
+layout (set = 0, binding = 0) uniform sampler2D samplerColor;
 
 void main() {
     out_color = texture(samplerColor, uv);
@@ -265,7 +265,7 @@ fn main() {
 
     let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
         graphics::BindingCfg {
-            resource_type: graphics::ResourceType::COMBINED_IMAGE_SAMPLER,
+            resource_type: graphics::DescriptorType::COMBINED_IMAGE_SAMPLER,
             stage: graphics::ShaderStage::FRAGMENT,
             count: 1,
         }
@@ -312,7 +312,12 @@ fn main() {
 
     let sampler = graphics::Sampler::new(&device, &sampler_cfg).expect("Failed to create sampler");
 
-    descs.update(&[&[&[&graphics::CombinedSampler(texture, &sampler)]]]);
+    descs.update(&[graphics::UpdateInfo {
+        set: 0,
+        binding: 0,
+        starting_array_element: 0,
+        resources: graphics::ShaderBinding::Samplers(&[(&sampler, texture)]),
+    }]);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");

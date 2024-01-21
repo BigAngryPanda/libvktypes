@@ -357,32 +357,32 @@ fn main() {
 
     let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
         graphics::BindingCfg {
-            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
             stage: graphics::ShaderStage::VERTEX,
             count: 1,
         },
         graphics::BindingCfg {
-            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
             stage: graphics::ShaderStage::VERTEX,
             count: 1,
         },
         graphics::BindingCfg {
-            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
             stage: graphics::ShaderStage::FRAGMENT,
             count: 1,
         },
         graphics::BindingCfg {
-            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
             stage: graphics::ShaderStage::VERTEX,
             count: 1,
         },
         graphics::BindingCfg {
-            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
             stage: graphics::ShaderStage::VERTEX,
             count: 1,
         },
         graphics::BindingCfg {
-            resource_type: graphics::ResourceType::UNIFORM_BUFFER,
+            resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
             stage: graphics::ShaderStage::VERTEX,
             count: 1,
         },
@@ -406,14 +406,44 @@ fn main() {
 
     let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
-    descs.update_set(&[
-        &[&data.view(1)],
-        &[&data.view(3)],
-        &[&data.view(4)],
-        &[&data.view(5)],
-        &[&data.view(6)],
-        &[&data.view(7)]
-    ], 0);
+    descs.update(&[
+        graphics::UpdateInfo {
+            set: 0,
+            binding: 0,
+            starting_array_element: 0,
+            resources: graphics::ShaderBinding::Buffers(&[data.view(1)]),
+        },
+        graphics::UpdateInfo {
+            set: 0,
+            binding: 1,
+            starting_array_element: 0,
+            resources: graphics::ShaderBinding::Buffers(&[data.view(3)]),
+        },
+        graphics::UpdateInfo {
+            set: 0,
+            binding: 2,
+            starting_array_element: 0,
+            resources: graphics::ShaderBinding::Buffers(&[data.view(4)]),
+        },
+        graphics::UpdateInfo {
+            set: 0,
+            binding: 3,
+            starting_array_element: 0,
+            resources: graphics::ShaderBinding::Buffers(&[data.view(5)]),
+        },
+        graphics::UpdateInfo {
+            set: 0,
+            binding: 4,
+            starting_array_element: 0,
+            resources: graphics::ShaderBinding::Buffers(&[data.view(6)]),
+        },
+        graphics::UpdateInfo {
+            set: 0,
+            binding: 5,
+            starting_array_element: 0,
+            resources: graphics::ShaderBinding::Buffers(&[data.view(7)]),
+        },
+    ]);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");

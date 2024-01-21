@@ -175,9 +175,10 @@ impl Drop for Sampler {
 }
 
 /// Combination of Sampler and image memory
+#[derive(Debug)]
 pub struct CombinedSampler<'a, 'b>(pub memory::ImageView<'a>, pub &'b Sampler);
 
-impl<'a, 'b> graphics::ShaderBinding for CombinedSampler<'a, 'b> {
+impl<'a, 'b> graphics::TShaderBinding for CombinedSampler<'a, 'b> {
     fn buffer_info(&self) -> Option<vk::DescriptorBufferInfo> {
         None
     }
