@@ -70,12 +70,18 @@ pub struct UpdateInfo<'a, 'b> {
     /// Which binding in layout(set=X, binding=Y) to update
     pub binding: u32,
     /// Starting array element in binding `layout(...) ... data[N]`
+    ///
     /// `starting_array_element` < N
     pub starting_array_element: u32,
     /// What buffer or image to use
+    ///
+    /// Note: resource must match corresponding [`DescriptorType`](BindingCfg::resource_type)
+    ///
+    /// Read more in [spec](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDescriptorType.html)
     pub resources: ShaderBinding<'a, 'b>,
 }
 
+/// Specify what binding to allocate
 #[derive(Debug, Clone, Copy)]
 pub struct BindingCfg {
     pub resource_type: DescriptorType,
@@ -106,6 +112,8 @@ impl PipelineDescriptor {
     /// Each set supports `cfg[i].len()` bindings
     ///
     /// Each binding within set supports `BindingCfg::count` array elements
+    ///
+    /// For binding (set=i, binding=j) cfg[i][j] will be used
     pub fn allocate(device: &dev::Device, cfg: &[&[BindingCfg]]) -> Result<PipelineDescriptor, PipelineDescriptorError> {
         let mut desc_size: Vec<vk::DescriptorPoolSize> = Vec::new();
         let mut desc_types: Vec<Vec<DescriptorType>> = Vec::new();
