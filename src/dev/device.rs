@@ -44,7 +44,7 @@ pub struct Device {
 }
 
 impl Device {
-    /// Create new [`Device`](self::Device) object according to [`DeviceCfg`](self::DeviceCfg)
+    /// Create new [`Device`] object according to [`DeviceCfg`]
     pub fn new(dev_type: &DeviceCfg) -> Result<Device, DeviceError> {
         let mut priorities: Vec<Vec<f32>> = Vec::new();
 

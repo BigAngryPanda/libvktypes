@@ -131,18 +131,6 @@ pub type CullMode = vk::CullModeFlags;
 ///
 /// However you have to allocate depth buffer and properly pass it to the render pass
 ///
-/// # Shaders and sets
-/// `sets` represents shader layout description
-///
-/// In other words `sets[X][Y]` corresponds to
-/// `layout(set=X, binding=Y) ...`
-///
-/// If you want to "skip" some sets leave empty array for corresponding sets
-///
-/// If you want to "skip" some bindings use [`Resource::empty()`](crate::graphics::Resource::empty())
-///
-/// More detailed information can be found in `Resource` [documentation](crate::graphics::Resource)
-///
 /// # Assembly restarting
 /// Affects [indexed drawing](crate::cmd::Buffer::draw_indexed)
 ///
