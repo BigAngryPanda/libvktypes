@@ -1,26 +1,68 @@
 use libvktypes::*;
 
+const VERT_SHADER: &str = "
+#version 460
+
+layout (location=0) in vec4 inPos;
+layout (location = 0) out vec4 outPos;
+
+void main() {
+    outPos = inPos;
+}
+";
+
+const GEOM_SHADER: &str = "
+#version 460
+
+layout(triangles) in;
+layout(triangle_strip, max_vertices=3) out;
+
+layout (location = 0) in vec4 inPos[];
+
+layout (location = 0) out vec4 colorData;
+
+void main() {
+    int i;
+    for(i=0; i<3; i++)
+    {
+        gl_Position = inPos[i];
+        colorData = i*vec4(0.3, 0.3, 0.3, 0.0);
+        EmitVertex();
+    }
+    EndPrimitive();
+}
+";
+
+const FRAG_SHADER: &str = "
+#version 460
+
+layout (location=0) in vec4 inColor;
+
+layout (location=0) out vec4 outColor;
+
+void main(){
+    outColor = inColor;
+}
+";
+
 fn main() {
     let data = [
-        // first triangle
         0.0f32, -1f32, 0.0f32, 1.0f32,
         -1f32, -1f32, 0.0f32, 1.0f32,
         -1f32, 0f32, 0.0f32, 1.0f32,
-        // second triangle
-        0f32, 1f32, 0.0f32, 1.0f32,
-        1f32, 1f32, 0.0f32, 1.0f32,
-        1f32, 0f32, 0.0f32, 1.0f32,
     ];
 
     let event_loop = window::eventloop();
 
     let wnd = window::create_window(&event_loop).expect("Failed to create window");
 
+    let mut extensions = extensions::required_extensions(&wnd);
+    extensions.push(extensions::DEBUG_EXT_NAME);
+    extensions.push(extensions::SURFACE_EXT_NAME);
+
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME,
-            extensions::SURFACE_EXT_NAME,
-            extensions::XLIB_SURFACE_EXT_NAME],
+        extensions: &extensions,
         ..libvk::InstanceType::default()
     };
 
@@ -68,18 +110,28 @@ fn main() {
     let swapchain = swapchain::Swapchain::new(&lib, &device, &surface, &swp_type).expect("Failed to create swapchain");
 
     let vert_shader_type = shader::ShaderCfg {
-        path: "examples/compiled_shaders/vertex_input.spv",
+        path: "VERT_SHADER",
         entry: "main",
     };
 
-    let vert_shader = shader::Shader::from_file(&device, &vert_shader_type).expect("Failed to create vertex shader module");
+    let vert_shader = shader::Shader::from_glsl(&device, &vert_shader_type, VERT_SHADER, shader::Kind::Vertex)
+        .expect("Failed to create vertex shader module");
 
     let frag_shader_type = shader::ShaderCfg {
-        path: "examples/compiled_shaders/color_from_vertex.spv",
+        path: "FRAG_SHADER",
         entry: "main",
     };
 
-    let frag_shader = shader::Shader::from_file(&device, &frag_shader_type).expect("Failed to create fragment shader module");
+    let frag_shader = shader::Shader::from_glsl(&device, &frag_shader_type, FRAG_SHADER, shader::Kind::Fragment)
+        .expect("Failed to create fragment shader module");
+
+    let geom_shader_type = shader::ShaderCfg {
+        path: "GEOM_SHADER",
+        entry: "main",
+    };
+
+    let geom_shader = shader::Shader::from_glsl(&device, &geom_shader_type, GEOM_SHADER, shader::Kind::Geometry)
+        .expect("Failed to create geometry shader module");
 
     let mem_cfg = memory::MemoryCfg {
         properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
@@ -116,7 +168,7 @@ fn main() {
             offset: 0,
         }],
         frag_shader: &frag_shader,
-        geom_shader: None,
+        geom_shader: Some(&geom_shader),
         topology: graphics::Topology::TRIANGLE_LIST,
         extent: capabilities.extent2d(),
         push_constant_size: 0,
@@ -160,7 +212,6 @@ fn main() {
     cmd_buffer.bind_vertex_buffers(&[vertex_data.vertex_view(0, 0)]);
 
     cmd_buffer.draw(3, 1, 0, 0);
-    cmd_buffer.draw(3, 1, 3, 0);
 
     cmd_buffer.end_render_pass();
 
