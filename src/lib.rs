@@ -19,3 +19,5 @@ pub mod swapchain;
 pub mod graphics;
 pub mod sync;
 pub mod formats;
+
+pub use winit;
