@@ -15,7 +15,7 @@ const GEOM_SHADER: &str = "
 #version 460
 
 layout(triangles) in;
-layout(triangle_strip, max_vertices=3) out;
+layout(triangle_strip, max_vertices=6) out;
 
 layout (location = 0) in vec4 inPos[];
 
@@ -27,6 +27,14 @@ void main() {
     {
         gl_Position = inPos[i];
         colorData = i*vec4(0.3, 0.3, 0.3, 0.0);
+        EmitVertex();
+    }
+    EndPrimitive();
+
+    for(i=0; i<3; i++)
+    {
+        gl_Position = vec4(1.0, 1.0, 0.0, 0.0) + inPos[i];
+        colorData = i*vec4(0, 0.3, 0, 0.0);
         EmitVertex();
     }
     EndPrimitive();
