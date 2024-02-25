@@ -2,6 +2,10 @@
 
 # libvktypes
 
+Vulkan based library which aims to make interaction with graphics API easier
+
+However library does not perform any extra validation so it is your responsibility to use it correctly
+
 ## Overview
 
 Library provides wrapper around Vulkan API to make work easier
@@ -39,6 +43,12 @@ cargo doc --no-deps
 ```--no-deps``` is optional (ignore it if you want generate docs for underlying crates)
 
 ## Dependencies
+
+Library uses `ash` for bindings
+
+`winit` as window system
+
+`shaderc` as `glsl` compiler
 
 While direct dependencies desctibed in [Cargo.toml](Cargo.toml)
 they have their own dependencies as well
@@ -78,6 +88,66 @@ Theoretically following platforms are supported:
 - MacOS, iOS (not tested)
 - Linux: X11 (tested), Wayland (not tested)
 - Android (not tested)
+
+## Examples
+
+Examples provide gentle introduction how to use library
+
+From simple to more sophisticated
+
+### `single_shader_triangle`
+
+Basic example with bare minimum from library loading to displaying image
+
+Note: examples aim to show you how to work with library not the Vulkan API, graphics itself, math etc.
+
+You will learn how to:
+
+1. Load library
+2. Pick physical device
+3. Create
+	1. logical device
+	2. surface and swapchain
+	3. shader modules (include shaders compiling)
+	4. framebuffer
+	5. render pass
+	6. pipeline
+4. Allocate command pool and command buffer
+5. Control flow with `winit` library
+6. Execute pipeline
+
+### `vertex_buffer`
+
+You will learn how to:
+
+1. Allocate, fill and bind vertex memory
+2. Pass information about vertex struct to the pipeline
+
+### `depth_buffer`
+
+Shows how to create depth buffer and use it
+
+### `two_triangles`
+
+Example of usage geometry shader
+
+### `uniform`
+
+How to use descriptors for binding resources for shaders
+
+In this example we use uniform buffers
+
+### `texture`
+
+How to create and use:
+1. Samplers
+2. Images as texture buffers
+
+### `cube`
+
+Complex example with matrix transformations
+
+Shows how to add animation and organize render loop
 
 ## Contributing
 
