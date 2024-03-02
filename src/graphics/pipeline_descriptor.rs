@@ -113,7 +113,7 @@ impl PipelineDescriptor {
     ///
     /// Each binding within set supports `BindingCfg::count` array elements
     ///
-    /// For binding (set=i, binding=j) cfg[i][j] will be used
+    /// For binding `(set=i, binding=j) cfg[i][j]` will be used
     pub fn allocate(device: &dev::Device, cfg: &[&[BindingCfg]]) -> Result<PipelineDescriptor, PipelineDescriptorError> {
         let mut desc_size: Vec<vk::DescriptorPoolSize> = Vec::new();
         let mut desc_types: Vec<Vec<DescriptorType>> = Vec::new();
