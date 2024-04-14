@@ -1,7 +1,7 @@
 //! Represents memory for various purposes such as vertex buffer, uniform buffer etc.
 use ash::vk;
 
-use crate::{on_error};
+use crate::on_error;
 use crate::{dev, hw, memory, graphics};
 
 use std::sync::Arc;

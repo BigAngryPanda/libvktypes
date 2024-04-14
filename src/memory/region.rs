@@ -206,8 +206,8 @@ impl Region {
                 s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
                 p_next: ptr::null(),
                 memory: self.i_memory,
-                offset: offset,
-                size: size,
+                offset,
+                size,
             };
 
             on_error_ret!(
