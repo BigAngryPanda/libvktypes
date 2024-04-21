@@ -356,6 +356,7 @@ impl ImageMemory {
         self.i_memory.access(
             f,
             self.i_subregions[index].offset,
+            self.i_subregions[index].allocated_size,
             self.i_subregions[index].allocated_size
         )
     }

@@ -34,6 +34,11 @@ impl<'a> View<'a> {
         self.i_memory.subregions()[self.i_index].allocated_size
     }
 
+    /// Map selected region of memory
+    pub fn map_memory<T>(&self) -> Result<&mut [T], memory::MemoryError> {
+        self.i_memory.region().map_memory(self.offset(), self.size(), self.allocated_size())
+    }
+
     /// Execute 'f' over selected buffer
     pub fn access<T, F>(&self, f: &mut F) -> Result<(), memory::MemoryError>
     where
@@ -42,7 +47,6 @@ impl<'a> View<'a> {
         self.i_memory.access(f, self.i_index)
     }
 
-    #[doc(hidden)]
     pub(crate) fn buffer(&self) -> vk::Buffer {
         self.i_memory.buffer(self.i_index)
     }

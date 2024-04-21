@@ -247,7 +247,8 @@ impl Memory {
         self.i_memory.access(
             f,
             self.i_subregions[index].offset,
-            self.i_sizes[index]
+            self.i_sizes[index],
+            self.i_subregions[index].allocated_size
         )
     }
 
@@ -280,7 +281,36 @@ impl Memory {
         memory::View::new(self, index)
     }
 
-    #[doc(hidden)]
+    /// Map the whole memory into buffer
+    pub fn map_memory<T>(&self) -> Result<&mut [T], memory::MemoryError> {
+        self.i_memory.map_memory(0, self.i_memory.size(), self.i_memory.size())
+    }
+
+    /// Unmap the *whole* memory
+    ///
+    /// After this call any pointer acquired by [`Memory::map_memory`](Self::map_memory) or [`View::map_memory`](View::map_memory)
+    /// will be invalid
+    ///
+    /// You **must not** use such pointer
+    pub fn unmap_memory<T>(&self) {
+        self.i_memory.unmap_memory();
+    }
+
+    /// Make host memory changes visible to the device
+    ///
+    /// Memory **must be** HOST_COHERENT and HOST_VISIBLE
+    pub fn flush(&self) -> Result<(), memory::MemoryError> {
+        self.i_memory.flush(0, self.i_memory.size())
+    }
+
+    /// Make device memory changes visible to the host
+    ///
+    /// Potential use cases are discussed
+    /// [here](https://stackoverflow.com/questions/75324067/difference-between-vkinvalidatemappedmemoryranges-and-vkcmdpipelinebarrier-in-vu)
+    pub fn sync(&self) -> Result<(), memory::MemoryError> {
+        self.i_memory.sync(0, self.i_memory.size())
+    }
+
     pub(crate) fn buffer(&self, index: usize) -> vk::Buffer {
         self.i_buffers[index]
     }
@@ -291,6 +321,10 @@ impl Memory {
 
     pub(crate) fn sizes(&self) -> &Vec<u64> {
         &self.i_sizes
+    }
+
+    pub(crate) fn region(&self) -> &memory::Region {
+        &self.i_memory
     }
 }
 

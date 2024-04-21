@@ -48,8 +48,17 @@ pub enum MemoryError {
     /// Failed to
     /// [bind](https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/vkBindBufferMemory.html) memory
     Bind,
+    /// Failed to
+    /// [invalidate mapped memory range](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkInvalidateMappedMemoryRanges.html)
+    Sync,
+    /// Failed to
+    /// [allocate](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateImage.html) image
     Image,
+    /// Failed to
+    /// [create](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateImageView.html) image view
     ImageView,
+    /// Failed to
+    /// [bind](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkBindImageMemory.html) image memory
     ImageBind
 }
 
@@ -73,6 +82,9 @@ impl fmt::Display for MemoryError {
             },
             MemoryError::Bind => {
                 "Failed to bind memory (vkBindBufferMemory call failed)"
+            },
+            MemoryError::Sync => {
+                "Failed to invalidate mapped memory range (vkInvalidateMappedMemoryRanges call failed)"
             },
             MemoryError::Image => {
                 "Failed to create image (vkCreateImage call failed)"

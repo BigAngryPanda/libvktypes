@@ -177,52 +177,92 @@ impl Region {
         self.i_memory
     }
 
-    pub(crate) fn access<T, F>(&self, f: &mut F, offset: u64, size: u64) -> Result<(), memory::MemoryError>
+    pub(crate) fn access<T, F>(&self, f: &mut F, offset: u64, size: u64, allocated_size: u64) -> Result<(), memory::MemoryError>
     where
         F: FnMut(&mut [T]),
     {
-        let data: *mut c_void = on_error_ret!(
-            unsafe {
-                self.i_core.device().map_memory(
-                    self.i_memory,
-                    offset,
-                    size,
-                    vk::MemoryMapFlags::empty(),
-                )
-            },
-            memory::MemoryError::MapAccess
-        );
+        let data = self.map_memory(offset, size, allocated_size)?;
 
-        f(unsafe { std::slice::from_raw_parts_mut(data as *mut T, (size as usize)/std::mem::size_of::<T>()) });
+        f(data);
 
-        if !self
+        let result = if !self
             .i_flags
             .contains(vk::MemoryPropertyFlags::HOST_COHERENT)
             && self
             .i_flags
             .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
         {
-            let mem_range = vk::MappedMemoryRange {
-                s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
-                p_next: ptr::null(),
-                memory: self.i_memory,
-                offset,
-                size,
-            };
-
-            on_error_ret!(
-                unsafe {
-                    self.i_core
-                    .device()
-                    .flush_mapped_memory_ranges(&[mem_range])
-                },
-                memory::MemoryError::Flush
-            );
+            self.flush(offset, size)
         }
+        else {
+            Ok(())
+        };
 
-        unsafe { self.i_core.device().unmap_memory(self.i_memory) };
+        self.unmap_memory();
+
+        result
+    }
+
+    pub(crate) fn map_memory<T>(&self, offset: u64, size: u64, allocated_size: u64) -> Result<&mut [T], memory::MemoryError> {
+        let data: *mut c_void = on_error_ret!(
+            unsafe {
+                self.i_core.device().map_memory(
+                    self.i_memory,
+                    offset,
+                    allocated_size,
+                    vk::MemoryMapFlags::empty(),
+                )
+            },
+            memory::MemoryError::MapAccess
+        );
+
+        Ok(unsafe { std::slice::from_raw_parts_mut(data as *mut T, (size as usize)/std::mem::size_of::<T>()) })
+    }
+
+    pub(crate) fn flush(&self, offset: u64, size: u64) -> Result<(), memory::MemoryError> {
+        let mem_range = vk::MappedMemoryRange {
+            s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
+            p_next: ptr::null(),
+            memory: self.i_memory,
+            offset,
+            size
+        };
+
+        on_error_ret!(
+            unsafe {
+                self.i_core
+                .device()
+                .flush_mapped_memory_ranges(&[mem_range])
+            },
+            memory::MemoryError::Flush
+        );
 
         Ok(())
+    }
+
+    pub(crate) fn sync(&self, offset: u64, size: u64) -> Result<(), memory::MemoryError> {
+        let mem_range = vk::MappedMemoryRange {
+            s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
+            p_next: ptr::null(),
+            memory: self.i_memory,
+            offset,
+            size
+        };
+
+        on_error_ret!(
+            unsafe {
+                self.i_core
+                .device()
+                .invalidate_mapped_memory_ranges(&[mem_range])
+            },
+            memory::MemoryError::Sync
+        );
+
+        Ok(())
+    }
+
+    pub(crate) fn unmap_memory(&self) {
+        unsafe { self.i_core.device().unmap_memory(self.i_memory) };
     }
 
     pub(crate) fn empty(core: &Arc<dev::Core>, size: u64) -> Region {
