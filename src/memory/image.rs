@@ -204,6 +204,13 @@ impl fmt::Display for ImageInfo {
 /// you must not call [`access`](crate::memory::ImageView::access) on such images
 ///
 /// Nonetheless size of such memory may be non-zero
+///
+/// # Image size
+///
+/// As you do not explicitly define how many bytes image size will be allocated size is used as requested size
+///
+/// It is important for [`map_memory`](memory::ImageView::map_memory) function as you have to take into account
+/// returned buffer may be larger that you are expecting
 pub struct ImageMemory {
     i_core: Arc<dev::Core>,
     i_images: Vec<vk::Image>,
@@ -344,9 +351,39 @@ impl ImageMemory {
         memory::ImageView::new(self, index)
     }
 
-    /// Create and return view to the selected image buffer
+    /// Create and return view to the whole image buffer
     pub fn size(&self) -> u64 {
         self.i_memory.size()
+    }
+
+    /// Map the whole memory into buffer
+    pub fn map_memory<T>(&self) -> Result<&mut [T], memory::MemoryError> {
+        self.i_memory.map_memory(0, self.i_memory.size(), self.i_memory.size())
+    }
+
+    /// Unmap the **whole** memory
+    ///
+    /// After this call any pointer acquired by [`ImageMemory::map_memory`](Self::map_memory) or [`ImageView::map_memory`](memory::ImageView::map_memory)
+    /// will be invalid
+    ///
+    /// You **must not** use such pointer
+    pub fn unmap_memory<T>(&self) {
+        self.i_memory.unmap_memory();
+    }
+
+    /// Make host memory changes visible to the device
+    ///
+    /// Memory **must be** HOST_VISIBLE and **must not be** HOST_COHERENT
+    pub fn flush(&self) -> Result<(), memory::MemoryError> {
+        self.i_memory.flush(0, self.i_memory.size())
+    }
+
+    /// Make device memory changes visible to the host
+    ///
+    /// Potential use cases are discussed
+    /// [here](https://stackoverflow.com/questions/75324067/difference-between-vkinvalidatemappedmemoryranges-and-vkcmdpipelinebarrier-in-vu)
+    pub fn sync(&self) -> Result<(), memory::MemoryError> {
+        self.i_memory.sync(0, self.i_memory.size())
     }
 
     pub(crate) fn access<T, F>(&self, f: &mut F, index: usize) -> Result<(), memory::MemoryError>
@@ -445,6 +482,10 @@ impl ImageMemory {
             i_info: vec![img_info],
             i_memory: memory::Region::empty(core, requirements.size)
         })
+    }
+
+    pub(crate) fn region(&self) -> &memory::Region {
+        &self.i_memory
     }
 }
 

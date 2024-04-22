@@ -39,7 +39,11 @@ impl<'a> View<'a> {
         self.i_memory.region().map_memory(self.offset(), self.size(), self.allocated_size())
     }
 
-    /// Execute 'f' over selected buffer
+    /// Execute `f` over selected buffer
+    ///
+    /// It is relatively expensive operation as memory will be mapped and unmapped
+    ///
+    /// It is better to use [`map_memory`](Self::map_memory) for frequent changes
     pub fn access<T, F>(&self, f: &mut F) -> Result<(), memory::MemoryError>
     where
         F: FnMut(&mut [T]),
@@ -80,6 +84,11 @@ impl<'a> ImageView<'a> {
     /// Return image extent
     pub fn extent(&self) -> memory::Extent3D {
         self.i_memory.info()[self.i_index].extent
+    }
+
+    /// Map selected region of memory
+    pub fn map_memory<T>(&self) -> Result<&mut [T], memory::MemoryError> {
+        self.i_memory.region().map_memory(self.offset(), self.allocated_size(), self.allocated_size())
     }
 
     /// Execute 'f' over selected buffer

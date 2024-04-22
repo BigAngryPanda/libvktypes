@@ -240,6 +240,11 @@ impl Memory {
         })
     }
 
+    /// Perfrom operation `f` over selected buffer
+    ///
+    /// It is relatively expensive operation as memory will be mapped and unmapped
+    ///
+    /// It is better to use [`map_memory`](Self::map_memory) for frequent changes
     pub fn access<T, F>(&self, f: &mut F, index: usize) -> Result<(), memory::MemoryError>
     where
         F: FnMut(&mut [T]),
@@ -286,9 +291,9 @@ impl Memory {
         self.i_memory.map_memory(0, self.i_memory.size(), self.i_memory.size())
     }
 
-    /// Unmap the *whole* memory
+    /// Unmap the **whole** memory
     ///
-    /// After this call any pointer acquired by [`Memory::map_memory`](Self::map_memory) or [`View::map_memory`](View::map_memory)
+    /// After this call any pointer acquired by [`Memory::map_memory`](Self::map_memory) or [`View::map_memory`](memory::View::map_memory)
     /// will be invalid
     ///
     /// You **must not** use such pointer
@@ -298,7 +303,7 @@ impl Memory {
 
     /// Make host memory changes visible to the device
     ///
-    /// Memory **must be** HOST_COHERENT and HOST_VISIBLE
+    /// Memory **must be** HOST_VISIBLE and **must not be** HOST_COHERENT
     pub fn flush(&self) -> Result<(), memory::MemoryError> {
         self.i_memory.flush(0, self.i_memory.size())
     }
