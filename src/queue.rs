@@ -80,7 +80,9 @@ pub struct QueueCfg {
 
 pub struct Queue {
     i_core: Arc<dev::Core>,
-    i_queue: vk::Queue
+    i_queue: vk::Queue,
+    i_family: u32,
+    i_index: u32,
 }
 
 impl Queue {
@@ -90,6 +92,8 @@ impl Queue {
             i_queue: unsafe {
                 dev.device().get_device_queue(cfg.family_index, cfg.queue_index)
             },
+            i_family: cfg.family_index,
+            i_index: cfg.queue_index
         }
     }
 
@@ -142,6 +146,16 @@ impl Queue {
         Ok(())
     }
 
+    /// Return queue family index
+    pub fn family(&self) -> u32 {
+        self.i_family
+    }
+
+    /// Return queue index within family
+    pub fn index(&self) -> u32 {
+        self.i_index
+    }
+
     /// Present selected image from swapchain
     pub fn present(&self, info: &PresentInfo) -> Result<(), QueueError> {
         let semaphores: Vec<vk::Semaphore> = info.wait.iter().map(|s| s.semaphore()).collect();
@@ -166,6 +180,7 @@ impl Queue {
 impl fmt::Debug for Queue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Queue")
+        .field("id", &self)
         .field("i_queue", &(&self.i_queue as *const vk::Queue))
         .finish()
     }

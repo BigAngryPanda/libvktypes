@@ -5,7 +5,7 @@
 use ash::extensions::khr;
 use ash::vk;
 
-use crate::{on_error_ret};
+use crate::on_error_ret;
 use crate::{dev, libvk, surface, sync, memory};
 
 use std::ptr;
