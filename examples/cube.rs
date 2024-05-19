@@ -434,6 +434,9 @@ fn main() {
             } => {
                 control_flow.exit();
             },
+            winit::event::Event::AboutToWait => {
+                wnd.request_redraw();
+            },
             winit::event::Event::WindowEvent {
                 event: winit::event::WindowEvent::RedrawRequested,
                 ..
