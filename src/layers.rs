@@ -9,6 +9,7 @@ use std::fmt::{
     Formatter,
     Debug
 };
+use std::marker::PhantomData;
 
 use ash::vk;
 
@@ -19,10 +20,10 @@ pub trait Layer {
     fn name() -> CString;
 }
 
-pub struct DebugLayer(vk::DebugUtilsMessengerCreateInfoEXT);
+pub struct DebugLayer<'a>(vk::DebugUtilsMessengerCreateInfoEXT<'a>);
 
-impl DebugLayer {
-    pub fn full() -> DebugLayer {
+impl<'a> DebugLayer<'a> {
+    pub fn full() -> DebugLayer<'a> {
         DebugLayer(
             vk::DebugUtilsMessengerCreateInfoEXT {
                 s_type: vk::StructureType::DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -37,6 +38,7 @@ impl DebugLayer {
                     | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION,
                 pfn_user_callback: Some(debug::vulkan_debug_utils_callback),
                 p_user_data: ptr::null_mut(),
+                _marker: PhantomData,
             }
         )
     }
@@ -46,7 +48,7 @@ impl DebugLayer {
     }
 }
 
-impl Layer for DebugLayer {
+impl<'a> Layer for DebugLayer<'a> {
     fn info(&self) -> *const c_void {
         &self.0 as *const vk::DebugUtilsMessengerCreateInfoEXT as *const c_void
     }
@@ -56,8 +58,8 @@ impl Layer for DebugLayer {
     }
 }
 
-impl Default for DebugLayer {
-    fn default() -> DebugLayer {
+impl<'a> Default for DebugLayer<'a> {
+    fn default() -> DebugLayer<'a> {
         DebugLayer(
             vk::DebugUtilsMessengerCreateInfoEXT {
                 s_type: vk::StructureType::DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -72,12 +74,13 @@ impl Default for DebugLayer {
                     | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION,
                 pfn_user_callback: Some(debug::vulkan_debug_utils_callback),
                 p_user_data: ptr::null_mut(),
+                _marker: PhantomData,
             }
         )
     }
 }
 
-impl Debug for DebugLayer {
+impl<'a> Debug for DebugLayer<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "VK_LAYER_KHRONOS_validation")
     }

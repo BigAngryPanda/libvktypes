@@ -16,6 +16,7 @@ use std::ptr;
 use std::fmt;
 use std::sync::Arc;
 use std::error::Error;
+use std::marker::PhantomData;
 
 /// Configuration of pipeline's vertex stage input
 ///
@@ -203,6 +204,7 @@ impl Pipeline {
                 module: pipe_cfg.vertex_shader.module(),
                 p_name: pipe_cfg.vertex_shader.entry().as_ptr(),
                 p_specialization_info: ptr::null(),
+                _marker: PhantomData,
             },
             vk::PipelineShaderStageCreateInfo {
                 s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -212,6 +214,7 @@ impl Pipeline {
                 module: pipe_cfg.frag_shader.module(),
                 p_name: pipe_cfg.frag_shader.entry().as_ptr(),
                 p_specialization_info: ptr::null(),
+                _marker: PhantomData,
             },
         ];
 
@@ -225,6 +228,7 @@ impl Pipeline {
                     module: geom_shader.module(),
                     p_name: geom_shader.entry().as_ptr(),
                     p_specialization_info: ptr::null(),
+                    _marker: PhantomData,
                 }
             );
         }
@@ -249,6 +253,7 @@ impl Pipeline {
             p_vertex_binding_descriptions: data_ptr!(vertex_binding_descriptions),
             vertex_attribute_description_count: vertex_attribute_descriptions.len() as u32,
             p_vertex_attribute_descriptions: data_ptr!(vertex_attribute_descriptions),
+            _marker: PhantomData,
         };
 
         let input_assembly_state_create_info = vk::PipelineInputAssemblyStateCreateInfo {
@@ -257,6 +262,7 @@ impl Pipeline {
             flags: vk::PipelineInputAssemblyStateCreateFlags::empty(),
             topology: pipe_cfg.topology,
             primitive_restart_enable: pipe_cfg.enable_primitive_restart as ash::vk::Bool32,
+            _marker: PhantomData,
         };
 
         let viewports = [vk::Viewport {
@@ -285,6 +291,7 @@ impl Pipeline {
             p_viewports: data_ptr!(viewports),
             scissor_count: scissors.len() as u32,
             p_scissors: data_ptr!(scissors),
+            _marker: PhantomData,
         };
 
         /*
@@ -305,6 +312,7 @@ impl Pipeline {
             depth_bias_clamp: 0.0,
             depth_bias_slope_factor: 0.0,
             line_width: 1.0,
+            _marker: PhantomData,
         };
 
         /*
@@ -320,6 +328,7 @@ impl Pipeline {
             p_sample_mask: ptr::null(),
             alpha_to_coverage_enable: ash::vk::FALSE,
             alpha_to_one_enable: ash::vk::FALSE,
+            _marker: PhantomData,
         };
 
         let color_blend_attachment_state = vk::PipelineColorBlendAttachmentState {
@@ -342,6 +351,7 @@ impl Pipeline {
             attachment_count: 1,
             p_attachments: &color_blend_attachment_state,
             blend_constants: [0.0; 4],
+            _marker: PhantomData,
         };
 
         let push_const_range = vk::PushConstantRange {
@@ -369,6 +379,7 @@ impl Pipeline {
             } else {
                 ptr::null()
             },
+            _marker: PhantomData,
         };
 
         let pipeline_layout = unsafe { on_error_ret!(
@@ -389,6 +400,7 @@ impl Pipeline {
             back: vk::StencilOpState::default(),
             min_depth_bounds: f32::default(),
             max_depth_bounds: f32::default(),
+            _marker: PhantomData,
         };
 
         let pipeline_create_info = vk::GraphicsPipelineCreateInfo {
@@ -415,6 +427,7 @@ impl Pipeline {
             subpass: 0,
             base_pipeline_handle: vk::Pipeline::null(),
             base_pipeline_index: -1,
+            _marker: PhantomData,
         };
 
         let pipeline = unsafe { on_error!(

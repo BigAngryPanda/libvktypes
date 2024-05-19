@@ -8,6 +8,8 @@ use crate::on_error_ret;
 use std::sync::Arc;
 use std::{error, fmt, ptr};
 
+use std::marker::PhantomData;
+
 #[derive(Debug)]
 pub enum SemaphoreError {
     Create,
@@ -32,6 +34,7 @@ impl Semaphore {
             s_type: vk::StructureType::SEMAPHORE_CREATE_INFO,
             p_next: ptr::null(),
             flags: vk::SemaphoreCreateFlags::empty(),
+            _marker: PhantomData,
         };
 
         let semaphore = on_error_ret!(
@@ -89,6 +92,7 @@ impl Fence {
             } else {
                 vk::FenceCreateFlags::empty()
             },
+            _marker: PhantomData,
         };
 
         let fence = on_error_ret!(

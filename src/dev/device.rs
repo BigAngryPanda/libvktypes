@@ -10,6 +10,7 @@ use crate::on_error_ret;
 use std::sync::Arc;
 use std::{ptr, fmt};
 use std::error::Error;
+use std::marker::PhantomData;
 
 /// Device configuration structure
 ///
@@ -61,6 +62,7 @@ impl Device {
                     queue_family_index: info.index(),
                     queue_count: info.count(),
                     p_queue_priorities: priorities.last().unwrap().as_ptr(),
+                    _marker: PhantomData,
                 }
             })
             .collect();
@@ -78,6 +80,7 @@ impl Device {
             enabled_extension_count: dev_type.extensions.len() as u32,
             pp_enabled_extension_names: dev_type.extensions.as_ptr(),
             p_enabled_features: dev_type.hw.features(),
+            _marker: PhantomData,
         };
 
         let dev: ash::Device = on_error_ret!(

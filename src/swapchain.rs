@@ -2,7 +2,7 @@
 //!
 //! See [more](https://registry.khronos.org/vulkan/specs/1.2-extensions/html/chap34.html#_wsi_swapchain)
 
-use ash::extensions::khr;
+use ash::khr::swapchain;
 use ash::vk;
 
 use crate::on_error_ret;
@@ -12,6 +12,7 @@ use std::ptr;
 use std::fmt;
 use std::sync::Arc;
 use std::error::Error;
+use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub enum SwapchainError {
@@ -95,7 +96,7 @@ pub struct SwapchainCfg {
 
 pub struct Swapchain {
     i_core: Arc<dev::Core>,
-    i_loader: khr::Swapchain,
+    i_loader: swapchain::Device,
     i_swapchain: vk::SwapchainKHR,
     i_format: vk::Format,
     i_extent: memory::Extent2D
@@ -107,7 +108,7 @@ impl Swapchain {
                surface: &surface::Surface,
                swp_type: &SwapchainCfg
     ) -> Result<Swapchain, SwapchainError> {
-        let loader = khr::Swapchain::new(lib.instance(), dev.device());
+        let loader = swapchain::Device::new(lib.instance(), dev.device());
 
         let create_info = vk::SwapchainCreateInfoKHR {
             s_type: vk::StructureType::SWAPCHAIN_CREATE_INFO_KHR,
@@ -128,6 +129,7 @@ impl Swapchain {
             present_mode: swp_type.present_mode,
             clipped: ash::vk::TRUE,
             old_swapchain: vk::SwapchainKHR::null(),
+            _marker: PhantomData,
         };
 
         let swapchain =
@@ -193,7 +195,7 @@ impl Swapchain {
     }
 
     #[doc(hidden)]
-    pub fn loader(&self) -> &khr::Swapchain {
+    pub fn loader(&self) -> &swapchain::Device {
         &self.i_loader
     }
 

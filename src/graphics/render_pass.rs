@@ -19,6 +19,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::error::Error;
 use std::convert::Into;
+use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub enum RenderPassError {
@@ -255,6 +256,7 @@ impl RenderPass {
                     p_depth_stencil_attachment: &depth_attch[i],
                     preserve_attachment_count: x.preserve_attachments.len() as u32,
                     p_preserve_attachments: data_ptr!(x.preserve_attachments),
+                    _marker: PhantomData,
                 })
                 .collect();
 
@@ -268,6 +270,7 @@ impl RenderPass {
             p_subpasses: data_ptr!(subpasses),
             dependency_count: dependencies.len() as u32,
             p_dependencies: data_ptr!(dependencies),
+            _marker: PhantomData,
         };
 
         let rp = on_error_ret!(

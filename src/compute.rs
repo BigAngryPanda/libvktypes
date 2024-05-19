@@ -11,6 +11,7 @@ use crate::{on_error, on_error_ret};
 use std::sync::Arc;
 use std::{fmt, ptr};
 use std::error::Error;
+use std::marker::PhantomData;
 
 /// Note: only [memory](crate::memory::Memory) with memory::UsageFlags::STORAGE_BUFFER is allowed
 pub struct PipelineCfg<'a, 'b : 'a> {
@@ -93,6 +94,7 @@ impl Pipeline {
             max_sets: pool_size,
             pool_size_count: desc_size.len() as u32,
             p_pool_sizes: desc_size.as_ptr(),
+            _marker: PhantomData,
         };
 
         let desc_pool = on_error_ret!(
@@ -106,7 +108,8 @@ impl Pipeline {
                 descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
                 descriptor_count: 1,
                 stage_flags: vk::ShaderStageFlags::COMPUTE,
-                p_immutable_samplers: ptr::null()
+                p_immutable_samplers: ptr::null(),
+                _marker: PhantomData,
             }
         ).collect();
 
@@ -116,6 +119,7 @@ impl Pipeline {
             flags: vk::DescriptorSetLayoutCreateFlags::empty(),
             binding_count: bindings.len() as u32,
             p_bindings: bindings.as_ptr(),
+            _marker: PhantomData,
         };
 
         let desc_set_layout = unsafe { on_error!(
@@ -139,7 +143,8 @@ impl Pipeline {
             set_layout_count: 1,
             p_set_layouts: &desc_set_layout,
             push_constant_range_count: if pipe_type.push_constant_size != 0 { 1 } else { 0 },
-            p_push_constant_ranges: if pipe_type.push_constant_size != 0 { &push_const_range } else { ptr::null() }
+            p_push_constant_ranges: if pipe_type.push_constant_size != 0 { &push_const_range } else { ptr::null() },
+            _marker: PhantomData,
         };
 
         let pipeline_layout = unsafe { on_error!(
@@ -156,7 +161,8 @@ impl Pipeline {
             p_next: ptr::null(),
             descriptor_pool: desc_pool,
             descriptor_set_count: 1,
-            p_set_layouts: &desc_set_layout
+            p_set_layouts: &desc_set_layout,
+            _marker: PhantomData,
         };
 
         let desc_set = unsafe { on_error!(
@@ -199,7 +205,8 @@ impl Pipeline {
                 descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
                 p_image_info: ptr::null(),
                 p_buffer_info: &buffer_descs[i],
-                p_texel_buffer_view: ptr::null()
+                p_texel_buffer_view: ptr::null(),
+                _marker: PhantomData,
             }
         ).collect();
 
@@ -210,7 +217,8 @@ impl Pipeline {
             p_next: ptr::null(),
             flags: vk::PipelineCacheCreateFlags::empty(),
             initial_data_size: 0,
-            p_initial_data: ptr::null()
+            p_initial_data: ptr::null(),
+            _marker: PhantomData,
         };
 
         let pipeline_cache = unsafe { on_error!(
@@ -230,7 +238,8 @@ impl Pipeline {
             stage: vk::ShaderStageFlags::COMPUTE,
             module: pipe_type.shader.module(),
             p_name: pipe_type.shader.entry().as_ptr(),
-            p_specialization_info: ptr::null()
+            p_specialization_info: ptr::null(),
+            _marker: PhantomData,
         };
 
         let pipeline_info = vk::ComputePipelineCreateInfo {
@@ -240,7 +249,8 @@ impl Pipeline {
             stage: pipeline_shader,
             layout: pipeline_layout,
             base_pipeline_handle: vk::Pipeline::null(),
-            base_pipeline_index: 0
+            base_pipeline_index: 0,
+            _marker: PhantomData,
         };
 
         let pipelines = unsafe { on_error!(

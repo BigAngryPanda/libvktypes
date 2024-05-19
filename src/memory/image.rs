@@ -9,6 +9,7 @@ use std::error::Error;
 use std::{fmt, ptr};
 use std::sync::Arc;
 use std::cell::Cell;
+use std::marker::PhantomData;
 
 /// Represents image usage flags
 ///
@@ -250,6 +251,7 @@ impl ImageMemory {
                 queue_family_index_count: cfg.queue_families.len() as u32,
                 p_queue_family_indices: cfg.queue_families.as_ptr(),
                 initial_layout: cfg.layout,
+                _marker: PhantomData,
             };
 
             for _ in 0..cfg.count {
@@ -440,6 +442,7 @@ impl ImageMemory {
                 layer_count: 1,
             },
             image: image,
+            _marker: PhantomData,
         };
 
         let img_view = on_error_ret!(
@@ -572,6 +575,7 @@ fn create_image_views(core: &Arc<dev::Core>, images: &Vec<vk::Image>, cfgs: &[Im
             },
             subresource_range: cfg.subresource,
             image: img,
+            _marker: PhantomData,
         };
 
         let img_view = on_error!(

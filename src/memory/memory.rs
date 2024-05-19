@@ -7,6 +7,7 @@ use crate::{dev, hw, memory, graphics};
 use std::sync::Arc;
 use std::ptr;
 use std::fmt;
+use std::marker::PhantomData;
 
 /// Purpose of buffer
 ///
@@ -131,6 +132,7 @@ impl Memory {
                 sharing_mode: sharing_mode,
                 queue_family_index_count: cfg.queue_families.len() as u32,
                 p_queue_family_indices: cfg.queue_families.as_ptr(),
+                _marker: PhantomData,
             };
 
             for _ in 0..cfg.count {
@@ -187,6 +189,7 @@ impl Memory {
                 memory: dev_memory.memory(),
                 offset: 0,
                 size: vk::WHOLE_SIZE,
+                _marker: PhantomData,
             };
 
             unsafe {

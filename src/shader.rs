@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::fs;
 use std::path::Path;
 use std::ffi::CString;
+use std::marker::PhantomData;
 
 use shaderc;
 
@@ -96,6 +97,7 @@ impl Shader {
             flags: vk::ShaderModuleCreateFlags::empty(),
             code_size: bytecode.len()*mem::size_of::<u32>(),
             p_code: bytecode.as_ptr(),
+            _marker: PhantomData,
         };
 
         let shader_module: vk::ShaderModule = on_error_ret!(

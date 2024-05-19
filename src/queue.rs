@@ -5,6 +5,7 @@ use ash::vk;
 use std::{fmt, ptr};
 use std::sync::Arc;
 use std::error::Error;
+use std::marker::PhantomData;
 
 use crate::{on_error_ret, data_ptr};
 use crate::{dev, cmd, sync, swapchain};
@@ -104,7 +105,8 @@ impl Queue {
         let fence_info = vk::FenceCreateInfo {
             s_type: vk::StructureType::FENCE_CREATE_INFO,
             p_next: ptr::null(),
-            flags:  vk::FenceCreateFlags::empty()
+            flags:  vk::FenceCreateFlags::empty(),
+            _marker: PhantomData,
         };
 
         let fence = on_error_ret!(
@@ -125,6 +127,7 @@ impl Queue {
             p_command_buffers: info.buffer.buffer(),
             signal_semaphore_count: sign_sems.len() as u32,
             p_signal_semaphores: data_ptr!(sign_sems),
+            _marker: PhantomData,
         };
 
         unsafe {
@@ -169,6 +172,7 @@ impl Queue {
             p_swapchains: &info.swapchain.swapchain(),
             p_image_indices: &info.image_index,
             p_results: ptr::null_mut(),
+            _marker: PhantomData,
         };
 
         on_error_ret!(unsafe { info.swapchain.loader().queue_present(self.i_queue, &present_info) }, QueueError::Present);

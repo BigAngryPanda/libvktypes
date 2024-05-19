@@ -3,6 +3,7 @@ use ash::vk;
 use core::ffi::c_void;
 use std::sync::Arc;
 use std::fmt;
+use std::marker::PhantomData;
 
 use crate::{on_error, on_error_ret};
 use crate::{dev, hw, memory};
@@ -102,6 +103,7 @@ impl Region {
             p_next: ptr::null(),
             allocation_size: size,
             memory_type_index: desc.index(),
+            _marker: PhantomData,
         };
 
         let dev_memory: vk::DeviceMemory = unsafe {
@@ -121,6 +123,7 @@ impl Region {
                 memory: dev_memory,
                 offset: 0,
                 size: vk::WHOLE_SIZE,
+                _marker: PhantomData,
             };
 
             unsafe {
@@ -225,7 +228,8 @@ impl Region {
             p_next: ptr::null(),
             memory: self.i_memory,
             offset,
-            size
+            size,
+            _marker: PhantomData,
         };
 
         on_error_ret!(
@@ -246,7 +250,8 @@ impl Region {
             p_next: ptr::null(),
             memory: self.i_memory,
             offset,
-            size
+            size,
+            _marker: PhantomData,
         };
 
         on_error_ret!(

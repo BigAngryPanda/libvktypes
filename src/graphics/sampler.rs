@@ -14,6 +14,7 @@ use std::{
 };
 use std::error::Error;
 use std::sync::Arc;
+use std::marker::PhantomData;
 
 /// Specify behavior of sampling with texture coordinates outside an image
 ///
@@ -146,6 +147,7 @@ impl Sampler {
             max_lod: cfg.max_lod,
             border_color: cfg.border_color,
             unnormalized_coordinates: cfg.unnormalized_coordinates as u32,
+            _marker: PhantomData,
         };
 
         let sampler = unsafe {

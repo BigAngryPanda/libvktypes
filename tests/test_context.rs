@@ -83,7 +83,7 @@ pub fn get_window() -> &'static window::Window {
     unsafe {
         INIT_WINDOW.call_once(|| {
             WINDOW.write(window::create_window(
-                &window::eventloop()
+                &window::eventloop().expect("Failed to create eventloop")
             ).expect("Failed to create window"));
         });
 

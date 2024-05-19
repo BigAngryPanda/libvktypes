@@ -4,12 +4,13 @@
 
 use ash;
 use ash::vk;
-use ash::extensions::ext;
+use ash::ext::debug_utils;
 
 use crate::on_error_ret;
 use crate::layers::{DebugLayer, Layer};
 
 use std::ptr;
+use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct InstanceType<'a> {
@@ -17,7 +18,7 @@ pub struct InstanceType<'a> {
     pub version_minor: u32,
     pub version_patch: u32,
     pub dynamic_load: bool,
-    pub debug_layer: Option<DebugLayer>,
+    pub debug_layer: Option<DebugLayer<'a>>,
     pub extensions: &'a [*const i8],
 }
 
@@ -37,7 +38,7 @@ impl<'a> Default for InstanceType<'a> {
 pub struct Instance {
     i_entry: ash::Entry,
     i_instance: ash::Instance,
-    i_debug_loader: ext::DebugUtils,
+    i_debug_loader: debug_utils::Instance,
     i_debug_messenger: vk::DebugUtilsMessengerEXT,
 }
 
@@ -70,6 +71,7 @@ impl Instance {
                 desc.version_minor,
                 desc.version_patch,
             ),
+            _marker: PhantomData,
         };
 
         let layer_names = [DebugLayer::name()];
@@ -100,6 +102,7 @@ impl Instance {
             } else {
                 desc.extensions.len() as u32
             },
+            _marker: PhantomData,
         };
 
         let instance: ash::Instance = on_error_ret!(
@@ -107,7 +110,7 @@ impl Instance {
             InstanceError::Instance
         );
 
-        let dbg_loader = ext::DebugUtils::new(&entry, &instance);
+        let dbg_loader = debug_utils::Instance::new(&entry, &instance);
 
         let dbg_messenger: vk::DebugUtilsMessengerEXT = if let Some(layer) = &desc.debug_layer {
             on_error_ret!(unsafe { dbg_loader.create_debug_utils_messenger(layer.as_raw(), None) }, InstanceError::DebugUtilsCreating)

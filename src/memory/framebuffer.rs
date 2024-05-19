@@ -12,6 +12,7 @@ use std::error::Error;
 use std::sync::Arc;
 use std::fmt;
 use std::ptr;
+use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub enum FramebufferError {
@@ -53,6 +54,7 @@ impl Framebuffer {
             width: cfg.extent.width,
             height: cfg.extent.height,
             layers: 1,
+            _marker: PhantomData,
         };
 
         let framebuffer = on_error_ret!(
