@@ -67,7 +67,7 @@ const INDICES: &[u32] = &[
 ];
 
 fn main() {
-    let event_loop = window::eventloop();
+    let event_loop = window::eventloop().expect("Failed to create eventloop");
 
     let wnd = window::create_window(&event_loop).expect("Failed to create window");
 
@@ -371,18 +371,16 @@ fn main() {
 
     cmd_queue.present(&present_info).expect("Failed to present frame");
 
-    event_loop.run(move |event, _, control_flow| {
-        control_flow.set_poll();
-
+    event_loop.run(move |event, control_flow| {
         match event {
             winit::event::Event::WindowEvent {
                 event: winit::event::WindowEvent::CloseRequested,
                 ..
             } => {
-                control_flow.set_exit();
+                control_flow.exit();
             },
             _ => ()
         }
 
-    });
+    }).expect("Failed to run example");
 }

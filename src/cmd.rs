@@ -10,6 +10,7 @@ use std::{ptr, cmp};
 use std::iter::Iterator;
 use std::sync::Arc;
 use std::fmt;
+use std::marker::PhantomData;
 
 /// AccessType specifies memory access
 ///
@@ -76,6 +77,7 @@ impl Pool {
             p_next: ptr::null(),
             flags:  vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER,
             queue_family_index: pool_type.queue_index,
+            _marker: PhantomData,
         };
 
         let cmd_pool = on_error_ret!(
@@ -99,6 +101,7 @@ impl Pool {
             command_pool: self.0.i_pool,
             level: vk::CommandBufferLevel::PRIMARY,
             command_buffer_count: 1,
+            _marker: PhantomData,
         };
 
         let cmd_buffers = on_error_ret!(
@@ -110,7 +113,8 @@ impl Pool {
             s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
             p_next: ptr::null(),
             flags:  vk::CommandBufferUsageFlags::empty(),
-            p_inheritance_info: ptr::null()
+            p_inheritance_info: ptr::null(),
+            _marker: PhantomData,
         };
 
         on_error_ret!(
@@ -295,6 +299,7 @@ impl Buffer {
             buffer: mem.buffer(),
             offset: mem.offset(),
             size: mem.size(),
+            _marker: PhantomData,
         };
 
         unsafe {
@@ -342,6 +347,7 @@ impl Buffer {
             dst_queue_family_index: dst_queue_family,
             image: view.image(),
             subresource_range: view.subresource_range(),
+            _marker: PhantomData,
         };
 
         unsafe {
@@ -405,6 +411,7 @@ impl Buffer {
             },
             clear_value_count: clear_value.len() as u32,
             p_clear_values: clear_value.as_ptr(),
+            _marker: PhantomData,
         };
 
         unsafe {

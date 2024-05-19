@@ -20,6 +20,7 @@ use std::{
 };
 use std::error::Error;
 use std::sync::Arc;
+use std::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ShaderBinding<'a, 'b> {
@@ -253,7 +254,8 @@ impl PipelineDescriptor {
                 descriptor_type: self.i_desc_types[info.set][info.binding as usize],
                 p_image_info: data_ptr!(image_info[i]),
                 p_buffer_info: data_ptr!(buffer_info[i]),
-                p_texel_buffer_view: ptr::null()
+                p_texel_buffer_view: ptr::null(),
+                _marker: PhantomData,
             }
         ).collect();
 
@@ -301,6 +303,7 @@ fn create_descriptor_pool(
         max_sets: desc_size.len() as u32,
         pool_size_count: desc_size.len() as u32,
         p_pool_sizes: desc_size.as_ptr(),
+        _marker: PhantomData,
     };
 
     unsafe {
@@ -318,7 +321,8 @@ fn create_set_layout(
             descriptor_type: binding.resource_type,
             descriptor_count: binding.count,
             stage_flags: binding.stage,
-            p_immutable_samplers: ptr::null()
+            p_immutable_samplers: ptr::null(),
+            _marker: PhantomData,
         }
     ).collect();
 
@@ -328,6 +332,7 @@ fn create_set_layout(
         flags: vk::DescriptorSetLayoutCreateFlags::empty(),
         binding_count: bindings.len() as u32,
         p_bindings: bindings.as_ptr(),
+        _marker: PhantomData,
     };
 
     unsafe {
@@ -367,7 +372,8 @@ fn allocate_descriptor_sets(
         p_next: ptr::null(),
         descriptor_pool: pool,
         descriptor_set_count: sets.len() as u32,
-        p_set_layouts: sets.as_ptr()
+        p_set_layouts: sets.as_ptr(),
+        _marker: PhantomData,
     };
 
     unsafe {

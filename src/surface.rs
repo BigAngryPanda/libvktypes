@@ -1,10 +1,9 @@
 //! Abstraction over native surface or window object
 
 use ash::vk;
-use ash::extensions::khr;
+use ash::khr::surface;
+use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
-use raw_window_handle::HasRawDisplayHandle;
-use raw_window_handle::HasRawWindowHandle;
 use crate::{libvk, window, hw, memory, swapchain};
 use crate::on_error_ret;
 
@@ -13,15 +12,19 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum SurfaceError {
-    Create
+    DisplayHandle,
+    WindowHandle,
 }
 
 impl fmt::Display for SurfaceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let err_msg = match self {
-            SurfaceError::Create => {
-                "Failed to create Xlib surface (vkCreateXlibSurfaceKHR call failed)"
-            }
+            SurfaceError::DisplayHandle => {
+                "Failed to create display handle (ash_window error)"
+            },
+            SurfaceError::WindowHandle => {
+                "Failed to create window handle (ash_window error)"
+            },
         };
 
         write!(f, "{:?}", err_msg)
@@ -32,21 +35,24 @@ impl Error for SurfaceError {}
 
 /// Note: custom allocator is not supported
 pub struct Surface {
-    i_loader: khr::Surface,
+    i_loader: surface::Instance,
     i_surface: vk::SurfaceKHR,
 }
 
 impl Surface {
     pub fn new(lib: &libvk::Instance, window: &window::Window) -> Result<Surface, SurfaceError> {
+        let display_handle = on_error_ret!(window.display_handle(), SurfaceError::DisplayHandle);
+        let window_handle = on_error_ret!(window.window_handle(), SurfaceError::WindowHandle);
+
         let surface = unsafe { ash_window::create_surface(
             lib.entry(),
             lib.instance(),
-            window.raw_display_handle(),
-            window.raw_window_handle(),
+            display_handle.as_raw(),
+            window_handle.as_raw(),
             None,
         ).unwrap() };
 
-        let surface_loader = khr::Surface::new(lib.entry(), lib.instance());
+        let surface_loader = surface::Instance::new(lib.entry(), lib.instance());
 
         Ok(
             Surface {
@@ -57,7 +63,7 @@ impl Surface {
     }
 
     #[doc(hidden)]
-    pub fn loader(&self) -> &khr::Surface {
+    pub fn loader(&self) -> &surface::Instance {
         &self.i_loader
     }
 

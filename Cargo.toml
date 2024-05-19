@@ -6,12 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ash = { version = "0.37.*", features = ["linked", "loaded"] }
-winit = "0.28.0"
+ash = { version = "0.38.*", features = ["linked", "loaded"] }
+winit = "0.29.0"
 shaderc = "*"
-ash-window = "0.12.*"
+ash-window = "0.13.*"
 
-raw-window-handle = "0.5"
+raw-window-handle = "0.6.2"
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
-raw-window-metal = "0.3"
+raw-window-metal = "0.4"
