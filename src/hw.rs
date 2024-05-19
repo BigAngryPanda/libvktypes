@@ -316,23 +316,15 @@ impl HWDevice {
                 .get_physical_device_queue_family_properties(hw)
         };
 
-        let memory_desc: Vec<MemoryDescription> = unsafe {
-            let mem_props: vk::PhysicalDeviceMemoryProperties =
-                lib.instance().get_physical_device_memory_properties(hw);
-
-            mem_props
-                .memory_types
-                .iter()
-                .enumerate()
-                .map(|(i, _)| MemoryDescription::new(&mem_props, i))
-                .filter(|m| {
-                    m.is_local()
-                        || m.is_host_visible()
-                        || m.is_host_cached()
-                        || m.is_host_coherent()
-                })
-                .collect()
+        let mem_props: vk::PhysicalDeviceMemoryProperties = unsafe {
+            lib.instance().get_physical_device_memory_properties(hw)
         };
+
+        let mut memory_desc: Vec<MemoryDescription> = Vec::new();
+
+        for i in 0..mem_props.memory_type_count as usize {
+            memory_desc.push(MemoryDescription::new(&mem_props, i));
+        }
 
         let queue_desc: Vec<QueueFamilyDescription> =
             queue_properties
