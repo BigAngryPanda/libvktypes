@@ -446,6 +446,10 @@ impl Buffer {
 
     /// Enable resource usage for the `pipeline`
     ///
+    /// Each element of `offsets` must be multiple of [`hw::ubo_offset`](crate::hw::HWDevice::ubo_offset)
+    ///
+    /// See [more](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCmdBindDescriptorSets.html)
+    ///
     /// If you do not care about `offsets` leave it as `&[]`
     pub fn bind_resources(&self, pipe: &graphics::Pipeline, res: &graphics::PipelineDescriptor, offsets: &[u32]) {
         unsafe {
@@ -463,6 +467,7 @@ impl Buffer {
         }
     }
 
+    /// Bind index buffer
     pub fn bind_index_buffer(&self, view: memory::View, offset: u64, it: memory::IndexBufferType) {
         let dev = self.i_pool.device();
 

@@ -435,7 +435,7 @@ impl HWDevice {
     }
 
     /// Minimal offset for uniform buffer binding
-    pub fn ub_offset(&self) -> u64 {
+    pub fn ubo_offset(&self) -> u64 {
         self.i_properties.limits.min_uniform_buffer_offset_alignment
     }
 
@@ -585,7 +585,7 @@ impl fmt::Display for HWDevice {
             Min uniform buffer offset: {}\n\
             Min storage buffer offset: {}\n\
             Memory alignment: {}\n",
-            self.ub_offset(),
+            self.ubo_offset(),
             self.storage_offset(),
             self.memory_alignment()
         )

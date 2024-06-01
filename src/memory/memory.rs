@@ -91,7 +91,7 @@ pub struct MemoryCfg<'a, 'b : 'a> {
 /// for [`hw::memory_alignment`](crate::hw::HWDevice::memory_alignment)
 ///
 /// Various types of buffers (uniform, storage etc.) may have their own alignment requirements
-/// such as [`hw::ub_offset`](crate::hw::HWDevice::ub_offset) or [`hw::storage_offset`](crate::hw::HWDevice::storage_offset)
+/// such as [`hw::ubo_offset`](crate::hw::HWDevice::ubo_offset) or [`hw::storage_offset`](crate::hw::HWDevice::storage_offset)
 ///
 /// Hint: you may print struct (as [`Memory`] implements [`fmt::Display`]) to see memory layout
 ///
