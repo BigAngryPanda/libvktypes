@@ -20,4 +20,6 @@ pub mod graphics;
 pub mod sync;
 pub mod formats;
 
+pub(crate) mod offset;
+
 pub use winit;

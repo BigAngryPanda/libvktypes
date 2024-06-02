@@ -6,7 +6,7 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::{on_error, on_error_ret};
-use crate::{dev, hw, memory};
+use crate::{dev, hw, memory, offset};
 
 use std::ptr;
 
@@ -73,10 +73,10 @@ impl Region {
             let alignment = std::cmp::max(device.hw().memory_alignment(), requirement.alignment);
 
             // How many bytes we need after *previous* buffer
-            let begin_offset = offset(last, alignment);
+            let begin_offset = offset::padding_bytes(last, alignment);
 
             // How many bytes we need after *current* buffer
-            let end_offset = offset(requirement.size, alignment);
+            let end_offset = offset::padding_bytes(requirement.size, alignment);
 
             let aligned_size = requirement.size + end_offset;
 
@@ -309,9 +309,4 @@ impl fmt::Debug for Region {
         .field("i_flags", &self.i_flags)
         .finish()
     }
-}
-
-#[inline]
-fn offset(last: u64, alignment: u64) -> u64 {
-    ((last % alignment != 0) as u64)*(alignment - last % alignment)
 }

@@ -1,3 +1,5 @@
+mod test_context;
+
 #[cfg(test)]
 mod hw {
     use libvktypes::{
@@ -6,6 +8,8 @@ mod hw {
         layers,
         extensions
     };
+
+    use super::test_context;
 
     #[test]
     fn hardware_inspection() {
@@ -24,5 +28,14 @@ mod hw {
             print!("\nDevice number {}\n", i);
             print!("{}", hw);
         }
+    }
+
+    #[test]
+    fn offset_calculation() {
+        let hw_dev = test_context::get_graphics_hw();
+
+        assert!(hw_dev.ubo_size(0) == 0);
+        assert!(hw_dev.ubo_size(hw_dev.ubo_offset()) == hw_dev.ubo_offset());
+        assert!(hw_dev.ubo_size(12345) % hw_dev.ubo_offset() == 0);
     }
 }

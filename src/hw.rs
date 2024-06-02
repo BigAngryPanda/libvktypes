@@ -5,7 +5,7 @@
 use ash::vk;
 
 use crate::on_error_ret;
-use crate::{libvk, surface};
+use crate::{libvk, surface, offset};
 
 use std::ffi::CStr;
 use std::fmt;
@@ -437,6 +437,15 @@ impl HWDevice {
     /// Minimal offset for uniform buffer binding
     pub fn ubo_offset(&self) -> u64 {
         self.i_properties.limits.min_uniform_buffer_offset_alignment
+    }
+
+    /// Calculate buffer size with respect for dynamic alignment
+    ///
+    /// For 0 sized buffer 0 will be returned
+    ///
+    /// This method is useful when you have to deal with dynamic ubo
+    pub fn ubo_size(&self, requested_size: u64) -> u64 {
+        offset::full_size(requested_size, self.ubo_offset())
     }
 
     /// Minimal offset for storage buffer binding
