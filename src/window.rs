@@ -2,8 +2,14 @@
 
 use winit::window::WindowBuilder;
 use winit::event_loop::EventLoopBuilder;
+
+#[cfg(target_os = "linux")]
 use winit::platform::x11::EventLoopBuilderExtX11;
+#[cfg(target_os = "linux")]
 use winit::platform::wayland::EventLoopBuilderExtWayland;
+
+#[cfg(target_os = "windows")]
+use winit::platform::windows::EventLoopBuilderExtWindows;
 
 use std::fmt;
 
@@ -47,12 +53,18 @@ pub fn eventloop() -> Result<winit::event_loop::EventLoop<()>, WindowError> {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "windows")]
 /// Create new eventloop
 ///
 /// Event loop can be used in different thread (unlike original winit event loop)
-pub fn eventloop() -> winit::event_loop::EventLoop<()> {
-    EventLoopBuilder::new().with_any_thread(true).build()
+pub fn eventloop() -> Result<winit::event_loop::EventLoop<()>, WindowError> {
+    let mut builder = EventLoopBuilder::new();
+    let result = EventLoopBuilderExtWindows::with_any_thread(&mut builder, true).build();
+
+    match result {
+        Ok(result) => Ok(result),
+        Err(_) => Err(WindowError::EventLoop)
+    }
 }
 
 pub fn create_window(eventloop: &EventLoop) -> Result<Window, WindowError> {

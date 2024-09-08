@@ -1,3 +1,5 @@
+mod test_context;
+
 #[cfg(test)]
 mod libvk {
     use libvktypes::{
@@ -5,6 +7,8 @@ mod libvk {
         layers,
         extensions
     };
+
+    use super::test_context;
 
     #[test]
     fn default_instance() {
@@ -40,11 +44,13 @@ mod libvk {
 
     #[test]
     fn multiple_ext() {
+        let mut extensions = extensions::required_extensions(test_context::get_window());
+        extensions.push(extensions::DEBUG_EXT_NAME);
+        extensions.push(extensions::SURFACE_EXT_NAME);
+
         let lib_type = libvk::InstanceType {
             debug_layer: Some(layers::DebugLayer::default()),
-            extensions: &[extensions::DEBUG_EXT_NAME,
-                extensions::SURFACE_EXT_NAME,
-                extensions::XLIB_SURFACE_EXT_NAME],
+            extensions: &extensions,
             ..libvk::InstanceType::default()
         };
 

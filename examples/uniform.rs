@@ -44,11 +44,13 @@ fn main() {
 
     let wnd = window::create_window(&event_loop).expect("Failed to create window");
 
+    let mut extensions = extensions::required_extensions(&wnd);
+    extensions.push(extensions::DEBUG_EXT_NAME);
+    extensions.push(extensions::SURFACE_EXT_NAME);
+
     let lib_type = libvk::InstanceType {
         debug_layer: Some(layers::DebugLayer::default()),
-        extensions: &[extensions::DEBUG_EXT_NAME,
-            extensions::SURFACE_EXT_NAME,
-            extensions::XLIB_SURFACE_EXT_NAME],
+        extensions: &extensions,
         ..libvk::InstanceType::default()
     };
 
