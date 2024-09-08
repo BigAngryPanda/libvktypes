@@ -2,14 +2,10 @@
 
 use raw_window_handle::HasDisplayHandle;
 
-use std::ffi::CStr;
-
 use std::ffi::c_char;
 
 use crate::window;
 use crate::on_error;
-
-pub type ExtentionNamesList<'a> = Vec<&'a CStr>;
 
 pub const DEBUG_EXT_NAME: *const i8 = ash::vk::EXT_DEBUG_UTILS_NAME.as_ptr();
 

@@ -23,6 +23,7 @@ impl fmt::Display for SemaphoreError {
 
 impl error::Error for SemaphoreError {}
 
+#[derive(Debug)]
 pub struct Semaphore {
     i_core: Arc<dev::Core>,
     i_semaphore: vk::Semaphore,
