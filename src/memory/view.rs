@@ -35,7 +35,7 @@ impl<'a> View<'a> {
     }
 
     /// Map selected region of memory
-    pub fn map_memory<T>(&self) -> Result<&mut [T], memory::MemoryError> {
+    pub fn map_memory<T>(&self) -> Result<&'a mut [T], memory::MemoryError> {
         self.i_memory.region().map_memory(self.offset(), self.size(), self.allocated_size())
     }
 
