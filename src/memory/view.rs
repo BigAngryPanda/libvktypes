@@ -35,8 +35,26 @@ impl<'a> View<'a> {
     }
 
     /// Map selected region of memory
+    ///
+    /// Note: this is dangerous operation and you should use it with cautious
+    /// As one range of the memory is mapped you *cannot* map another region of the same memory
+    ///
+    /// Better alternative is to [map full range](crate::memory::Memory::map_memory)
+    /// and use [`mapped_slice`](Self::mapped_slice)
     pub fn map_memory<T>(&self) -> Result<&'a mut [T], memory::MemoryError> {
         self.i_memory.region().map_memory(self.offset(), self.size(), self.allocated_size())
+    }
+
+    /// Take the whole range and return part of it represented by the view
+    ///
+    /// View [size](Self::size) must be multiply of type size
+    pub fn mapped_slice<T>(&self, mapped_memory: &mut [u8]) -> &mut [T] {
+        debug_assert!(self.size() % (std::mem::size_of::<T>() as u64) == 0, "View size must be multiply of type size");
+
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                mapped_memory[self.offset() as usize..].as_mut_ptr() as *mut T,
+                (self.size() as usize)/std::mem::size_of::<T>()) }
     }
 
     /// Execute `f` over selected buffer
@@ -49,6 +67,13 @@ impl<'a> View<'a> {
         F: FnMut(&mut [T]),
     {
         self.i_memory.access(f, self.i_index)
+    }
+
+    /// Unmap memory by view
+    ///
+    /// Use for [`map_memory`](Self::map_memory)
+    pub fn unmap_memory(&self) {
+        self.i_memory.unmap_memory();
     }
 
     pub(crate) fn buffer(&self) -> vk::Buffer {
@@ -87,8 +112,26 @@ impl<'a> ImageView<'a> {
     }
 
     /// Map selected region of memory
+    ///
+    /// Note: this is dangerous operation and you should use it with cautious
+    /// As one range of the memory is mapped you *cannot* map another region of the same memory
+    ///
+    /// Better alternative is to [map full range](crate::memory::Memory::map_memory)
+    /// and use [`mapped_slice`](Self::mapped_slice)
     pub fn map_memory<T>(&self) -> Result<&mut [T], memory::MemoryError> {
         self.i_memory.region().map_memory(self.offset(), self.allocated_size(), self.allocated_size())
+    }
+
+    /// Take the whole range and return part of it represented by the view
+    ///
+    /// View [size](Self::allocated_size) must be multiply of type size
+    pub fn mapped_slice<T>(&self, mapped_memory: &mut [u8]) -> &mut [T] {
+        debug_assert!(self.allocated_size() % (std::mem::size_of::<T>() as u64) == 0, "View allocated size must be multiply of type size");
+
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                mapped_memory[self.offset() as usize..].as_mut_ptr() as *mut T,
+                (self.allocated_size() as usize)/std::mem::size_of::<T>()) }
     }
 
     /// Execute 'f' over selected buffer
@@ -109,6 +152,13 @@ impl<'a> ImageView<'a> {
     /// Return image layout
     pub fn layout(&self) -> memory::ImageLayout {
         self.i_memory.info()[self.i_index].layout.get()
+    }
+
+    /// Unmap memory by view
+    ///
+    /// Use for [`map_memory`](Self::map_memory)
+    pub fn unmap_memory(&self) {
+        self.i_memory.unmap_memory();
     }
 
     pub(crate) fn set_layout(&self, new_layout: memory::ImageLayout) {

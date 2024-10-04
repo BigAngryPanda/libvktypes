@@ -70,6 +70,9 @@ impl Region {
             // See https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#limits
             // https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#VkMemoryRequirements
             // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkMemoryRequirements.html
+            //
+            // Useful note on the alignment
+            // https://stackoverflow.com/questions/51439858/use-correct-offset-when-binding-a-buffer-to-a-memory#51440838
             let alignment = std::cmp::max(device.hw().memory_alignment(), requirement.alignment);
 
             // How many bytes we need after *previous* buffer

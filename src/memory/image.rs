@@ -369,7 +369,7 @@ impl ImageMemory {
     /// will be invalid
     ///
     /// You **must not** use such pointer
-    pub fn unmap_memory<T>(&self) {
+    pub fn unmap_memory(&self) {
         self.i_memory.unmap_memory();
     }
 

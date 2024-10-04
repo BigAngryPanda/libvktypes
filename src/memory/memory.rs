@@ -54,6 +54,7 @@ pub const INDEX_REASSEMBLY_UINT8: u8 = 0xff;
 /// Configuration struct for memory region
 #[derive(Debug, Clone)]
 pub struct BufferCfg<'a> {
+    // Size in bytes
     pub size: u64,
     pub usage: BufferUsageFlags,
     pub queue_families: &'a [u32],
@@ -296,11 +297,12 @@ impl Memory {
 
     /// Unmap the **whole** memory
     ///
-    /// After this call any pointer acquired by [`Memory::map_memory`](Self::map_memory) or [`View::map_memory`](memory::View::map_memory)
+    /// After this call any pointer acquired by [`Memory::map_memory`](Self::map_memory)
+    /// or [`View::map_memory`](memory::View::map_memory)
     /// will be invalid
     ///
     /// You **must not** use such pointer
-    pub fn unmap_memory<T>(&self) {
+    pub fn unmap_memory(&self) {
         self.i_memory.unmap_memory();
     }
 
