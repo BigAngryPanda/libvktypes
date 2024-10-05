@@ -48,7 +48,7 @@ impl<'a> View<'a> {
     /// Take the whole range and return part of it represented by the view
     ///
     /// View [size](Self::size) must be multiply of type size
-    pub fn mapped_slice<T>(&self, mapped_memory: &'a mut [u8]) -> &'a mut [T] {
+    pub fn mapped_slice<T>(&self, mapped_memory: &mut [u8]) -> &'a mut [T] {
         debug_assert!(self.size() % (std::mem::size_of::<T>() as u64) == 0, "View size must be multiply of type size");
 
         unsafe {
@@ -125,7 +125,7 @@ impl<'a> ImageView<'a> {
     /// Take the whole range and return part of it represented by the view
     ///
     /// View [size](Self::allocated_size) must be multiply of type size
-    pub fn mapped_slice<T>(&self, mapped_memory: &'a mut [u8]) -> &'a mut [T] {
+    pub fn mapped_slice<T>(&self, mapped_memory: &mut [u8]) -> &'a mut [T] {
         debug_assert!(self.allocated_size() % (std::mem::size_of::<T>() as u64) == 0, "View allocated size must be multiply of type size");
 
         unsafe {
