@@ -205,7 +205,7 @@ fn main() {
         set: 0,
         binding: 0,
         starting_array_element: 0,
-        resources: graphics::ShaderBinding::Buffers(&[data.view(1), data.view(2)]),
+        resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(data.view(1)), graphics::BufferBinding::new(data.view(2))]),
     }]);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");

@@ -22,17 +22,49 @@ use std::error::Error;
 use std::sync::Arc;
 use std::marker::PhantomData;
 
+/// Represents [Vulkan struct](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDescriptorBufferInfo.html)
+///
+/// For `offset` and `range` look in the link above
+#[derive(Debug, Clone, Copy)]
+pub struct BufferBinding<'a> {
+    pub view: memory::View<'a>,
+    pub offset: u64,
+    pub range: u64,
+}
+
+impl<'a> BufferBinding<'a> {
+    /// Use this method to create BufferBinding with default params
+    ///
+    /// It is suitable if you don't have dynamic buffers
+    pub fn new(view: memory::View<'a>) -> BufferBinding {
+        BufferBinding {
+            view,
+            offset: 0,
+            range: vk::WHOLE_SIZE,
+        }
+    }
+
+    /// Suitable for dynamic buffers
+    pub fn with_params(view: memory::View<'a>, offset: u64, range: u64) -> BufferBinding {
+        BufferBinding {
+            view,
+            offset,
+            range,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum ShaderBinding<'a, 'b> {
-    Buffers(&'a [memory::View<'b>]),
+    Buffers(&'a [BufferBinding<'b>]),
     Samplers(&'a [(&'a graphics::Sampler, memory::ImageView<'b>)]),
 }
 
 impl<'a, 'b> ShaderBinding<'a, 'b> {
     pub fn len(&self) -> u32 {
         match self {
-            Self::Buffers(val)  => val.len() as u32,
-            Self::Samplers(val) => val.len() as u32,
+            Self::Buffers(val)        => val.len() as u32,
+            Self::Samplers(val)       => val.len() as u32,
         }
     }
 }
@@ -415,14 +447,14 @@ fn create_buffer_info(bindings: ShaderBinding) -> Vec<vk::DescriptorBufferInfo> 
     }
 }
 
-fn descriptor_buffer_info(buffers: &[memory::View]) -> Vec<vk::DescriptorBufferInfo>  {
+fn descriptor_buffer_info(buffers: &[BufferBinding]) -> Vec<vk::DescriptorBufferInfo>  {
     buffers
     .iter()
-    .map(|v| {
+    .map(|binding| {
         vk::DescriptorBufferInfo {
-            buffer: v.buffer(),
-            offset: 0,
-            range: vk::WHOLE_SIZE,
+            buffer: binding.view.buffer(),
+            offset: binding.offset,
+            range: binding.range,
         }
     }).collect()
 }

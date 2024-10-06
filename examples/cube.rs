@@ -317,13 +317,13 @@ fn main() {
             set: 0,
             binding: 0,
             starting_array_element: 0,
-            resources: graphics::ShaderBinding::Buffers(&[data.view(2)]),
+            resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(data.view(2))]),
         },
         graphics::UpdateInfo {
             set: 0,
             binding: 1,
             starting_array_element: 0,
-            resources: graphics::ShaderBinding::Buffers(&[data.view(3)]),
+            resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(data.view(3))]),
         },
     ]);
 

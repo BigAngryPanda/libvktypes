@@ -100,7 +100,7 @@ mod graphics_pipeline {
             set: 0,
             binding: 0,
             starting_array_element: 0,
-            resources: graphics::ShaderBinding::Buffers(&[uniform_data.view(0)]),
+            resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(uniform_data.view(0))]),
         }])
     }
 
