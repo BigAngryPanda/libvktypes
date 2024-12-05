@@ -8,7 +8,6 @@ use crate::{dev, hw, memory};
 use std::error::Error;
 use std::{fmt, ptr};
 use std::sync::Arc;
-use std::cell::Cell;
 use std::marker::PhantomData;
 
 /// Represents image usage flags
@@ -161,7 +160,6 @@ pub struct ImagesAllocationInfo<'a, 'b : 'a> {
 pub(crate) struct ImageInfo {
     pub extent: Extent3D,
     pub subresource: vk::ImageSubresourceRange,
-    pub layout: Cell<memory::ImageLayout>,
     pub format: ImageFormat,
 }
 
@@ -266,7 +264,6 @@ impl ImageMemory {
                 let img_info = ImageInfo {
                     extent: cfg.extent,
                     subresource: subres,
-                    layout: Cell::new(cfg.layout),
                     format: cfg.format
                 };
 
@@ -473,7 +470,6 @@ impl ImageMemory {
                 base_array_layer: 0,
                 layer_count: 1,
             },
-            layout: Cell::new(memory::ImageLayout::PRESENT_SRC_KHR),
             format: img_format
         };
 

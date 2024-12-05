@@ -149,20 +149,11 @@ impl<'a> ImageView<'a> {
         self.i_memory.info()[self.i_index].subresource.aspect_mask
     }
 
-    /// Return image layout
-    pub fn layout(&self) -> memory::ImageLayout {
-        self.i_memory.info()[self.i_index].layout.get()
-    }
-
     /// Unmap memory by view
     ///
     /// Use for [`map_memory`](Self::map_memory)
     pub fn unmap_memory(&self) {
         self.i_memory.unmap_memory();
-    }
-
-    pub(crate) fn set_layout(&self, new_layout: memory::ImageLayout) {
-        self.i_memory.info()[self.i_index].layout.set(new_layout)
     }
 
     pub(crate) fn subresource_range(&self) -> vk::ImageSubresourceRange {

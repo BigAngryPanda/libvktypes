@@ -317,7 +317,7 @@ fn main() {
         set: 0,
         binding: 0,
         starting_array_element: 0,
-        resources: graphics::ShaderBinding::Samplers(&[(&sampler, texture)]),
+        resources: graphics::ShaderBinding::Samplers(&[(&sampler, texture, memory::ImageLayout::SHADER_READ_ONLY_OPTIMAL)]),
     }]);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");

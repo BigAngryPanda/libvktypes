@@ -362,8 +362,6 @@ impl Buffer {
                 &[img_barrier]
             )
         };
-
-        view.set_layout(dst_layout);
     }
 
     /// Update push constatnts with raw data

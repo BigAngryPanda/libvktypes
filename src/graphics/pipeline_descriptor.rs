@@ -57,14 +57,14 @@ impl<'a> BufferBinding<'a> {
 #[derive(Debug, Clone, Copy)]
 pub enum ShaderBinding<'a, 'b> {
     Buffers(&'a [BufferBinding<'b>]),
-    Samplers(&'a [(&'a graphics::Sampler, memory::ImageView<'b>)]),
+    Samplers(&'a [(&'b graphics::Sampler, memory::ImageView<'b>, memory::ImageLayout)]),
 }
 
 impl<'a, 'b> ShaderBinding<'a, 'b> {
     pub fn len(&self) -> u32 {
         match self {
-            Self::Buffers(val)        => val.len() as u32,
-            Self::Samplers(val)       => val.len() as u32,
+            Self::Buffers(val)  => val.len() as u32,
+            Self::Samplers(val) => val.len() as u32,
         }
     }
 }
@@ -424,14 +424,14 @@ fn create_image_info(bindings: ShaderBinding) -> Vec<vk::DescriptorImageInfo> {
     }
 }
 
-fn descriptor_image_info(samplers: &[(&graphics::Sampler, memory::ImageView)]) -> Vec<vk::DescriptorImageInfo> {
+fn descriptor_image_info(samplers: &[(&graphics::Sampler, memory::ImageView, memory::ImageLayout)]) -> Vec<vk::DescriptorImageInfo> {
     samplers
     .iter()
-    .map(|(sampler, memory)| {
+    .map(|(sampler, memory, layout)| {
         vk::DescriptorImageInfo {
             sampler: sampler.sampler(),
             image_view: memory.image_view(),
-            image_layout: memory.layout(),
+            image_layout: *layout,
         }
     }).collect()
 }
