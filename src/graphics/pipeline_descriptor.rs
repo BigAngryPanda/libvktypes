@@ -36,7 +36,7 @@ impl<'a> BufferBinding<'a> {
     /// Use this method to create BufferBinding with default params
     ///
     /// It is suitable if you don't have dynamic buffers
-    pub fn new(view: memory::View<'a>) -> BufferBinding {
+    pub fn new(view: memory::View) -> BufferBinding {
         BufferBinding {
             view,
             offset: 0,
@@ -45,7 +45,7 @@ impl<'a> BufferBinding<'a> {
     }
 
     /// Suitable for dynamic buffers
-    pub fn with_params(view: memory::View<'a>, offset: u64, range: u64) -> BufferBinding {
+    pub fn with_params(view: memory::View, offset: u64, range: u64) -> BufferBinding {
         BufferBinding {
             view,
             offset,
