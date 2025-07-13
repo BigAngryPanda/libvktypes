@@ -165,10 +165,16 @@ impl Region {
         })
     }
 
-    pub(crate) fn find_memory<'a, 'b : 'a>(hw: &'b hw::HWDevice, memory_bits: u32, properties: hw::MemoryProperty) -> Option<&'a hw::MemoryDescription> {
+    pub(crate) fn find_memory<'a, 'b : 'a>(
+        hw: &'b hw::HWDevice,
+        memory_bits: u32,
+        properties: hw::MemoryProperty,
+        filter: &dyn Fn(&hw::MemoryDescription) -> bool) -> Option<&'a hw::MemoryDescription>
+    {
         let memory_filter = |m: &'b hw::MemoryDescription| -> Option<&'a hw::MemoryDescription> {
             if ((memory_bits >> m.index()) & 1) == 1
                 && m.is_compatible(properties)
+                && filter(m)
             {
                 Some(m)
             } else {

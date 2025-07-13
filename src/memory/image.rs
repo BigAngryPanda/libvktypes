@@ -291,7 +291,7 @@ impl ImageMemory {
 
         let regions_info = memory::Region::calculate_subregions(device, &memory_requirements);
 
-        let mem_desc = match memory::Region::find_memory(device.hw(), regions_info.memory_bits, cfg.properties) {
+        let mem_desc = match memory::Region::find_memory(device.hw(), regions_info.memory_bits, cfg.properties, cfg.filter) {
             Some(val) => val,
             None => {
                 free_images(device.core(), &images);
