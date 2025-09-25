@@ -4,7 +4,7 @@ use ash::vk;
 use ash::util::read_spv;
 
 use crate::dev;
-use crate::{on_error_ret, on_option_ret};
+use crate::on_error_ret;
 
 use std::{ptr, mem, fmt};
 use std::error::Error;
@@ -133,7 +133,7 @@ impl Shader {
 
     /// Build shader module from `glsl` source code directly
     pub fn from_glsl(device: &dev::Device, cfg: &ShaderCfg, src: &str, kind: Kind) -> Result<Shader, ShaderError> {
-        let compiler = on_option_ret!(shaderc::Compiler::new(), ShaderError::Shaderc);
+        let compiler = on_error_ret!(shaderc::Compiler::new(), ShaderError::Shaderc);
 
         let binary_result = match compiler.compile_into_spirv(src, kind, cfg.path, cfg.entry, None) {
             Ok(val) => val,
