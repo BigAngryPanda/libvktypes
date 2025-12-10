@@ -72,21 +72,17 @@ fn main() {
 
     let frag_shader = shader::Shader::from_file(&device, &frag_shader_type).expect("Failed to create fragment shader module");
 
-    let mem_cfg = memory::MemoryCfg {
-        properties: hw::MemoryProperty::HOST_VISIBLE,
-        filter: &hw::any,
-        buffers: &[
-            &memory::BufferCfg {
-                size: 16*4,
-                usage: memory::VERTEX,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 1
-            }
-        ]
-    };
+    let buffers = [
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: 16*4,
+            usage: memory::VERTEX,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        })
+    ];
 
-    let vertex_data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+    let vertex_data = memory::Memory::allocate_host_memory(&device, &mut buffers.iter()).expect("Failed to allocate memory");
 
     let mut set_vrtx_buffer = |bytes: &mut [f32]| {
         bytes.clone_from_slice(&[0.5f32, 0.5f32, 0.0f32, 1.0f32,
@@ -139,19 +135,23 @@ fn main() {
 
     let img_index = swapchain.next_image(u64::MAX, Some(&img_sem), None).expect("Failed to get image index");
 
-    let frames_cfg = memory::FramebufferCfg {
+    let image_views = [
+        memory::view::RefImageView::new(&images[img_index as usize], 0)
+    ];
+
+    let mut frames_cfg = memory::FramebufferCfg {
         render_pass: &render_pass,
-        images: &[images[img_index as usize].view(0)],
+        images: &mut image_views.iter(),
         extent: capabilities.extent2d(),
     };
 
-    let frame = memory::Framebuffer::new(&device, &frames_cfg).expect("Failed to create framebuffers");
+    let frame = memory::Framebuffer::new(&device, &mut frames_cfg).expect("Failed to create framebuffers");
 
     cmd_buffer.begin_render_pass(&render_pass, &frame);
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    cmd_buffer.bind_vertex_buffers(&[vertex_data.vertex_view(0, 0)]);
+    cmd_buffer.bind_vertex_buffers(&[graphics::VertexView::new(memory::RefView::new(&vertex_data, 0))]);
 
     cmd_buffer.draw(4, 1, 0, 0);
 

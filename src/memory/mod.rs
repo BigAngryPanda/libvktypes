@@ -5,19 +5,19 @@
 //! Notable exeption of this is [`framebuffer`](crate::memory::Framebuffer)
 
 pub mod memory;
-pub mod image;
 pub mod framebuffer;
 pub mod view;
+pub mod layout;
 pub(crate) mod region;
 
 #[doc(hidden)]
 pub use memory::*;
 #[doc(hidden)]
-pub use image::*;
-#[doc(hidden)]
 pub use framebuffer::*;
 #[doc(hidden)]
 pub use view::*;
+#[doc(hidden)]
+pub use layout::*;
 pub(crate) use region::*;
 
 use std::error::Error;
@@ -59,7 +59,10 @@ pub enum MemoryError {
     ImageView,
     /// Failed to
     /// [bind](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkBindImageMemory.html) image memory
-    ImageBind
+    ImageBind,
+    /// Failed to
+    /// [create](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateFramebuffer.html) framebuffer
+    Framebuffer
 }
 
 impl fmt::Display for MemoryError {
@@ -94,7 +97,10 @@ impl fmt::Display for MemoryError {
             },
             MemoryError::ImageBind => {
                 "Failed to bind image memory (vkBindImageMemory call failed)"
-            }
+            },
+            MemoryError::Framebuffer => {
+                "Failed to create framebuffer (vkCreateFramebuffer call failed)"
+            },
         };
 
         write!(f, "{:?}", err_msg)

@@ -1,37 +1,35 @@
 //! Provide handler to the part of the [`Memory`](crate::memory::Memory)
 
-use crate::memory;
-
 use ash::vk;
 
-/// "Pointer-like" struct for the buffer
-#[derive(Debug, Clone, Copy)]
-pub struct View<'a> {
-    i_memory: &'a memory::Memory,
-    i_index: usize
-}
+use crate::memory;
 
-impl<'a> View<'a> {
-    pub(crate) fn new(storage: &memory::Memory, index: usize) -> View {
-        View {
-            i_memory: storage,
-            i_index: index
-        }
-    }
+/// `BufferView` provides interface to the memory region
+/// which represents [buffer](crate::memory::layout::BufferCfg)
+///
+/// Typically you need to implement only [`memory`](Self::memory) and [`index`](Self::index)
+///
+/// # Safety
+///
+/// Trying access memory region which was allocated as non-buffer will cause panic
+pub trait BufferView : Copy + Clone {
+    fn memory(&self) -> &memory::Memory;
+
+    fn index(&self) -> usize;
 
     /// Return offset of the buffer
-    pub fn offset(&self) -> u64 {
-        self.i_memory.subregions()[self.i_index].offset
+    fn offset(&self) -> u64 {
+        self.memory().layout().offset(self.index())
     }
 
     /// Return requested size of the buffer
-    pub fn size(&self) -> u64 {
-        self.i_memory.sizes()[self.i_index]
+    fn size(&self) -> u64 {
+        self.memory().layout().size(self.index())
     }
 
     /// Return size of the buffer with respect to the alignment
-    pub fn allocated_size(&self) -> u64 {
-        self.i_memory.subregions()[self.i_index].allocated_size
+    fn allocated_size(&self) -> u64 {
+        self.memory().layout().allocated_size(self.index())
     }
 
     /// Map selected region of memory
@@ -41,20 +39,8 @@ impl<'a> View<'a> {
     ///
     /// Better alternative is to [map full range](crate::memory::Memory::map_memory)
     /// and use [`mapped_slice`](Self::mapped_slice)
-    pub fn map_memory<T>(&self) -> Result<&'a mut [T], memory::MemoryError> {
-        self.i_memory.region().map_memory(self.offset(), self.size(), self.allocated_size())
-    }
-
-    /// Take the whole range and return part of it represented by the view
-    ///
-    /// View [size](Self::size) must be multiply of type size
-    pub fn mapped_slice<T>(&self, mapped_memory: &mut [u8]) -> &'a mut [T] {
-        debug_assert!(self.size() % (std::mem::size_of::<T>() as u64) == 0, "View size must be multiply of type size");
-
-        unsafe {
-            std::slice::from_raw_parts_mut(
-                mapped_memory[self.offset() as usize..].as_mut_ptr() as *mut T,
-                (self.size() as usize)/std::mem::size_of::<T>()) }
+    fn map_memory<'a, 'b : 'a, T>(&'b self) -> Result<&'a mut [T], memory::MemoryError> {
+        self.memory().region().map_memory(self.offset(), self.size(), self.allocated_size())
     }
 
     /// Execute `f` over selected buffer
@@ -62,53 +48,42 @@ impl<'a> View<'a> {
     /// It is relatively expensive operation as memory will be mapped and unmapped
     ///
     /// It is better to use [`map_memory`](Self::map_memory) for frequent changes
-    pub fn access<T, F>(&self, f: &mut F) -> Result<(), memory::MemoryError>
+    fn access<T, F>(&self, f: &mut F) -> Result<(), memory::MemoryError>
     where
         F: FnMut(&mut [T]),
     {
-        self.i_memory.access(f, self.i_index)
+        self.memory().access(f, self.index())
     }
 
     /// Unmap memory by view
     ///
     /// Use for [`map_memory`](Self::map_memory)
-    pub fn unmap_memory(&self) {
-        self.i_memory.unmap_memory();
-    }
-
-    pub(crate) fn buffer(&self) -> vk::Buffer {
-        self.i_memory.buffer(self.i_index)
+    fn unmap_memory(&self) {
+        self.memory().unmap_memory();
     }
 }
 
-/// "Pointer-like" struct for the buffer
-#[derive(Debug, Clone, Copy)]
-pub struct ImageView<'a> {
-    i_memory: &'a memory::ImageMemory,
-    i_index: usize
-}
+/// `ImageView` provides interface to the memory region
+/// which represents [image](crate::memory::layout::ImageCfg)
+///
+/// Typically you need to implement only [`memory`](Self::memory) and [`index`](Self::index)
+///
+/// # Safety
+///
+/// Trying access memory region which was allocated as non-image will cause panic
+pub trait ImageView : Copy + Clone {
+    fn memory(&self) -> &memory::Memory;
 
-impl<'a> ImageView<'a> {
-    pub(crate) fn new(storage: &memory::ImageMemory, index: usize) -> ImageView {
-        ImageView {
-            i_memory: storage,
-            i_index: index
-        }
+    fn index(&self) -> usize;
+
+    /// Return offset of the buffer
+    fn offset(&self) -> u64 {
+        self.memory().layout().offset(self.index())
     }
 
-    /// Return offset of the image buffer
-    pub fn offset(&self) -> u64 {
-        self.i_memory.subregions()[self.i_index].offset
-    }
-
-    /// Return size of the image buffer
-    pub fn allocated_size(&self) -> u64 {
-        self.i_memory.subregions()[self.i_index].allocated_size
-    }
-
-    /// Return image extent
-    pub fn extent(&self) -> memory::Extent3D {
-        self.i_memory.info()[self.i_index].extent
+    /// Return size of the buffer with respect to the alignment
+    fn allocated_size(&self) -> u64 {
+        self.memory().layout().allocated_size(self.index())
     }
 
     /// Map selected region of memory
@@ -118,64 +93,113 @@ impl<'a> ImageView<'a> {
     ///
     /// Better alternative is to [map full range](crate::memory::Memory::map_memory)
     /// and use [`mapped_slice`](Self::mapped_slice)
-    pub fn map_memory<T>(&self) -> Result<&mut [T], memory::MemoryError> {
-        self.i_memory.region().map_memory(self.offset(), self.allocated_size(), self.allocated_size())
+    fn map_memory<'a, 'b : 'a, T>(&'b self) -> Result<&'a mut [T], memory::MemoryError> {
+        self.memory().region().map_memory(self.offset(), self.allocated_size(), self.allocated_size())
     }
 
-    /// Take the whole range and return part of it represented by the view
+    /// Execute `f` over selected buffer
     ///
-    /// View [size](Self::allocated_size) must be multiply of type size
-    pub fn mapped_slice<T>(&self, mapped_memory: &mut [u8]) -> &'a mut [T] {
-        debug_assert!(self.allocated_size() % (std::mem::size_of::<T>() as u64) == 0, "View allocated size must be multiply of type size");
-
-        unsafe {
-            std::slice::from_raw_parts_mut(
-                mapped_memory[self.offset() as usize..].as_mut_ptr() as *mut T,
-                (self.allocated_size() as usize)/std::mem::size_of::<T>()) }
-    }
-
-    /// Execute 'f' over selected buffer
-    pub fn access<T, F>(&self, f: &mut F) -> Result<(), memory::MemoryError>
+    /// It is relatively expensive operation as memory will be mapped and unmapped
+    ///
+    /// It is better to use [`map_memory`](Self::map_memory) for frequent changes
+    fn access<T, F>(&self, f: &mut F) -> Result<(), memory::MemoryError>
     where
         F: FnMut(&mut [T]),
     {
-        self.i_memory.access(f, self.i_index)
-    }
-
-    /// Return image aspect
-    ///
-    /// For swapchain images returns `ImageAspect::COLOR`
-    pub fn aspect(&self) -> memory::ImageAspect {
-        self.i_memory.info()[self.i_index].subresource.aspect_mask
+        self.memory().access(f, self.index())
     }
 
     /// Unmap memory by view
     ///
     /// Use for [`map_memory`](Self::map_memory)
-    pub fn unmap_memory(&self) {
-        self.i_memory.unmap_memory();
+    fn unmap_memory(&self) {
+        self.memory().unmap_memory();
     }
 
-    pub(crate) fn subresource_range(&self) -> vk::ImageSubresourceRange {
-        self.i_memory.info()[self.i_index].subresource
+    /// Return image extent
+    fn extent(&self) -> memory::Extent3D {
+        self.memory().layout().extent(self.index())
     }
 
-    pub(crate) fn subresource_layer(&self) -> vk::ImageSubresourceLayers {
-        let subres = self.i_memory.info()[self.i_index].subresource;
+    /// Return image aspect
+    ///
+    /// For swapchain images returns `ImageAspect::COLOR`
+    fn aspect(&self) -> memory::ImageAspect {
+        self.memory().layout().subresource(self.index()).aspect_mask
+    }
 
-        vk::ImageSubresourceLayers {
-            aspect_mask: subres.aspect_mask,
-            mip_level: subres.base_mip_level,
-            base_array_layer: subres.base_array_layer,
-            layer_count: subres.layer_count
+    /// Return image format
+    fn format(&self) -> memory::ImageFormat {
+        self.memory().layout().format(self.index())
+    }
+}
+
+/// "Pointer-like" struct for the buffer
+#[derive(Debug, Clone, Copy)]
+pub struct RefView<'a> {
+    i_memory: &'a memory::Memory,
+    i_index: usize
+}
+
+impl<'a> RefView<'a> {
+    pub fn new(storage: &'_ memory::Memory, index: usize) -> RefView<'_> {
+        RefView {
+            i_memory: storage,
+            i_index: index
         }
     }
+}
 
-    pub(crate) fn image_view(&self) -> vk::ImageView {
-        self.i_memory.image_views()[self.i_index]
+impl<'a> BufferView for RefView<'a> {
+    fn memory(&self) -> &memory::Memory {
+        self.i_memory
     }
 
-    pub(crate) fn image(&self) -> vk::Image {
-        self.i_memory.images()[self.i_index]
+    fn index(&self) -> usize {
+        self.i_index
     }
+}
+
+/// "Pointer-like" struct for the image
+///
+/// Mapping image memory is tight to a image [`layout`](Self::memory::ImageLayout)
+#[derive(Debug, Clone, Copy)]
+pub struct RefImageView<'a> {
+    i_memory: &'a memory::Memory,
+    i_index: usize
+}
+
+impl<'a> RefImageView<'a> {
+    pub fn new(storage: &'_ memory::Memory, index: usize) -> RefImageView<'_> {
+        RefImageView {
+            i_memory: storage,
+            i_index: index
+        }
+    }
+}
+
+impl<'a> ImageView for RefImageView<'a> {
+    fn memory(&self) -> &memory::Memory {
+        self.i_memory
+    }
+
+    fn index(&self) -> usize {
+        self.i_index
+    }
+}
+
+pub(crate) fn get_buffer<T: BufferView>(view: T) -> vk::Buffer {
+    view.memory().layout().buffer(view.index())
+}
+
+pub(crate) fn get_image_view<T: ImageView>(view: T) -> vk::ImageView {
+    view.memory().layout().image_view(view.index())
+}
+
+pub(crate) fn get_image<T: ImageView>(view: T) -> vk::Image {
+    view.memory().layout().image(view.index())
+}
+
+pub(crate) fn get_subresource<T: ImageView>(view: T) -> vk::ImageSubresourceRange {
+    view.memory().layout().subresource(view.index())
 }

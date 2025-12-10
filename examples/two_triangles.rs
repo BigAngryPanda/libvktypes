@@ -141,21 +141,17 @@ fn main() {
     let geom_shader = shader::Shader::from_glsl(&device, &geom_shader_type, GEOM_SHADER, shader::Kind::Geometry)
         .expect("Failed to create geometry shader module");
 
-    let mem_cfg = memory::MemoryCfg {
-        properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
-        filter: &hw::any,
-        buffers: &[
-            &memory::BufferCfg {
-                size: (std::mem::size_of::<f32>()*data.len()) as u64,
-                usage: memory::VERTEX,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 1
-            }
-        ]
-    };
+    let buffers = [
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: (std::mem::size_of::<f32>()*data.len()) as u64,
+            usage: memory::VERTEX,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        })
+    ];
 
-    let vertex_data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+    let vertex_data = memory::Memory::allocate_host_memory(&device, &mut buffers.iter()).expect("Failed to allocate memory");
 
     let mut set_vrtx_buffer = |bytes: &mut [f32]| {
         bytes.clone_from_slice(&data);
@@ -205,19 +201,23 @@ fn main() {
 
     let img_index = swapchain.next_image(u64::MAX, Some(&img_sem), None).expect("Failed to get image index");
 
-    let frames_cfg = memory::FramebufferCfg {
-        render_pass: &render_pass,
-        images: &[images[img_index as usize].view(0)],
+    let image_views = [
+        memory::view::RefImageView::new(&images[img_index as usize], 0)
+    ];
+
+    let mut framebuffer_cfg = memory::FramebufferCfg {
+        images: &mut image_views.iter(),
         extent: capabilities.extent2d(),
+        render_pass: &render_pass,
     };
 
-    let frame = memory::Framebuffer::new(&device, &frames_cfg).expect("Failed to create framebuffers");
+    let framebuffer = memory::Framebuffer::new(&device, &mut framebuffer_cfg).expect("Failed to create framebuffer");
 
-    cmd_buffer.begin_render_pass(&render_pass, &frame);
+    cmd_buffer.begin_render_pass(&render_pass, &framebuffer);
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    cmd_buffer.bind_vertex_buffers(&[vertex_data.vertex_view(0, 0)]);
+    cmd_buffer.bind_vertex_buffers(&[graphics::VertexView::new(memory::RefView::new(&vertex_data, 0))]);
 
     cmd_buffer.draw(3, 1, 0, 0);
 

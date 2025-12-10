@@ -15,13 +15,20 @@ use crate::{
 ///
 /// See docs for [`VertexInputCfg`](graphics::VertexInputCfg)
 #[derive(Debug, Clone)]
-pub struct VertexView<'a> {
-    i_view: memory::View<'a>,
+pub struct VertexView<T : memory::BufferView> {
+    i_view: T,
     i_offset: u32
 }
 
-impl<'a> VertexView<'a> {
-    pub fn from_cfg(view: memory::View<'a>, cfg: graphics::VertexInputCfg) -> VertexView<'a> {
+impl<T : memory::BufferView> VertexView<T> {
+    pub fn new(view: T) -> VertexView<T> {
+        VertexView {
+            i_view: view,
+            i_offset: 0
+        }
+    }
+
+    pub fn from_cfg(view: T, cfg: graphics::VertexInputCfg) -> VertexView<T> {
         VertexView {
             i_view: view,
             i_offset: cfg.offset
@@ -29,7 +36,7 @@ impl<'a> VertexView<'a> {
     }
 
     /// About `offset` read docs for [`VertexInputCfg`](graphics::VertexInputCfg)
-    pub fn with_offset(view: memory::View<'a>, offset: u32) -> VertexView<'a> {
+    pub fn with_offset(view: T, offset: u32) -> VertexView<T> {
         VertexView {
             i_view: view,
             i_offset: offset
@@ -41,6 +48,6 @@ impl<'a> VertexView<'a> {
     }
 
     pub(crate) fn buffer(&self) -> vk::Buffer {
-        self.i_view.buffer()
+        memory::get_buffer(self.i_view)
     }
 }

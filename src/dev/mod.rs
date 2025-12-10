@@ -10,4 +10,4 @@ pub mod core;
 pub use device::*;
 
 #[doc(hidden)]
-pub use self::core::*;
+pub(crate) use self::core::*;

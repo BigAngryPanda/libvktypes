@@ -5,7 +5,11 @@
 use ash::vk;
 
 use crate::on_error_ret;
-use crate::{libvk, surface, offset};
+use crate::{
+    libvk,
+    surface,
+    offset
+};
 
 use std::ffi::CStr;
 use std::fmt;
@@ -186,8 +190,7 @@ pub struct MemoryDescription {
 }
 
 impl MemoryDescription {
-    #[doc(hidden)]
-    fn new(properties: &vk::PhysicalDeviceMemoryProperties, mem_index: usize) -> MemoryDescription {
+    pub(crate) fn new(properties: &vk::PhysicalDeviceMemoryProperties, mem_index: usize) -> MemoryDescription {
         let mem_type: vk::MemoryType = properties.memory_types[mem_index];
         let heap_size: u64 = properties.memory_heaps[mem_type.heap_index as usize].size;
 

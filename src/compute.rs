@@ -14,8 +14,8 @@ use std::error::Error;
 use std::marker::PhantomData;
 
 /// Note: only [memory](crate::memory::Memory) with memory::UsageFlags::STORAGE_BUFFER is allowed
-pub struct PipelineCfg<'a, 'b : 'a> {
-    pub buffers: &'a [memory::View<'b>],
+pub struct PipelineCfg<'a, T : memory::BufferView> {
+    pub buffers: &'a [T],
     pub shader: &'a shader::Shader,
     pub push_constant_size : u32,
 }
@@ -73,7 +73,9 @@ pub struct Pipeline {
 // TODO provide dynamic buffer binding
 // TODO shader module must outlive pipeline?
 impl Pipeline {
-    pub fn new(device: &dev::Device, pipe_type: &PipelineCfg) -> Result<Pipeline, PipelineError> {
+    pub fn new<T : memory::BufferView>(
+        device: &dev::Device, pipe_type: &PipelineCfg<T>
+    ) -> Result<Pipeline, PipelineError> {
         let desc_size:[vk::DescriptorPoolSize; 1] =
         [
             vk::DescriptorPoolSize {
@@ -178,10 +180,10 @@ impl Pipeline {
         let mut offset_counter = 0u64;
         let mut buffer_descs: Vec<vk::DescriptorBufferInfo> = Vec::new();
 
-        for buffer in pipe_type.buffers {
+        for &buffer in pipe_type.buffers {
             buffer_descs.push(
                     vk::DescriptorBufferInfo {
-                    buffer: buffer.buffer(),
+                    buffer: memory::get_buffer(buffer),
                     offset: offset_counter,
                     range: vk::WHOLE_SIZE
                 }

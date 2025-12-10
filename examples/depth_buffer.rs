@@ -77,21 +77,18 @@ fn main() {
 
     let surf_format = capabilities.formats().next().expect("No available formats").format;
 
-    let mem_cfg = memory::MemoryCfg {
-        properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT,
-        filter: &hw::any,
-        buffers: &[
-            &memory::BufferCfg {
-                size: 16*9,
-                usage: memory::VERTEX,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 1
-            }
-        ]
-    };
+    let buffers = [
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: 16*9,
+            usage: memory::VERTEX,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        })
+    ];
 
-    let vertex_data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+    let vertex_data = memory::Memory::allocate_host_coherent_memory(
+        &device, &mut buffers.iter()).expect("Failed to allocate memory");
 
     let mut set_vrtx_buffer = |bytes: &mut [f32]| {
         bytes.clone_from_slice(&[
@@ -109,25 +106,22 @@ fn main() {
 
     vertex_data.access(&mut set_vrtx_buffer, 0).expect("Failed to fill the buffer");
 
-    let depth_buffer_cfg = memory::ImageCfg {
-        queue_families: &[queue.index()],
-        simultaneous_access: false,
-        format: memory::ImageFormat::D32_SFLOAT,
-        extent: capabilities.extent3d(1),
-        usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-        layout: memory::ImageLayout::UNDEFINED,
-        aspect: memory::ImageAspect::DEPTH,
-        tiling: memory::Tiling::OPTIMAL,
-        count: 1
-    };
+    let depth_buffer_cfg = [
+        memory::LayoutElementCfg::Image(memory::ImageCfg {
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            format: memory::ImageFormat::D32_SFLOAT,
+            extent: capabilities.extent3d(1),
+            usage: memory::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+            layout: memory::ImageLayout::UNDEFINED,
+            aspect: memory::ImageAspect::DEPTH,
+            tiling: memory::Tiling::OPTIMAL,
+            count: 1
+        })
+    ];
 
-    let alloc_info = memory::ImagesAllocationInfo {
-        properties: hw::MemoryProperty::DEVICE_LOCAL,
-        filter: &hw::any,
-        image_cfgs: &[depth_buffer_cfg]
-    };
-
-    let depth_buffer = memory::ImageMemory::allocate(&device, &alloc_info).expect("Failed to allocate depth buffer");
+    let depth_buffer = memory::Memory::allocate_device_memory(
+        &device, &mut depth_buffer_cfg.iter()).expect("Failed to allocate depth buffer");
 
     let render_pass = graphics::RenderPass::with_depth_buffers(&device, surf_format, memory::ImageFormat::D32_SFLOAT, 1)
         .expect("Failed to create render pass");
@@ -171,19 +165,24 @@ fn main() {
 
     let img_index = swapchain.next_image(u64::MAX, Some(&img_sem), None).expect("Failed to get image index");
 
-    let framebuffer_cfg = memory::FramebufferCfg {
-        images: &[images[img_index as usize].view(0), depth_buffer.view(0)],
+    let image_views = [
+        memory::view::RefImageView::new(&images[img_index as usize], 0),
+        memory::view::RefImageView::new(&depth_buffer, 0)
+    ];
+
+    let mut framebuffer_cfg = memory::FramebufferCfg {
+        images: &mut image_views.iter(),
         extent: capabilities.extent2d(),
         render_pass: &render_pass,
     };
 
-    let framebuffer = memory::Framebuffer::new(&device, &framebuffer_cfg).expect("Failed to create framebuffer");
+    let framebuffer = memory::Framebuffer::new(&device, &mut framebuffer_cfg).expect("Failed to create framebuffer");
 
     cmd_buffer.begin_render_pass(&render_pass, &framebuffer);
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    cmd_buffer.bind_vertex_buffers(&[vertex_data.vertex_view(0, 0)]);
+    cmd_buffer.bind_vertex_buffers(&[graphics::VertexView::new(memory::RefView::new(&vertex_data, 0))]);
 
     cmd_buffer.draw(9, 1, 0, 0);
 

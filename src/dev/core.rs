@@ -3,15 +3,14 @@ use crate::{libvk, alloc};
 use std::marker::PhantomData;
 use std::fmt;
 
-#[doc(hidden)]
-pub struct Core {
+pub(crate) struct Core {
     i_device: ash::Device,
     i_callback: Option<alloc::Callback>,
     _marker: PhantomData<*const libvk::Instance>
 }
 
 impl Core {
-    pub fn new(device: ash::Device, callback: Option<alloc::Callback>) -> Core {
+    pub(crate) fn new(device: ash::Device, callback: Option<alloc::Callback>) -> Core {
         Core {
             i_device: device,
             i_callback: callback,
@@ -19,11 +18,11 @@ impl Core {
         }
     }
 
-    pub fn device(&self) -> &ash::Device {
+    pub(crate) fn device(&self) -> &ash::Device {
         &self.i_device
     }
 
-    pub fn allocator(&self) -> Option<&alloc::Callback> {
+    pub(crate) fn allocator(&self) -> Option<&alloc::Callback> {
         self.i_callback.as_ref()
     }
 }

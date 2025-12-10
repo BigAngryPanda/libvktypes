@@ -43,7 +43,7 @@ impl<'a> DebugLayer<'a> {
         )
     }
 
-    pub fn as_raw(&self) -> &vk::DebugUtilsMessengerCreateInfoEXT {
+    pub fn as_raw(&'_ self) -> &vk::DebugUtilsMessengerCreateInfoEXT<'_> {
         &self.0
     }
 }

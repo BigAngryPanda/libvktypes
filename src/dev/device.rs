@@ -104,18 +104,15 @@ impl Device {
         queue::Queue::new(self, cfg)
     }
 
-    #[doc(hidden)]
-    pub fn core(&self) -> &Arc<dev::Core> {
+    pub(crate) fn core(&self) -> &Arc<dev::Core> {
         &self.i_core
     }
 
-    #[doc(hidden)]
-    pub fn device(&self) -> &ash::Device {
+    pub(crate) fn device(&self) -> &ash::Device {
         self.i_core.device()
     }
 
-    #[doc(hidden)]
-    pub fn allocator(&self) -> Option<&alloc::Callback> {
+    pub(crate) fn allocator(&self) -> Option<&alloc::Callback> {
         self.i_core.allocator()
     }
 

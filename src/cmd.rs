@@ -130,8 +130,7 @@ impl Pool {
         )
     }
 
-    #[doc(hidden)]
-    fn device(&self) -> &ash::Device {
+    pub(crate) fn device(&self) -> &ash::Device {
         self.0.i_core.device()
     }
 }
@@ -211,7 +210,7 @@ impl Buffer {
     /// If `dst` has less capacity then copy only first (`dst.size()`)[crate::memory::View::size()] bytes
     ///
     /// If `src` has less capacity then rest of the `dst` memory will be left intact
-    pub fn copy_memory(&self, src: &memory::View, dst: &memory::View) {
+    pub fn copy_memory<T: memory::BufferView>(&self, src: T, dst: T) {
         let dev = self.i_pool.device();
 
         let copy_info = vk::BufferCopy {
@@ -221,7 +220,12 @@ impl Buffer {
         };
 
         unsafe {
-            dev.cmd_copy_buffer(self.i_buffer, src.buffer(), dst.buffer(), &[copy_info]);
+            dev.cmd_copy_buffer(
+                self.i_buffer,
+                memory::get_buffer(src),
+                memory::get_buffer(dst),
+                &[copy_info]
+            );
         }
     }
 
@@ -231,14 +235,18 @@ impl Buffer {
     ///
     /// `dst` image must has layout [`TRANSFER_DST_OPTIMAL`](memory::ImageLayout::TRANSFER_DST_OPTIMAL)
     /// or [`GENERAL`](memory::ImageLayout::GENERAL) on creation or via [barrier](Buffer::set_image_barrier)
-    pub fn copy_buffer_to_image(&self, src: memory::View, dst: memory::ImageView) {
+    pub fn copy_buffer_to_image<T: memory::BufferView, U: memory::ImageView>(
+        &self,
+        src: T,
+        dst: U
+    ) {
         let dev = self.i_pool.device();
 
         let copy_info = vk::BufferImageCopy {
             buffer_offset: 0,
             buffer_row_length: 0,
             buffer_image_height: 0,
-            image_subresource: dst.subresource_layer(),
+            image_subresource: dst.memory().layout().subresource_layer(dst.index()),
             image_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
             image_extent: dst.extent(),
         };
@@ -250,8 +258,8 @@ impl Buffer {
         unsafe {
             dev.cmd_copy_buffer_to_image(
                 self.i_buffer,
-                src.buffer(),
-                dst.image(),
+                memory::get_buffer(src),
+                memory::get_image(dst),
                 transfer_layout,
                 &[copy_info]);
         }
@@ -278,8 +286,9 @@ impl Buffer {
     /// `dst` is what should be after barrier (e.g. read)
     ///
     /// For more types see [AccessType]
-    pub fn set_barrier(&mut self,
-        mem: &memory::View,
+    pub fn set_barrier<T: memory::BufferView>(
+        &mut self,
+        mem: T,
         src_type: AccessType,
         dst_type: AccessType,
         src_stage: PipelineStage,
@@ -296,7 +305,7 @@ impl Buffer {
             dst_access_mask: dst_type,
             src_queue_family_index: src_queue_family,
             dst_queue_family_index: dst_queue_family,
-            buffer: mem.buffer(),
+            buffer: memory::get_buffer(mem),
             offset: mem.offset(),
             size: mem.size(),
             _marker: PhantomData,
@@ -325,8 +334,9 @@ impl Buffer {
     /// For more types see [AccessType]
     ///
     /// If you don't care for specific queue family use [`cmd::QUEUE_FAMILY_IGNORED`](QUEUE_FAMILY_IGNORED)
-    pub fn set_image_barrier(&self,
-        view: memory::ImageView,
+    pub fn set_image_barrier<T: memory::ImageView>(
+        &self,
+        view: T,
         src_type: AccessType,
         dst_type: AccessType,
         src_layout: memory::ImageLayout,
@@ -345,8 +355,8 @@ impl Buffer {
             new_layout: dst_layout,
             src_queue_family_index: src_queue_family,
             dst_queue_family_index: dst_queue_family,
-            image: view.image(),
-            subresource_range: view.subresource_range(),
+            image: memory::get_image(view),
+            subresource_range: memory::get_subresource(view),
             _marker: PhantomData,
         };
 
@@ -420,7 +430,7 @@ impl Buffer {
     /// Update vertex bindings
     ///
     /// Updating starts from **first** binding
-    pub fn bind_vertex_buffers(&self, buffers: &[graphics::VertexView]) {
+    pub fn bind_vertex_buffers<T: memory::BufferView>(&self, buffers: &[graphics::VertexView<T>]) {
         let dev = self.i_pool.device();
 
         let vertex_buffers: Vec<vk::Buffer> = buffers.iter().map(|x| x.buffer()).collect();
@@ -466,11 +476,11 @@ impl Buffer {
     }
 
     /// Bind index buffer
-    pub fn bind_index_buffer(&self, view: memory::View, offset: u64, it: memory::IndexBufferType) {
+    pub fn bind_index_buffer<T: memory::BufferView>(&self, view: T, offset: u64, it: memory::IndexBufferType) {
         let dev = self.i_pool.device();
 
         unsafe {
-            dev.cmd_bind_index_buffer(self.i_buffer, view.buffer(), offset, it)
+            dev.cmd_bind_index_buffer(self.i_buffer, memory::get_buffer(view), offset, it)
         }
     }
 
@@ -547,9 +557,8 @@ pub struct ExecutableBuffer {
     i_pool: Pool,
 }
 
-#[doc(hidden)]
 impl ExecutableBuffer {
-    pub fn buffer(&self) -> &vk::CommandBuffer {
+    pub(crate) fn buffer(&self) -> &vk::CommandBuffer {
         &self.i_buffer
     }
 }

@@ -26,17 +26,17 @@ use std::marker::PhantomData;
 ///
 /// For `offset` and `range` look in the link above
 #[derive(Debug, Clone, Copy)]
-pub struct BufferBinding<'a> {
-    pub view: memory::View<'a>,
+pub struct BufferBinding<T: memory::BufferView> {
+    pub view: T,
     pub offset: u64,
     pub range: u64,
 }
 
-impl<'a> BufferBinding<'a> {
+impl<T: memory::BufferView> BufferBinding<T> {
     /// Use this method to create BufferBinding with default params
     ///
     /// It is suitable if you don't have dynamic buffers
-    pub fn new(view: memory::View) -> BufferBinding {
+    pub fn new(view: T) -> BufferBinding<T> {
         BufferBinding {
             view,
             offset: 0,
@@ -45,7 +45,7 @@ impl<'a> BufferBinding<'a> {
     }
 
     /// Suitable for dynamic buffers
-    pub fn with_params(view: memory::View, offset: u64, range: u64) -> BufferBinding {
+    pub fn with_params(view: T, offset: u64, range: u64) -> BufferBinding<T> {
         BufferBinding {
             view,
             offset,
@@ -54,13 +54,35 @@ impl<'a> BufferBinding<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum ShaderBinding<'a, 'b> {
-    Buffers(&'a [BufferBinding<'b>]),
-    Samplers(&'a [(&'b graphics::Sampler, memory::ImageView<'b>, memory::ImageLayout)]),
+/// Information for binding textures
+#[derive(Debug)]
+pub struct SamplerBinding<U: memory::ImageView> {
+    pub sampler: graphics::Sampler,
+    pub view: U,
+    pub layout: memory::ImageLayout,
 }
 
-impl<'a, 'b> ShaderBinding<'a, 'b> {
+impl<U: memory::ImageView> SamplerBinding<U> {
+    pub fn new(
+        sampler: graphics::Sampler,
+        view: U,
+        layout: memory::ImageLayout
+    ) -> SamplerBinding<U> {
+        SamplerBinding {
+            sampler,
+            view,
+            layout,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ShaderBinding<'a, T: memory::BufferView, U: memory::ImageView> {
+    Buffers(&'a [BufferBinding<T>]),
+    Samplers(&'a [SamplerBinding<U>]),
+}
+
+impl<'a, T: memory::BufferView, U: memory::ImageView> ShaderBinding<'a, T, U> {
     pub fn len(&self) -> u32 {
         match self {
             Self::Buffers(val)  => val.len() as u32,
@@ -97,10 +119,10 @@ pub type DescriptorType = vk::DescriptorType;
 
 /// Information about what Descriptor to write
 #[derive(Debug, Clone, Copy)]
-pub struct UpdateInfo<'a, 'b> {
-    /// Which set in layout(set=X, ...) to update
+pub struct UpdateInfo<'a, T: memory::BufferView, U: memory::ImageView> {
+    /// Which set X in layout(set=X, ...) to update
     pub set: usize,
-    /// Which binding in layout(set=X, binding=Y) to update
+    /// Which binding Y in layout(set=X, binding=Y) to update
     pub binding: u32,
     /// Starting array element in binding `layout(...) ... data[N]`
     ///
@@ -111,7 +133,7 @@ pub struct UpdateInfo<'a, 'b> {
     /// Note: resource must match corresponding [`DescriptorType`](BindingCfg::resource_type)
     ///
     /// Read more in [spec](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDescriptorType.html)
-    pub resources: ShaderBinding<'a, 'b>,
+    pub resources: ShaderBinding<'a, T, U>,
 }
 
 /// Specify what binding to allocate
@@ -266,7 +288,7 @@ impl PipelineDescriptor {
     /// must be within supported range
     ///
     /// About supported ranges see [`PipelineDescriptor::allocate`]
-    pub fn update(&self, update_info: &[UpdateInfo]) {
+    pub fn update<T: memory::BufferView, U: memory::ImageView>(&self, update_info: &[UpdateInfo<T, U>]) {
         let mut buffer_info: Vec<Vec<vk::DescriptorBufferInfo>> = Vec::new();
         let mut image_info: Vec<Vec<vk::DescriptorImageInfo>> = Vec::new();
 
@@ -413,7 +435,9 @@ fn allocate_descriptor_sets(
     }
 }
 
-fn create_image_info(bindings: ShaderBinding) -> Vec<vk::DescriptorImageInfo> {
+fn create_image_info<T: memory::BufferView, U: memory::ImageView>(
+    bindings: ShaderBinding<T, U>
+) -> Vec<vk::DescriptorImageInfo> {
     match bindings {
         ShaderBinding::Buffers(_) => {
             Vec::new()
@@ -424,19 +448,23 @@ fn create_image_info(bindings: ShaderBinding) -> Vec<vk::DescriptorImageInfo> {
     }
 }
 
-fn descriptor_image_info(samplers: &[(&graphics::Sampler, memory::ImageView, memory::ImageLayout)]) -> Vec<vk::DescriptorImageInfo> {
+fn descriptor_image_info<U: memory::ImageView>(
+    samplers: &[SamplerBinding<U>]
+) -> Vec<vk::DescriptorImageInfo> {
     samplers
     .iter()
-    .map(|(sampler, memory, layout)| {
+    .map(|binding| {
         vk::DescriptorImageInfo {
-            sampler: sampler.sampler(),
-            image_view: memory.image_view(),
-            image_layout: *layout,
+            sampler: binding.sampler.sampler(),
+            image_view: memory::get_image_view(binding.view),
+            image_layout: binding.layout,
         }
     }).collect()
 }
 
-fn create_buffer_info(bindings: ShaderBinding) -> Vec<vk::DescriptorBufferInfo> {
+fn create_buffer_info<T: memory::BufferView, U: memory::ImageView>(
+    bindings: ShaderBinding<T, U>
+) -> Vec<vk::DescriptorBufferInfo> {
     match bindings {
         ShaderBinding::Buffers(buffers) => {
             descriptor_buffer_info(&buffers)
@@ -447,12 +475,14 @@ fn create_buffer_info(bindings: ShaderBinding) -> Vec<vk::DescriptorBufferInfo> 
     }
 }
 
-fn descriptor_buffer_info(buffers: &[BufferBinding]) -> Vec<vk::DescriptorBufferInfo>  {
+fn descriptor_buffer_info<T: memory::BufferView>(
+    buffers: &[BufferBinding<T>]
+) -> Vec<vk::DescriptorBufferInfo>  {
     buffers
     .iter()
     .map(|binding| {
         vk::DescriptorBufferInfo {
-            buffer: binding.view.buffer(),
+            buffer: memory::get_buffer(binding.view),
             offset: binding.offset,
             range: binding.range,
         }

@@ -109,13 +109,17 @@ fn main() {
 
     let img_index = swapchain.next_image(u64::MAX, Some(&img_sem), None).expect("Failed to get image index");
 
-    let frames_cfg = memory::FramebufferCfg {
+    let image_views = [
+        memory::view::RefImageView::new(&images[img_index as usize], 0)
+    ];
+
+    let mut frames_cfg = memory::FramebufferCfg {
         render_pass: &render_pass,
-        images: &[images[img_index as usize].view(0)],
+        images: &mut image_views.iter(),
         extent: capabilities.extent2d(),
     };
 
-    let frame = memory::Framebuffer::new(&device, &frames_cfg).expect("Failed to create framebuffers");
+    let frame = memory::Framebuffer::new(&device, &mut frames_cfg).expect("Failed to create framebuffers");
 
     cmd_buffer.begin_render_pass(&render_pass, &frame);
 

@@ -242,42 +242,43 @@ fn main() {
         shader::Shader::from_glsl(&device, &frag_shader_type, FRAG_SHADER, shader::Kind::Fragment)
         .expect("Failed to create fragment shader module");
 
-    let mem_cfg = memory::MemoryCfg {
-        properties: hw::MemoryProperty::HOST_VISIBLE,
-        filter: &hw::any,
-        buffers: &[
-            &memory::BufferCfg {
-                size: std::mem::size_of_val(VERTEX_DATA) as u64,
-                usage: memory::VERTEX,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 1
-            },
-            &memory::BufferCfg {
-                size: std::mem::size_of_val(INDICES) as u64,
-                usage: memory::INDEX,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 1
-            },
-            &memory::BufferCfg {
-                size: std::mem::size_of_val(&transformations) as u64,
-                usage: memory::UNIFORM,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 1
-            },
-            &memory::BufferCfg {
-                size: std::mem::size_of_val(COLOR_DATA) as u64,
-                usage: memory::UNIFORM,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 1
-            }
-        ]
-    };
+    let buffers = [
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: std::mem::size_of_val(VERTEX_DATA) as u64,
+            usage: memory::VERTEX,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        }),
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: std::mem::size_of_val(INDICES) as u64,
+            usage: memory::INDEX,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        }),
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: std::mem::size_of_val(&transformations) as u64,
+            usage: memory::UNIFORM,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        }),
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: std::mem::size_of_val(COLOR_DATA) as u64,
+            usage: memory::UNIFORM,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        })
+    ];
 
-    let data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+    let data = memory::Memory::allocate_host_memory(&device, &mut buffers.iter()).expect("Failed to allocate memory");
+
+    let vertices = memory::RefView::new(&data, 0);
+    let indices  = memory::RefView::new(&data, 1);
+    let transforms = memory::RefView::new(&data, 2);
+    let color_data = memory::RefView::new(&data, 3);
 
     data.access(&mut |bytes: &mut [f32]| {
         bytes.clone_from_slice(VERTEX_DATA);
@@ -317,18 +318,19 @@ fn main() {
             set: 0,
             binding: 0,
             starting_array_element: 0,
-            resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(data.view(2))]),
+            resources: graphics::ShaderBinding::Buffers::<_, memory::view::RefImageView>(
+                &[graphics::BufferBinding::new(transforms)]),
         },
         graphics::UpdateInfo {
             set: 0,
             binding: 1,
             starting_array_element: 0,
-            resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(data.view(3))]),
+            resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(color_data)]),
         },
     ]);
 
     let depth_buffer_cfg = [
-        memory::ImageCfg {
+        memory::LayoutElementCfg::Image(memory::ImageCfg {
             queue_families: &[queue.index()],
             simultaneous_access: false,
             format: memory::ImageFormat::D32_SFLOAT,
@@ -338,16 +340,11 @@ fn main() {
             aspect: memory::ImageAspect::DEPTH,
             tiling: memory::Tiling::OPTIMAL,
             count: 1
-        }
+        })
     ];
 
-    let alloc_info = memory::ImagesAllocationInfo {
-        properties: hw::MemoryProperty::DEVICE_LOCAL,
-        filter: &hw::any,
-        image_cfgs: &depth_buffer_cfg
-    };
-
-    let depth_buffer = memory::ImageMemory::allocate(&device, &alloc_info).expect("Failed to allocate depth buffer");
+    let depth_buffer = memory::Memory::allocate_device_memory(&device, &mut depth_buffer_cfg.iter())
+        .expect("Failed to allocate depth buffer");
 
     let render_pass = graphics::RenderPass::with_depth_buffers(&device, surf_format, memory::ImageFormat::D32_SFLOAT, 1)
         .expect("Failed to create render pass");
@@ -360,6 +357,8 @@ fn main() {
             offset: 0,
         }
     ];
+
+    let vertex_view = graphics::VertexView::new(vertices);
 
     let pipe_type = graphics::PipelineCfg {
         vertex_shader: &vert_shader,
@@ -391,15 +390,19 @@ fn main() {
 
     let images = swapchain.images().expect("Failed to get images");
 
+    let depth_view = memory::view::RefImageView::new(&depth_buffer, 0);
+
     let frames: Vec<memory::Framebuffer> = images.iter()
         .map(|image| {
-            let frames_cfg = memory::FramebufferCfg {
+            let images = [memory::view::RefImageView::new(&image, 0), depth_view];
+
+            let mut frames_cfg = memory::FramebufferCfg {
                 render_pass: &render_pass,
-                images: &[image.view(0), depth_buffer.view(0)],
+                images: &mut images.iter(),
                 extent: capabilities.extent2d(),
             };
 
-            memory::Framebuffer::new(&device, &frames_cfg).expect("Failed to create framebuffers")
+            memory::Framebuffer::new(&device, &mut frames_cfg).expect("Failed to create framebuffers")
         })
         .collect();
 
@@ -409,8 +412,8 @@ fn main() {
 
             cmd_buffer.begin_render_pass(&render_pass, &frame);
             cmd_buffer.bind_graphics_pipeline(&pipeline);
-            cmd_buffer.bind_vertex_buffers(&[data.vertex_view(0, vertex_cfg[0].offset)]);
-            cmd_buffer.bind_index_buffer(data.view(1), 0, memory::IndexBufferType::UINT32);
+            cmd_buffer.bind_vertex_buffers(&[vertex_view.clone()]);
+            cmd_buffer.bind_index_buffer(indices, 0, memory::IndexBufferType::UINT32);
             cmd_buffer.bind_resources(&pipeline, &descs, &[]);
             cmd_buffer.draw_indexed(INDICES.len() as u32, 1, 0, 0, 0);
             cmd_buffer.end_render_pass();

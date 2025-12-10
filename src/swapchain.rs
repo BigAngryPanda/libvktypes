@@ -172,8 +172,8 @@ impl Swapchain {
         Ok(image_index)
     }
 
-    pub fn images(&self) -> Result<Vec<memory::ImageMemory>, SwapchainError> {
-        let mut result: Vec<memory::ImageMemory> = Vec::new();
+    pub fn images(&self) -> Result<Vec<memory::Memory>, SwapchainError> {
+        let mut result: Vec<memory::Memory> = Vec::new();
 
         let swapchain_images = on_error_ret!(
             unsafe {
@@ -185,7 +185,7 @@ impl Swapchain {
 
         for image in swapchain_images {
             let memory = on_error_ret!(
-                memory::ImageMemory::preallocated(&self.i_core, image, self.i_format, self.i_extent),
+                memory::Memory::preallocated(&self.i_core, image, self.i_format, self.i_extent),
                 SwapchainError::Images);
 
             result.push(memory);

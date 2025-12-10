@@ -5,30 +5,19 @@
 //! Detailed info you can found [here](https://stackoverflow.com/questions/39557141/what-is-the-difference-between-framebuffer-and-image-in-vulkan)
 use ash::vk;
 
-use crate::on_error_ret;
-use crate::{dev, graphics, memory};
+use crate::{
+    dev,
+    graphics,
+    memory,
+    on_error_ret
+};
 
-use std::error::Error;
 use std::sync::Arc;
-use std::fmt;
 use std::ptr;
 use std::marker::PhantomData;
 
-#[derive(Debug)]
-pub enum FramebufferError {
-    Framebuffer,
-}
-
-impl fmt::Display for FramebufferError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "vkCreateFramebuffer call failed")
-    }
-}
-
-impl Error for FramebufferError {}
-
-pub struct FramebufferCfg<'a, 'b : 'a> {
-    pub images: &'a [memory::ImageView<'b>],
+pub struct FramebufferCfg<'a, 'b : 'a, T : memory::ImageView> {
+    pub images: &'a mut dyn Iterator<Item = &'b T>,
     pub extent: memory::Extent2D,
     pub render_pass: &'a graphics::RenderPass
 }
@@ -41,8 +30,13 @@ pub struct Framebuffer {
 
 impl Framebuffer {
     /// Create new framebuffer from existing [image](crate::memory::ImageMemory)
-    pub fn new(device: &dev::Device, cfg: &FramebufferCfg) -> Result<Framebuffer, FramebufferError> {
-        let img_views: Vec<vk::ImageView> = cfg.images.iter().map(|img| img.image_view()).collect();
+    pub fn new<T : memory::ImageView>(
+        device: &dev::Device,
+        cfg: &mut FramebufferCfg<T>
+    ) -> Result<Framebuffer, memory::MemoryError> {
+        let img_views: Vec<vk::ImageView> = cfg.images.map(
+            |&img| memory::get_image_view(img)
+        ).collect();
 
         let create_info = vk::FramebufferCreateInfo {
             s_type: vk::StructureType::FRAMEBUFFER_CREATE_INFO,
@@ -59,7 +53,7 @@ impl Framebuffer {
 
         let framebuffer = on_error_ret!(
             unsafe { device.device().create_framebuffer(&create_info, device.allocator()) },
-            FramebufferError::Framebuffer
+            memory::MemoryError::Framebuffer
         );
 
         Ok(Framebuffer {
@@ -69,13 +63,11 @@ impl Framebuffer {
         })
     }
 
-    #[doc(hidden)]
-    pub fn framebuffer(&self) -> vk::Framebuffer {
+    pub(crate) fn framebuffer(&self) -> vk::Framebuffer {
         self.i_frame
     }
 
-    #[doc(hidden)]
-    pub fn extent(&self) -> vk::Extent2D {
+    pub(crate) fn extent(&self) -> vk::Extent2D {
         self.i_extent
     }
 }

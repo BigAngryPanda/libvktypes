@@ -1,20 +1,31 @@
 //! Represents memory for various purposes such as vertex buffer, uniform buffer etc.
 use ash::vk;
 
-use crate::on_error;
-use crate::{dev, hw, memory, graphics};
+use crate::{
+    dev,
+    hw,
+    memory,
+    on_option_ret,
+    on_error_ret
+};
+
+use memory::layout::{
+    LayoutElementCfg,
+    Extent3D,
+    ImageAspect
+};
+
+use memory::{
+    ImageElement,
+    LayoutElement,
+    Layout,
+    BufferUsageFlags
+};
 
 use std::sync::Arc;
 use std::ptr;
 use std::fmt;
 use std::marker::PhantomData;
-
-/// Purpose of buffer
-///
-#[doc = "Ash documentation about possible values <https://docs.rs/ash/latest/ash/vk/struct.BufferUsageFlags.html>"]
-///
-#[doc = "Vulkan documentation <https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkBufferUsageFlagBits.html>"]
-pub type BufferUsageFlags = vk::BufferUsageFlags;
 
 // Workaround
 pub const FULL_TRANSFER: BufferUsageFlags = BufferUsageFlags::from_raw(
@@ -51,43 +62,25 @@ pub const INDEX_REASSEMBLY_UINT16: u16 = 0xffff;
 /// Special value for starting reassembly
 pub const INDEX_REASSEMBLY_UINT8: u8 = 0xff;
 
-/// Configuration struct for memory region
-#[derive(Debug, Clone)]
-pub struct BufferCfg<'a> {
-    // Size in bytes
-    pub size: u64,
-    pub usage: BufferUsageFlags,
-    pub queue_families: &'a [u32],
-    /// Will two or more queues have access to the buffer at the same time
-    pub simultaneous_access: bool,
-    /// How many of this buffer you want to allocate one by one
-    ///
-    /// For example
-    /// `[<buffer cfg, count == 1>, <buffer cfg, count == 1>]` is equivalent to `[<buffer cfg, count == 2>]`
-    ///
-    /// Hence each buffer will be handled separately (e.g. for alignment)
-    pub count: usize
-}
-
-/// Configuration struct for memory
-#[derive(Clone)]
-pub struct MemoryCfg<'a, 'b : 'a> {
-    pub properties: hw::MemoryProperty,
-    pub filter: &'a dyn Fn(&hw::MemoryDescription) -> bool,
-    pub buffers: &'a [&'a BufferCfg<'b>]
-}
-
 /// Aligned region of memory
 ///
 /// # Allocation
+///
 /// Memory allocated in single chunk
-/// in order which is provided by [`MemoryCfg`]
+/// in order which is provided by [`LayoutElementCfg`](crate::memory::layout::LayoutElementCfg)
 /// so no rearranges will be performed
 ///
 /// Size of allocated memory is greater or equal to the requested size
 /// (sum of all [`BufferCfg::size`] in [`MemoryCfg::buffers`]) due to alignment requirements
 ///
+/// Functions like `allocate_host_memory` use default memory filter
+///
+/// Default filter checks only memory_bits from buffers and memory type flags
+///
+/// See also (`allocate`)[Self::allocate]
+///
 /// # Alignment
+///
 /// Each buffer from [`MemoryCfg::buffers`] will be separately aligned at least
 /// for [`hw::memory_alignment`](crate::hw::HWDevice::memory_alignment)
 ///
@@ -97,150 +90,186 @@ pub struct MemoryCfg<'a, 'b : 'a> {
 /// Hint: you may print struct (as [`Memory`] implements [`fmt::Display`]) to see memory layout
 ///
 /// # Memory View
+///
 /// Whole memory chunk is split into regions (buffers) which are defined by [`MemoryCfg::buffers`]
 ///
 /// To help with managing regions [`Memory View`](crate::memory::View) struct was provided
 pub struct Memory {
     i_core: Arc<dev::Core>,
-    i_buffers: Vec<vk::Buffer>,
-    i_subregions: Vec<memory::Subregion>,
-    i_sizes: Vec<u64>,
+    i_layout: memory::layout::Layout,
     i_memory: memory::Region
 }
 
 impl Memory {
-    pub fn allocate(
+    /// Allocate memory with (`hw::MemoryProperty::HOST_VISIBLE`)[hw::MemoryProperty::HOST_VISIBLE] flag
+    pub fn allocate_host_memory(
         device: &dev::Device,
-        cfg: &MemoryCfg
+        cfgs: &mut dyn Iterator<Item = &LayoutElementCfg>
     ) -> Result<Memory, memory::MemoryError> {
-        let mut buffers: Vec<vk::Buffer> = Vec::new();
-        let mut memory_requirements: Vec<vk::MemoryRequirements> = Vec::new();
-        let mut sizes: Vec<u64> = Vec::new();
+        Self::with_property(device, cfgs, hw::MemoryProperty::HOST_VISIBLE)
+    }
 
-        for cfg in cfg.buffers {
-            let sharing_mode = if cfg.simultaneous_access {
-                vk::SharingMode::CONCURRENT
+    /// Allocate memory with (`
+    /// hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT | hw::MemoryProperty::HOST_CACHED`)
+    /// [hw::MemoryProperty::HOST_VISIBLE] flag
+    pub fn allocate_host_coherent_memory(
+        device: &dev::Device,
+        cfgs: &mut dyn Iterator<Item = &LayoutElementCfg>
+    ) -> Result<Memory, memory::MemoryError> {
+        Self::with_property(
+            device,
+            cfgs,
+            hw::MemoryProperty::HOST_VISIBLE  |
+            hw::MemoryProperty::HOST_COHERENT |
+            hw::MemoryProperty::HOST_CACHED)
+    }
+
+    /// Allocate memory with (`hw::MemoryProperty::DEVICE_LOCAL`)[hw::MemoryProperty::DEVICE_LOCAL] flag
+    pub fn allocate_device_memory(
+        device: &dev::Device,
+        cfgs: &mut dyn Iterator<Item = &LayoutElementCfg>
+    ) -> Result<Memory, memory::MemoryError> {
+        Self::with_property(device, cfgs, hw::MemoryProperty::DEVICE_LOCAL)
+    }
+
+    /// Allocate memory with selected [`property`](hw::MemoryProperty)
+    pub fn with_property(
+        device: &dev::Device,
+        cfgs: &mut dyn Iterator<Item = &LayoutElementCfg>,
+        property: hw::MemoryProperty,
+    ) -> Result<Memory, memory::MemoryError> {
+        let memory_filter = |m: &hw::MemoryDescription, bitmask: u32| -> bool {
+            (bitmask >> m.index() & 1) == 1 &&
+            m.is_compatible(property)
+        };
+
+        Self::allocate(device, cfgs, &memory_filter)
+    }
+
+    /// Allocate memory with custom memory filter
+    ///
+    /// Purpose of the filter is to give you full freedom in what type of memory to allocate
+    ///
+    /// Filter must take memory description and bitmask for all requested buffers
+    ///
+    /// Bitmask is calculated as bitwise and between all single buffer's bitmasks
+    ///
+    /// More in [Vulkan spec](https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#VkMemoryRequirements)
+    ///
+    /// *Note:* it is your responsibility for memory validation (and checking bitmask in particular)
+    ///
+    /// Generic filter may look like
+    ///
+    /// ```rust
+    /// use libvktypes::hw;
+    ///
+    /// fn filter(m: &hw::MemoryDescription, mask: u32) -> bool {
+    ///     // take notice how we choose memory type
+    ///     let property = hw::MemoryProperty::DEVICE_LOCAL;
+    ///
+    ///     (mask >> m.index() & 1) == 1 && m.is_compatible(property)
+    /// }
+    /// ```
+    pub fn allocate<'a : 'b, 'b>(
+        device: &'a dev::Device,
+        cfgs: &mut dyn Iterator<Item = &LayoutElementCfg>,
+        filter: &dyn Fn(&hw::MemoryDescription, u32) -> bool,
+    ) -> Result<Memory, memory::MemoryError> {
+        let mut layout = memory::layout::Layout::new(device, cfgs)?;
+
+        let memory_filter = |m: &'a hw::MemoryDescription| -> Option<&'b hw::MemoryDescription> {
+            if filter(m, layout.memory_bits) {
+                Some(m)
             } else {
-                vk::SharingMode::EXCLUSIVE
-            };
-
-            let buffer_info = vk::BufferCreateInfo {
-                s_type: vk::StructureType::BUFFER_CREATE_INFO,
-                p_next: ptr::null(),
-                flags: vk::BufferCreateFlags::empty(),
-                size: cfg.size,
-                usage: cfg.usage,
-                sharing_mode: sharing_mode,
-                queue_family_index_count: cfg.queue_families.len() as u32,
-                p_queue_family_indices: cfg.queue_families.as_ptr(),
-                _marker: PhantomData,
-            };
-
-            for _ in 0..cfg.count {
-                sizes.push(cfg.size);
-
-                let buffer = on_error!(unsafe {
-                    device.device().create_buffer(&buffer_info, device.allocator())
-                }, {
-                    free_buffers(device.core(), &buffers);
-                    return Err(memory::MemoryError::Buffer);
-                });
-
-                buffers.push(buffer);
-
-                let requirements: vk::MemoryRequirements = unsafe {
-                    device
-                    .device()
-                    .get_buffer_memory_requirements(buffer)
-                };
-
-                memory_requirements.push(requirements);
-            }
-        }
-
-        let regions_info = memory::Region::calculate_subregions(device, &memory_requirements);
-
-        let mem_desc = match memory::Region::find_memory(device.hw(), regions_info.memory_bits, cfg.properties, cfg.filter) {
-            Some(val) => val,
-            None => {
-                free_buffers(device.core(), &buffers);
-                return Err(memory::MemoryError::NoSuitableMemory)
-            },
-        };
-
-        let dev_memory = match memory::Region::allocate(device, regions_info.total_size, mem_desc) {
-            Ok(val) => val,
-            Err(err) => {
-                free_buffers(device.core(), &buffers);
-                return Err(err);
+                None
             }
         };
 
-        // Without coherency we have to manually synchronize memory between host and device
-        if !cfg
-            .properties
-            .contains(vk::MemoryPropertyFlags::HOST_COHERENT)
-            && cfg
-            .properties
-            .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
-        {
-            let mem_range = vk::MappedMemoryRange {
-                s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
-                p_next: ptr::null(),
-                memory: dev_memory.memory(),
-                offset: 0,
-                size: vk::WHOLE_SIZE,
-                _marker: PhantomData,
-            };
+        let mem_desc = on_option_ret!(device.hw().memory().find_map(memory_filter), memory::MemoryError::NoSuitableMemory);
 
-            unsafe {
-                on_error!(
-                    device.device().map_memory(
-                        dev_memory.memory(),
-                        0,
-                        dev_memory.size(),
-                        vk::MemoryMapFlags::empty()
-                    ),
-                    {
-                        free_buffers(device.core(), &buffers);
-                        return Err(memory::MemoryError::MapAccess);
-                    }
-                );
+        let dev_memory = memory::Region::allocate(device, layout.alloc_size, mem_desc)?;
 
-                on_error!(
-                    device
-                        .device()
-                        .flush_mapped_memory_ranges(&[mem_range]),
-                    {
-                        free_buffers(device.core(), &buffers);
-                        return Err(memory::MemoryError::Flush);
-                    }
-                );
-
-                device.device().unmap_memory(dev_memory.memory());
-            }
-        }
-
-        for i in 0..buffers.len() {
-            on_error!(
-                unsafe {
-                    device
-                    .device()
-                    .bind_buffer_memory(buffers[i], dev_memory.memory(), regions_info.subregions[i].offset)
-                },
-                {
-                    free_buffers(device.core(), &buffers);
-                    return Err(memory::MemoryError::Bind);
-                }
-            )
-        }
+        layout.bind(dev_memory.memory())?;
 
         Ok(Memory {
             i_core: device.core().clone(),
-            i_memory: dev_memory,
-            i_buffers: buffers,
-            i_sizes: sizes,
-            i_subregions: regions_info.subregions
+            i_layout: layout,
+            i_memory: dev_memory
+        })
+    }
+
+    pub(crate) fn preallocated(
+        core: &Arc<dev::Core>,
+        image: vk::Image,
+        img_format: vk::Format,
+        extent: memory::Extent2D
+    ) -> Result<Memory, memory::MemoryError> {
+        let iw_info = vk::ImageViewCreateInfo {
+            s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
+            p_next: ptr::null(),
+            flags: vk::ImageViewCreateFlags::empty(),
+            view_type: vk::ImageViewType::TYPE_2D,
+            format: img_format,
+            components: vk::ComponentMapping {
+                r: vk::ComponentSwizzle::R,
+                g: vk::ComponentSwizzle::G,
+                b: vk::ComponentSwizzle::B,
+                a: vk::ComponentSwizzle::A,
+            },
+            subresource_range: vk::ImageSubresourceRange {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            image: image,
+            _marker: PhantomData,
+        };
+
+        let img_view = on_error_ret!(
+            unsafe { core.device().create_image_view(&iw_info, core.allocator()) },
+            memory::MemoryError::ImageView);
+
+        let requirements = unsafe {
+            core
+            .device()
+            .get_image_memory_requirements(image)
+        };
+
+        let image_element = vec![LayoutElement::Image(ImageElement {
+            vk_image: image,
+            vk_image_view: img_view,
+            extent: Extent3D {
+                width: extent.width,
+                height: extent.height,
+                depth: 1,
+            },
+            subresource: vk::ImageSubresourceRange {
+                aspect_mask: ImageAspect::COLOR,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            format: img_format,
+            offset: 0,
+            allocated_size: requirements.size,
+            is_swapchain_image: true
+        })];
+
+        let layout = Layout {
+            core: core.clone(),
+            elements: image_element,
+            requested_size: requirements.size,
+            alloc_size: requirements.size,
+            memory_bits: requirements.memory_type_bits
+        };
+
+        Ok(Memory {
+            i_core: core.clone(),
+            i_layout: layout,
+            i_memory: memory::Region::empty(core, requirements.size)
         })
     }
 
@@ -255,39 +284,15 @@ impl Memory {
     {
         self.i_memory.access(
             f,
-            self.i_subregions[index].offset,
-            self.i_sizes[index],
-            self.i_subregions[index].allocated_size
+            self.i_layout.offset(index),
+            self.i_layout.size(index),
+            self.i_layout.allocated_size(index)
         )
     }
 
     /// Return whole size of the memory in bytes
     pub fn size(&self) -> u64 {
         self.i_memory.size()
-    }
-
-    /// Create and return views to the buffers
-    pub fn views(&self) -> Vec<memory::View> {
-        self
-        .i_buffers
-        .iter()
-        .enumerate()
-        .map(|(i, _)| memory::View::new(self, i))
-        .collect()
-    }
-
-    /// Create [`VertexView`](crate::graphics::VertexView) for the buffer
-    ///
-    /// About `offset` read docs for [`VertexInputCfg`](graphics::VertexInputCfg)
-    ///
-    /// Buffer must contain `VERTEX_BUFFER` flag
-    pub fn vertex_view(&self, index: usize, offset: u32) -> graphics::VertexView {
-        graphics::VertexView::with_offset(self.view(index), offset)
-    }
-
-    /// Create and return view to the selected buffer
-    pub fn view(&self, index: usize) -> memory::View {
-        memory::View::new(self, index)
     }
 
     /// Map the whole memory into buffer
@@ -321,16 +326,8 @@ impl Memory {
         self.i_memory.sync(0, self.i_memory.size())
     }
 
-    pub(crate) fn buffer(&self, index: usize) -> vk::Buffer {
-        self.i_buffers[index]
-    }
-
-    pub(crate) fn subregions(&self) -> &Vec<memory::Subregion> {
-        &self.i_subregions
-    }
-
-    pub(crate) fn sizes(&self) -> &Vec<u64> {
-        &self.i_sizes
+    pub(crate) fn layout(&self) -> &memory::Layout {
+        &self.i_layout
     }
 
     pub(crate) fn region(&self) -> &memory::Region {
@@ -338,27 +335,12 @@ impl Memory {
     }
 }
 
-impl Drop for Memory {
-    fn drop(&mut self) {
-        free_buffers(&self.i_core, &self.i_buffers);
-    }
-}
-
-fn free_buffers(device: &dev::Core, buffers: &Vec<vk::Buffer>) {
-    for &buffer in buffers {
-        unsafe {
-            device.device().destroy_buffer(buffer, device.allocator());
-        }
-    }
-}
-
 impl fmt::Debug for Memory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Memory")
         .field("i_core", &self.i_core)
-        .field("i_device_memory", &self.i_memory)
-        .field("i_buffers", &self.i_buffers)
-        .field("i_pos", &self.i_subregions)
+        .field("i_layout", &self.i_layout)
+        .field("i_memory", &self.i_memory)
         .finish()
     }
 }
@@ -367,24 +349,12 @@ impl fmt::Display for Memory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,
             "core: {:?}\n\
+            layout: {:?}\n\
             memory: {:?}\n",
             self.i_core,
+            self.i_layout,
             self.i_memory,
-        ).expect("Failed to print Memory");
-
-        for i in 0..self.i_subregions.len() {
-            write!(f,
-                "---------------\n\
-                index: {:?}\n\
-                buffer: {:?}\n\
-                subregion: {:?}\n\
-                size: {:?}\n",
-                i,
-                self.i_buffers[i],
-                self.i_subregions[i],
-                self.i_sizes[i]
-            ).expect("Failed to print Memory");
-        }
+        )?;
 
         Ok(())
     }

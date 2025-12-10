@@ -2,7 +2,7 @@ mod test_context;
 
 #[cfg(test)]
 mod graphics_pipeline {
-    use libvktypes::{graphics, memory, hw};
+    use libvktypes::{graphics, memory};
 
     use super::test_context;
 
@@ -72,21 +72,18 @@ mod graphics_pipeline {
 
         let queue = test_context::get_graphics_queue();
 
-        let mem_cfg = memory::MemoryCfg {
-            properties: hw::MemoryProperty::HOST_VISIBLE,
-            filter: &hw::any,
-            buffers: &[
-                &memory::BufferCfg {
-                    size: 16,
-                    usage: memory::UNIFORM,
-                    queue_families: &[queue.index()],
-                    simultaneous_access: false,
-                    count: 1
-                }
-            ]
-        };
+        let buffers = [
+            memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+                size: 16,
+                usage: memory::UNIFORM,
+                queue_families: &[queue.index()],
+                simultaneous_access: false,
+                count: 1
+            })
+        ];
 
-        let uniform_data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+        let uniform_data = memory::Memory::allocate_host_memory(
+            &device, &mut buffers.iter()).expect("Failed to allocate memory");
 
         let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
             graphics::BindingCfg {
@@ -96,11 +93,13 @@ mod graphics_pipeline {
             }
         ]]).expect("Failed to allocate resources");
 
-        descs.update(&[graphics::UpdateInfo {
+        let view = memory::view::RefView::new(&uniform_data, 0);
+
+        descs.update::<_, memory::view::RefImageView<'_>>(&[graphics::UpdateInfo {
             set: 0,
             binding: 0,
             starting_array_element: 0,
-            resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(uniform_data.view(0))]),
+            resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(view)]),
         }])
     }
 

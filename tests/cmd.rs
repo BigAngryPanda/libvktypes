@@ -16,13 +16,17 @@ mod cmd {
         graphics
     };
 
+    use libvktypes::memory::BufferView;
+
     use super::test_context;
 
-    #[test]
     fn cmd_pool_allocation() {
         let lib_type = libvk::InstanceType {
             debug_layer: Some(layers::DebugLayer::default()),
             extensions: &[extensions::DEBUG_EXT_NAME],
+            version_major: 1,
+            version_minor: 3,
+            version_patch: 0,
             ..libvk::InstanceType::default()
         };
 
@@ -53,11 +57,13 @@ mod cmd {
         assert!(cmd::Pool::new(&device, &cmd_pool_type).is_ok());
     }
 
-    #[test]
     fn cmd_buffer_exec() {
         let lib_type = libvk::InstanceType {
             debug_layer: Some(layers::DebugLayer::default()),
             extensions: &[extensions::DEBUG_EXT_NAME],
+            version_major: 1,
+            version_minor: 3,
+            version_patch: 0,
             ..libvk::InstanceType::default()
         };
 
@@ -89,13 +95,13 @@ mod cmd {
             count: 1
         };
 
-        let mem_cfg = memory::MemoryCfg {
-            properties: hw::MemoryProperty::HOST_VISIBLE | hw::MemoryProperty::HOST_COHERENT | hw::MemoryProperty::HOST_CACHED,
-            filter: &hw::any,
-            buffers: &[&compute_memory]
-        };
+        let mem_cfg = memory::layout::LayoutElementCfg::Buffer(compute_memory);
 
-        let buff = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+        let storage = memory::Memory::allocate_host_coherent_memory(
+            &device, &mut [mem_cfg].iter())
+        .expect("Failed to allocate memory");
+
+        let compute_buffer = memory::RefView::new(&storage, 0);
 
         let shader_type = shader::ShaderCfg {
             path: "tests/compiled_shaders/fill_memory.spv",
@@ -105,7 +111,7 @@ mod cmd {
         let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");
 
         let pipe_type = compute::PipelineCfg {
-            buffers: &[buff.view(0)],
+            buffers: &[compute_buffer],
             shader: &shader,
             push_constant_size: 0,
         };
@@ -144,57 +150,54 @@ mod cmd {
         assert!(queue.exec(&exec_info).is_ok())
     }
 
-    #[test]
     fn write_graphics_cmds() {
-        let render_pass = test_context::get_render_pass();
-
         let pipeline = test_context::get_graphics_pipeline();
 
         let framebuffers = &test_context::get_framebuffers();
 
         let pool = test_context::get_cmd_pool();
 
+        let render_pass = test_context::get_render_pass();
+
         let cmd_buffer = pool.allocate().expect("Failed to allocate cmd buffer");
 
-        cmd_buffer.begin_render_pass(render_pass, &framebuffers[0]);
+        cmd_buffer.begin_render_pass(&render_pass, &framebuffers[0]);
 
-        cmd_buffer.bind_graphics_pipeline(pipeline);
+        cmd_buffer.bind_graphics_pipeline(&pipeline);
 
         cmd_buffer.end_render_pass();
 
         assert!(cmd_buffer.commit().is_ok());
     }
 
-    #[test]
     fn copy_to_image_buffer() {
-        let device = test_context::get_graphics_device();
-
         let queue = test_context::get_graphics_queue();
+
+        let device = test_context::get_graphics_device();
 
         let format = memory::ImageFormat::R8G8B8A8_SRGB;
 
-        let staging_cfg = memory::BufferCfg {
-            size: 800*600*formats::block_size(format),
-            usage: memory::BufferUsageFlags::TRANSFER_SRC,
-            queue_families: &[queue.index()],
-            simultaneous_access: false,
-            count: 1
-        };
+        let compute_memory = memory::layout::LayoutElementCfg::Buffer(
+            memory::BufferCfg {
+                size: 800*600*formats::block_size(format),
+                usage: memory::BufferUsageFlags::TRANSFER_SRC,
+                queue_families: &[queue.index()],
+                simultaneous_access: false,
+                count: 1
+            }
+        );
 
-        let mem_cfg = memory::MemoryCfg {
-            properties: hw::MemoryProperty::HOST_VISIBLE,
-            filter: &hw::any,
-            buffers: &[&staging_cfg]
-        };
+        let staging_storage = memory::Memory::allocate_host_memory(
+            &device, &mut [compute_memory].iter())
+        .expect("Failed to allocate memory");
 
-        let staging_buffer = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+        let staging_buffer = memory::RefView::new(&staging_storage, 0);
 
-        staging_buffer.view(0).access(&mut |bytes: &mut [u8]| {
+        staging_buffer.access(&mut |bytes: &mut [u8]| {
             bytes.fill(0x42);
         }).expect("Failed to write to the staging buffer");
 
-
-        let image_cfg = [
+        let image_cfg = memory::layout::LayoutElementCfg::Image(
             memory::ImageCfg {
                 queue_families: &[queue.index()],
                 simultaneous_access: false,
@@ -206,22 +209,20 @@ mod cmd {
                 tiling: memory::Tiling::OPTIMAL,
                 count: 1
             }
-        ];
+        );
 
-        let alloc_info = memory::ImagesAllocationInfo {
-            properties: hw::MemoryProperty::DEVICE_LOCAL,
-            filter: &hw::any,
-            image_cfgs: &image_cfg
-        };
+        let image_storage =
+            memory::Memory::allocate_device_memory(&device, &mut [image_cfg].iter())
+            .expect("Failed to allocate image memory");
 
-        let image = memory::ImageMemory::allocate(device, &alloc_info).expect("Failed to allocate image memory");
+        let dst_image = memory::RefImageView::new(&image_storage, 0);
 
         let pool = test_context::get_cmd_pool();
 
         let cmd_buffer = pool.allocate().expect("Failed to allocate cmd buffer");
 
         cmd_buffer.set_image_barrier(
-            image.view(0),
+            dst_image,
             cmd::AccessType::empty(),
             cmd::AccessType::TRANSFER_WRITE,
             memory::ImageLayout::UNDEFINED,
@@ -231,14 +232,14 @@ mod cmd {
             cmd::QUEUE_FAMILY_IGNORED,
             cmd::QUEUE_FAMILY_IGNORED);
 
-        cmd_buffer.copy_buffer_to_image(staging_buffer.view(0), image.view(0));
+        cmd_buffer.copy_buffer_to_image(staging_buffer, dst_image);
 
         cmd_buffer.set_image_barrier(
-            image.view(0),
+            dst_image,
             cmd::AccessType::TRANSFER_WRITE,
             cmd::AccessType::MEMORY_READ,
             memory::ImageLayout::TRANSFER_DST_OPTIMAL,
-            memory::ImageLayout::READ_ONLY_OPTIMAL,
+            memory::ImageLayout::GENERAL,
             graphics::PipelineStage::TRANSFER,
             graphics::PipelineStage::BOTTOM_OF_PIPE,
             cmd::QUEUE_FAMILY_IGNORED,
@@ -263,4 +264,13 @@ mod cmd {
 
         assert!(queue.exec(&exec_info).is_ok())
     }
+
+    #[test]
+    fn tests() {
+        cmd_pool_allocation();
+        cmd_buffer_exec();
+        copy_to_image_buffer();
+        write_graphics_cmds();
+    }
 }
+

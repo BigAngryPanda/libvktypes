@@ -6,7 +6,6 @@ mod surface {
 
     use super::test_context;
 
-    #[test]
     fn init_surface() {
         let window_ref = test_context::get_window();
 
@@ -15,7 +14,6 @@ mod surface {
         assert!(surface::Surface::new(&lib, window_ref).is_ok());
     }
 
-    #[test]
     fn get_capabilities() {
         let window = test_context::get_window();
 
@@ -34,5 +32,11 @@ mod surface {
             .expect("Failed to find suitable hardware device");
 
         assert!(surface::Capabilities::get(&hw_dev, &surface).is_ok());
+    }
+
+    #[test]
+    fn tests() {
+        get_capabilities();
+        init_surface();
     }
 }

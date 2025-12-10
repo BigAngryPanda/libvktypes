@@ -15,7 +15,12 @@ use libvktypes::{
     queue
 };
 
-use std::mem::{size_of, size_of_val};
+use libvktypes::memory::BufferView;
+
+use std::mem::{
+    size_of,
+    size_of_val
+};
 
 const VERT_SHADER: &str = "
 #version 460
@@ -150,72 +155,66 @@ fn main() {
         shader::Shader::from_glsl(&device, &frag_shader_type, FRAG_SHADER, shader::Kind::Fragment)
         .expect("Failed to create fragment shader module");
 
-    let mem_cfg = memory::MemoryCfg {
-        properties: hw::MemoryProperty::HOST_VISIBLE,
-        filter: &hw::any,
-        buffers: &[
-            &memory::BufferCfg {
-                size: size_of_val(VERTEX_DATA) as u64,
-                usage: memory::VERTEX,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 1
-            },
-            &memory::BufferCfg {
-                size: size_of_val(INDICES) as u64,
-                usage: memory::INDEX,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 1
-            },
-            &memory::BufferCfg {
-                size: (TEXTURE_SIZE*size_of::<u32>()) as u64,
-                usage: memory::BufferUsageFlags::TRANSFER_SRC,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 1
-            }
-        ]
-    };
+    let buffers = [
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: size_of_val(VERTEX_DATA) as u64,
+            usage: memory::VERTEX,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        }),
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: size_of_val(INDICES) as u64,
+            usage: memory::INDEX,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        }),
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: (TEXTURE_SIZE*size_of::<u32>()) as u64,
+            usage: memory::BufferUsageFlags::TRANSFER_SRC,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        })
+    ];
 
-    let host_data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+    let data = memory::Memory::allocate_host_memory(&device, &mut buffers.iter()).expect("Failed to allocate memory");
 
-    host_data.view(0).access(&mut |bytes: &mut [f32]| {
+    let vertices = memory::RefView::new(&data, 0);
+    let indices  = memory::RefView::new(&data, 1);
+    let texture_stage = memory::RefView::new(&data, 2);
+
+    vertices.access(&mut |bytes: &mut [f32]| {
         bytes.clone_from_slice(VERTEX_DATA);
     }).expect("Failed to fill vertex buffer");
 
-    host_data.view(1).access(&mut |bytes: &mut [u32]| {
+    indices.access(&mut |bytes: &mut [u32]| {
         bytes.clone_from_slice(INDICES);
     }).expect("Failed to fill index buffer");
 
-    let image_stage_buffer = host_data.view(2);
-
-    image_stage_buffer.access(&mut |bytes: &mut [u32]| {
+    texture_stage.access(&mut |bytes: &mut [u32]| {
         bytes.clone_from_slice(&TEXTURE_DATA);
     }).expect("Failed to fill index buffer");
 
-    let texture_mem_cfg = memory::ImagesAllocationInfo {
-        properties: hw::MemoryProperty::DEVICE_LOCAL,
-        filter: &hw::any,
-        image_cfgs: &[
-            memory::ImageCfg {
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                format: memory::ImageFormat::R8G8B8A8_SRGB,
-                extent: memory::Extent3D {width: TEXTURE_WIDTH, height: TEXTURE_HEIGHT, depth: 1},
-                usage:  memory::ImageUsageFlags::SAMPLED | memory::ImageUsageFlags::TRANSFER_DST,
-                layout: memory::ImageLayout::UNDEFINED,
-                aspect: memory::ImageAspect::COLOR,
-                tiling: memory::Tiling::OPTIMAL,
-                count: 1
-            }
-        ]
-    };
+    let image_cfgs = [
+        memory::LayoutElementCfg::Image(memory::ImageCfg {
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            format: memory::ImageFormat::R8G8B8A8_SRGB,
+            extent: memory::Extent3D {width: TEXTURE_WIDTH, height: TEXTURE_HEIGHT, depth: 1},
+            usage:  memory::ImageUsageFlags::SAMPLED | memory::ImageUsageFlags::TRANSFER_DST,
+            layout: memory::ImageLayout::UNDEFINED,
+            aspect: memory::ImageAspect::COLOR,
+            tiling: memory::Tiling::OPTIMAL,
+            count: 1
+        })
+    ];
 
     let texture_memory =
-        memory::ImageMemory::allocate(&device, &texture_mem_cfg).expect("Failed to allocate texture memory");
+        memory::Memory::allocate_host_memory(&device, &mut image_cfgs.iter()).expect("Failed to allocate texture memory");
 
-    let texture = texture_memory.view(0);
+    let texture = memory::view::RefImageView::new(&texture_memory, 0);
 
     copy_cmd_queue.set_image_barrier(
         texture,
@@ -229,7 +228,7 @@ fn main() {
         cmd::QUEUE_FAMILY_IGNORED
     );
 
-    copy_cmd_queue.copy_buffer_to_image(image_stage_buffer, texture);
+    copy_cmd_queue.copy_buffer_to_image(texture_stage, texture);
 
     copy_cmd_queue.set_image_barrier(
         texture,
@@ -317,7 +316,9 @@ fn main() {
         set: 0,
         binding: 0,
         starting_array_element: 0,
-        resources: graphics::ShaderBinding::Samplers(&[(&sampler, texture, memory::ImageLayout::SHADER_READ_ONLY_OPTIMAL)]),
+        resources: graphics::ShaderBinding::Samplers::<memory::RefView, _>(&[
+            graphics::SamplerBinding::new(sampler, texture, memory::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+        ]),
     }]);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
@@ -329,21 +330,27 @@ fn main() {
 
     let img_index = swapchain.next_image(u64::MAX, Some(&img_sem), None).expect("Failed to get image index");
 
-    let frames_cfg = memory::FramebufferCfg {
+    let image_views = [
+        memory::view::RefImageView::new(&images[img_index as usize], 0)
+    ];
+
+    let mut frames_cfg = memory::FramebufferCfg {
         render_pass: &render_pass,
-        images: &[images[img_index as usize].view(0)],
+        images: &mut image_views.iter(),
         extent: capabilities.extent2d(),
     };
 
-    let frame = memory::Framebuffer::new(&device, &frames_cfg).expect("Failed to create framebuffers");
+    let frame = memory::Framebuffer::new(&device, &mut frames_cfg).expect("Failed to create framebuffers");
 
     cmd_buffer.begin_render_pass(&render_pass, &frame);
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    cmd_buffer.bind_vertex_buffers(&[host_data.vertex_view(0, 0), host_data.vertex_view(0, size_of::<[f32; 4]>() as u32)]);
+    cmd_buffer.bind_vertex_buffers(&[
+        graphics::VertexView::new(vertices),
+        graphics::VertexView::with_offset(vertices, size_of::<[f32; 4]>() as u32)]);
 
-    cmd_buffer.bind_index_buffer(host_data.view(1), 0, memory::IndexBufferType::UINT32);
+    cmd_buffer.bind_index_buffer(indices, 0, memory::IndexBufferType::UINT32);
 
     cmd_buffer.bind_resources(&pipeline, &descs, &[]);
 

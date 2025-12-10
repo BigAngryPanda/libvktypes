@@ -115,28 +115,28 @@ fn main() {
         shader::Shader::from_glsl(&device, &frag_shader_type, FRAG_SHADER, shader::Kind::Fragment)
         .expect("Failed to create fragment shader module");
 
-    let mem_cfg = memory::MemoryCfg {
-        properties: hw::MemoryProperty::HOST_VISIBLE,
-        filter: &hw::any,
-        buffers: &[
-            &memory::BufferCfg {
-                size: 4*std::mem::size_of::<[f32; 4]>() as u64,
-                usage: memory::VERTEX,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 1
-            },
-            &memory::BufferCfg {
-                size: std::mem::size_of::<[f32; 4]>() as u64,
-                usage: memory::UNIFORM,
-                queue_families: &[queue.index()],
-                simultaneous_access: false,
-                count: 2
-            }
-        ]
-    };
+    let buffers = [
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: 4*std::mem::size_of::<[f32; 4]>() as u64,
+            usage: memory::VERTEX,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 1
+        }),
+        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            size: std::mem::size_of::<[f32; 4]>() as u64,
+            usage: memory::UNIFORM,
+            queue_families: &[queue.index()],
+            simultaneous_access: false,
+            count: 2
+        })
+    ];
 
-    let data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+    let data = memory::Memory::allocate_host_memory(&device, &mut buffers.iter()).expect("Failed to allocate memory");
+
+    let vertices = memory::RefView::new(&data, 0);
+    let first_color  = memory::RefView::new(&data, 1);
+    let second_color  = memory::RefView::new(&data, 1);
 
     let mut set_vrtx_buffer = |bytes: &mut [f32]| {
         bytes.clone_from_slice(&[
@@ -205,7 +205,10 @@ fn main() {
         set: 0,
         binding: 0,
         starting_array_element: 0,
-        resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(data.view(1)), graphics::BufferBinding::new(data.view(2))]),
+        resources: graphics::ShaderBinding::Buffers::<_, memory::RefImageView>(&[
+            graphics::BufferBinding::new(first_color),
+            graphics::BufferBinding::new(second_color)
+        ]),
     }]);
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
@@ -223,19 +226,23 @@ fn main() {
 
     let img_index = swapchain.next_image(u64::MAX, Some(&img_sem), None).expect("Failed to get image index");
 
-    let frames_cfg = memory::FramebufferCfg {
+    let image_views = [
+        memory::view::RefImageView::new(&images[img_index as usize], 0)
+    ];
+
+    let mut frames_cfg = memory::FramebufferCfg {
         render_pass: &render_pass,
-        images: &[images[img_index as usize].view(0)],
+        images: &mut image_views.iter(),
         extent: capabilities.extent2d(),
     };
 
-    let frame = memory::Framebuffer::new(&device, &frames_cfg).expect("Failed to create framebuffers");
+    let frame = memory::Framebuffer::new(&device, &mut frames_cfg).expect("Failed to create framebuffers");
 
     cmd_buffer.begin_render_pass(&render_pass, &frame);
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    cmd_buffer.bind_vertex_buffers(&[data.vertex_view(0, 0)]);
+    cmd_buffer.bind_vertex_buffers(&[graphics::VertexView::new(vertices)]);
 
     cmd_buffer.bind_resources(&pipeline, &descs, &[]);
 

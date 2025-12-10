@@ -13,6 +13,8 @@ pub const SURFACE_EXT_NAME: *const i8 = ash::vk::KHR_SURFACE_NAME.as_ptr();
 
 pub const XLIB_SURFACE_EXT_NAME: *const i8 = ash::vk::KHR_XLIB_SURFACE_NAME.as_ptr();
 
+pub const SYNCHRONIZATION2_EXT_NAME: *const i8 = ash::vk::KHR_SYNCHRONIZATION2_NAME.as_ptr();
+
 /// Device ext
 pub const SWAPCHAIN_EXT_NAME: *const i8 = ash::vk::KHR_SWAPCHAIN_NAME.as_ptr();
 

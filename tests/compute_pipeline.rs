@@ -47,13 +47,11 @@ mod compute_pipeline {
             count: 1
         };
 
-        let mem_cfg = memory::MemoryCfg {
-            properties: hw::MemoryProperty::HOST_VISIBLE,
-            filter: &hw::any,
-            buffers: &[&compute_memory]
-        };
+        let mem_cfg = [memory::LayoutElementCfg::Buffer(compute_memory)];
 
-        let data = memory::Memory::allocate(&device, &mem_cfg).expect("Failed to allocate memory");
+        let data = memory::Memory::allocate_host_memory(&device, &mut mem_cfg.iter()).expect("Failed to allocate memory");
+
+        let view = memory::view::RefView::new(&data, 0);
 
         let shader_type = shader::ShaderCfg {
             path: "tests/compiled_shaders/fill_memory.spv",
@@ -63,7 +61,7 @@ mod compute_pipeline {
         let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");
 
         let pipe_type = compute::PipelineCfg {
-            buffers: &[data.view(0)],
+            buffers: &[view],
             shader: &shader,
             push_constant_size: 0,
         };
