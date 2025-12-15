@@ -454,13 +454,11 @@ impl Pipeline {
         )
     }
 
-    #[doc(hidden)]
-    pub fn pipeline(&self) -> vk::Pipeline {
+    pub(crate) fn pipeline(&self) -> vk::Pipeline {
         self.i_pipeline
     }
 
-    #[doc(hidden)]
-    pub fn layout(&self) -> vk::PipelineLayout {
+    pub(crate) fn layout(&self) -> vk::PipelineLayout {
         self.i_layout
     }
 }

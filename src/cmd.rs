@@ -29,10 +29,6 @@ pub type PipelineStage = vk::PipelineStageFlags;
 /// Special value for barriers to ignore specific queue family
 pub const QUEUE_FAMILY_IGNORED: u32 = vk::QUEUE_FAMILY_IGNORED;
 
-pub struct PoolCfg {
-    pub queue_index: u32,
-}
-
 #[derive(Debug)]
 pub enum PoolError {
     /// Failed to
@@ -71,12 +67,12 @@ impl Drop for CorePool {
 pub struct Pool(Arc<CorePool>);
 
 impl Pool {
-    pub fn new(dev: &dev::Device, pool_type: &PoolCfg) -> Result<Pool, PoolError> {
+    pub fn new(dev: &dev::Device, queue_index: u32) -> Result<Pool, PoolError> {
         let pool_info = vk::CommandPoolCreateInfo {
             s_type: vk::StructureType::COMMAND_POOL_CREATE_INFO,
             p_next: ptr::null(),
             flags:  vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER,
-            queue_family_index: pool_type.queue_index,
+            queue_family_index: queue_index,
             _marker: PhantomData,
         };
 

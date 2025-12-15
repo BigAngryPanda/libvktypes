@@ -50,11 +50,7 @@ mod cmd {
 
         let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-        let cmd_pool_type = cmd::PoolCfg {
-            queue_index: 0,
-        };
-
-        assert!(cmd::Pool::new(&device, &cmd_pool_type).is_ok());
+        assert!(cmd::Pool::new(&device, 0).is_ok());
     }
 
     fn cmd_buffer_exec() {
@@ -87,18 +83,18 @@ mod cmd {
 
         let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-        let compute_memory = memory::BufferCfg {
-            size: 4,
-            usage: memory::STORAGE,
-            queue_families: &[queue.index()],
-            simultaneous_access: false,
-            count: 1
-        };
-
-        let mem_cfg = memory::layout::LayoutElementCfg::Buffer(compute_memory);
+        let mem_cfg = [
+            memory::layout::LayoutElementCfg::Buffer {
+                size: 4,
+                usage: memory::STORAGE,
+                queue_families: &[queue.index()],
+                simultaneous_access: false,
+                count: 1
+            }
+        ];
 
         let storage = memory::Memory::allocate_host_coherent_memory(
-            &device, &mut [mem_cfg].iter())
+            &device, &mut mem_cfg.iter())
         .expect("Failed to allocate memory");
 
         let compute_buffer = memory::RefView::new(&storage, 0);
@@ -118,11 +114,7 @@ mod cmd {
 
         let pipeline = compute::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
-        let cmd_pool_type = cmd::PoolCfg {
-            queue_index: queue.index(),
-        };
-
-        let cmd_pool = cmd::Pool::new(&device, &cmd_pool_type).expect("Failed to allocate command pool");
+        let cmd_pool = cmd::Pool::new(&device, queue.index()).expect("Failed to allocate command pool");
 
         let cmd_buffer = cmd_pool.allocate().expect("Failed to allocate command buffer");
 
@@ -177,18 +169,17 @@ mod cmd {
 
         let format = memory::ImageFormat::R8G8B8A8_SRGB;
 
-        let compute_memory = memory::layout::LayoutElementCfg::Buffer(
-            memory::BufferCfg {
+        let compute_memory = [memory::layout::LayoutElementCfg::Buffer {
                 size: 800*600*formats::block_size(format),
                 usage: memory::BufferUsageFlags::TRANSFER_SRC,
                 queue_families: &[queue.index()],
                 simultaneous_access: false,
                 count: 1
             }
-        );
+        ];
 
         let staging_storage = memory::Memory::allocate_host_memory(
-            &device, &mut [compute_memory].iter())
+            &device, &mut compute_memory.iter())
         .expect("Failed to allocate memory");
 
         let staging_buffer = memory::RefView::new(&staging_storage, 0);
@@ -197,8 +188,7 @@ mod cmd {
             bytes.fill(0x42);
         }).expect("Failed to write to the staging buffer");
 
-        let image_cfg = memory::layout::LayoutElementCfg::Image(
-            memory::ImageCfg {
+        let image_cfg = [memory::layout::LayoutElementCfg::Image {
                 queue_families: &[queue.index()],
                 simultaneous_access: false,
                 format: format,
@@ -209,10 +199,10 @@ mod cmd {
                 tiling: memory::Tiling::OPTIMAL,
                 count: 1
             }
-        );
+        ];
 
         let image_storage =
-            memory::Memory::allocate_device_memory(&device, &mut [image_cfg].iter())
+            memory::Memory::allocate_device_memory(&device, &mut image_cfg.iter())
             .expect("Failed to allocate image memory");
 
         let dst_image = memory::RefImageView::new(&image_storage, 0);

@@ -167,75 +167,62 @@ pub struct ImageCfg<'a> {
     pub count: usize
 }
 
+#[derive(Debug)]
 pub enum LayoutElementCfg<'a> {
-    Buffer(BufferCfg<'a>),
-    Image(ImageCfg<'a>)
-}
-
-#[derive(Debug, Default)]
-pub(crate) struct BufferElement {
-    vk_buffer: vk::Buffer,
-    offset: u64,
-    allocated_size: u64,
-    size: u64,
-}
-
-impl fmt::Display for BufferElement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,
-            "vk_buffer: {:?}\n\
-            offset: {:?}\n\
-            allocated_size: {:?}\n\
-            size: {:?}\n",
-            self.vk_buffer,
-            self.offset,
-            self.allocated_size,
-            self.size
-        )?;
-
-        Ok(())
-    }
-}
-
-#[derive(Debug, Default)]
-pub(crate) struct ImageElement {
-    pub vk_image: vk::Image,
-    pub vk_image_view: vk::ImageView,
-    pub extent: Extent3D,
-    pub subresource: vk::ImageSubresourceRange,
-    pub format: ImageFormat,
-    pub offset: u64,
-    pub allocated_size: u64,
-    pub is_swapchain_image : bool
-}
-
-impl fmt::Display for ImageElement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,
-            "vk_image: {:?}\n\
-            vk_image_view: {:?}\n\
-            extent: {:?}\n\
-            subresource: {:?}\n\
-            format: {:?}\n\
-            offset: {:?}\n\
-            allocated_size: {:?}\n",
-            self.vk_image,
-            self.vk_image_view,
-            self.extent,
-            self.subresource,
-            self.format,
-            self.offset,
-            self.allocated_size
-        )?;
-
-        Ok(())
+    Buffer {
+        // Size in bytes
+        size: u64,
+        usage: BufferUsageFlags,
+        queue_families: &'a [u32],
+        /// Will two or more queues have access to the buffer at the same time
+        simultaneous_access: bool,
+        /// How many of this buffer you want to allocate one by one
+        ///
+        /// For example
+        /// `[<buffer cfg, count == 1>, <buffer cfg, count == 1>]` is equivalent to `[<buffer cfg, count == 2>]`
+        ///
+        /// Hence each buffer will be handled separately (e.g. for alignment)
+        count: usize
+    },
+    Image {
+        /// What queue families will have access to the image
+        queue_families: &'a [u32],
+        /// Will two or more queues have access to the buffer at the same time
+        simultaneous_access: bool,
+        format: ImageFormat,
+        extent: Extent3D,
+        usage: ImageUsageFlags,
+        layout: memory::ImageLayout,
+        aspect: ImageAspect,
+        tiling: Tiling,
+        /// How many of the image buffers we want to allocate one by one
+        ///
+        /// For example
+        /// `[<image cfg, count == 1>, <image cfg, count == 1>]` is equivalent to `[<image cfg, count == 2>]`
+        ///
+        /// Hence each image buffer will be handled separately (e.g. for alignment)
+        count: usize
     }
 }
 
 #[derive(Debug)]
 pub(crate) enum LayoutElement {
-    Buffer(BufferElement),
-    Image(ImageElement)
+    Buffer {
+        vk_buffer: vk::Buffer,
+        offset: u64,
+        allocated_size: u64,
+        size: u64,
+    },
+    Image {
+        vk_image: vk::Image,
+        vk_image_view: vk::ImageView,
+        extent: Extent3D,
+        subresource: vk::ImageSubresourceRange,
+        format: ImageFormat,
+        offset: u64,
+        allocated_size: u64,
+        is_swapchain_image : bool
+    }
 }
 
 #[derive(Debug)]
@@ -259,8 +246,8 @@ impl Layout {
 
         for cfg in cfgs {
             match cfg {
-                LayoutElementCfg::Buffer(buffer_cfg) => {
-                    let sharing_mode = if buffer_cfg.simultaneous_access {
+                &LayoutElementCfg::Buffer { size, usage, queue_families, simultaneous_access, count } => {
+                    let sharing_mode = if simultaneous_access {
                         vk::SharingMode::CONCURRENT
                     } else {
                         vk::SharingMode::EXCLUSIVE
@@ -270,16 +257,16 @@ impl Layout {
                         s_type: vk::StructureType::BUFFER_CREATE_INFO,
                         p_next: std::ptr::null(),
                         flags: vk::BufferCreateFlags::empty(),
-                        size: buffer_cfg.size,
-                        usage: buffer_cfg.usage,
+                        size: size,
+                        usage: usage,
                         sharing_mode: sharing_mode,
-                        queue_family_index_count: buffer_cfg.queue_families.len() as u32,
-                        p_queue_family_indices: buffer_cfg.queue_families.as_ptr(),
+                        queue_family_index_count: queue_families.len() as u32,
+                        p_queue_family_indices: queue_families.as_ptr(),
                         _marker: std::marker::PhantomData,
                     };
 
-                    for _ in 0..buffer_cfg.count {
-                        requested_size += buffer_cfg.size;
+                    for _ in 0..count {
+                        requested_size += size;
 
                         let buffer = on_error!(unsafe {
                             device.device().create_buffer(&buffer_info, device.allocator())
@@ -288,14 +275,14 @@ impl Layout {
                             return Err(memory::MemoryError::Buffer);
                         });
 
-                        let element = BufferElement {
+                        let element = LayoutElement::Buffer {
                             vk_buffer: buffer,
                             offset: 0,
                             allocated_size: 0,
-                            size: buffer_cfg.size
+                            size
                         };
 
-                        elements.push(LayoutElement::Buffer(element));
+                        elements.push(element);
 
                         let requirements: vk::MemoryRequirements = unsafe {
                             device
@@ -306,8 +293,18 @@ impl Layout {
                         memory_requirements.push(requirements);
                     }
                 },
-                LayoutElementCfg::Image(image_cfg) => {
-                    let sharing_mode = if image_cfg.simultaneous_access {
+                &LayoutElementCfg::Image {
+                    queue_families,
+                    simultaneous_access,
+                    format,
+                    extent,
+                    usage,
+                    layout,
+                    aspect,
+                    tiling,
+                    count
+                } => {
+                    let sharing_mode = if simultaneous_access {
                         vk::SharingMode::CONCURRENT
                     } else {
                         vk::SharingMode::EXCLUSIVE
@@ -318,23 +315,23 @@ impl Layout {
                         p_next: std::ptr::null(),
                         flags: vk::ImageCreateFlags::empty(),
                         image_type: vk::ImageType::TYPE_2D,
-                        format: image_cfg.format,
-                        extent: image_cfg.extent,
+                        format: format,
+                        extent: extent,
                         mip_levels: 1,
                         array_layers: 1,
                         samples: vk::SampleCountFlags::TYPE_1,
-                        tiling: image_cfg.tiling,
-                        usage: image_cfg.usage,
+                        tiling: tiling,
+                        usage: usage,
                         sharing_mode: sharing_mode,
-                        queue_family_index_count: image_cfg.queue_families.len() as u32,
-                        p_queue_family_indices: image_cfg.queue_families.as_ptr(),
-                        initial_layout: image_cfg.layout,
+                        queue_family_index_count: queue_families.len() as u32,
+                        p_queue_family_indices: queue_families.as_ptr(),
+                        initial_layout: layout,
                         _marker: std::marker::PhantomData,
                     };
 
-                    for _ in 0..image_cfg.count {
+                    for _ in 0..count {
                         let subres = vk::ImageSubresourceRange {
-                            aspect_mask: image_cfg.aspect,
+                            aspect_mask: aspect,
                             base_mip_level: 0,
                             level_count: 1,
                             base_array_layer: 0,
@@ -349,18 +346,18 @@ impl Layout {
                             }
                         );
 
-                        let img_elem = ImageElement {
+                        let img_elem = LayoutElement::Image {
                             vk_image: img,
                             vk_image_view: vk::ImageView::null(),
-                            extent: image_cfg.extent,
+                            extent: extent,
                             subresource: subres,
-                            format: image_cfg.format,
+                            format: format,
                             offset: 0,
                             allocated_size: 0,
                             is_swapchain_image: false
                         };
 
-                        elements.push(LayoutElement::Image(img_elem));
+                        elements.push(img_elem);
 
                         let requirements = unsafe {
                             device
@@ -378,13 +375,13 @@ impl Layout {
 
         for (elem, info) in elements.iter_mut().zip(regions_info.subregions) {
             match elem {
-                LayoutElement::Buffer(ref mut buff) => {
-                    buff.offset = info.offset;
-                    buff.allocated_size = info.allocated_size;
+                LayoutElement::Buffer { ref mut offset, ref mut allocated_size, .. } => {
+                    *offset = info.offset;
+                    *allocated_size = info.allocated_size;
                 },
-                LayoutElement::Image(ref mut img) => {
-                    img.allocated_size = info.allocated_size;
-                    img.offset = info.offset;
+                LayoutElement::Image { ref mut allocated_size, ref mut offset, .. } => {
+                    *allocated_size = info.allocated_size;
+                    *offset = info.offset;
 
                     requested_size += info.allocated_size;
                 }
@@ -403,24 +400,24 @@ impl Layout {
     pub(crate) fn bind(&mut self, memory: vk::DeviceMemory) -> Result<(), memory::MemoryError> {
         for elem in &mut self.elements {
             match elem {
-                LayoutElement::Buffer(ref buff) => {
+                &mut LayoutElement::Buffer { vk_buffer, offset, .. } => {
                     on_error_ret!(
                         unsafe {
                             self
                             .core
                             .device()
-                            .bind_buffer_memory(buff.vk_buffer, memory, buff.offset)
+                            .bind_buffer_memory(vk_buffer, memory, offset)
                         },
                         memory::MemoryError::Bind
                     );
                 },
-                LayoutElement::Image(ref mut img) => {
+                &mut LayoutElement::Image { vk_image, offset, format, subresource, ref mut vk_image_view, .. } => {
                     on_error_ret!(
                         unsafe {
                             self
                             .core
                             .device()
-                            .bind_image_memory(img.vk_image, memory, img.offset)
+                            .bind_image_memory(vk_image, memory, offset)
                         },
                         memory::MemoryError::ImageBind
                     );
@@ -430,19 +427,19 @@ impl Layout {
                         p_next: std::ptr::null(),
                         flags: vk::ImageViewCreateFlags::empty(),
                         view_type: vk::ImageViewType::TYPE_2D,
-                        format: img.format,
+                        format: format,
                         components: vk::ComponentMapping {
                             r: vk::ComponentSwizzle::R,
                             g: vk::ComponentSwizzle::G,
                             b: vk::ComponentSwizzle::B,
                             a: vk::ComponentSwizzle::A,
                         },
-                        subresource_range: img.subresource,
-                        image: img.vk_image,
+                        subresource_range: subresource,
+                        image: vk_image,
                         _marker: std::marker::PhantomData,
                     };
 
-                    img.vk_image_view = on_error_ret!(
+                    *vk_image_view = on_error_ret!(
                         unsafe { self.core.device().create_image_view(&iw_info, self.core.allocator()) },
                         memory::MemoryError::ImageView
                     );
@@ -455,43 +452,43 @@ impl Layout {
 
     pub(crate) fn size(&self, i: usize) -> u64 {
         match &self.elements[i] {
-            LayoutElement::Buffer(buff) => {
-                buff.size
+            &LayoutElement::Buffer { size, .. } => {
+                size
             },
-            LayoutElement::Image(img) => {
-                img.allocated_size
+            &LayoutElement::Image { allocated_size, .. } => {
+                allocated_size
             }
         }
     }
 
     pub(crate) fn offset(&self, i: usize) -> u64 {
         match &self.elements[i] {
-            LayoutElement::Buffer(buff) => {
-                buff.offset
+            &LayoutElement::Buffer { offset, .. } => {
+                offset
             },
-            LayoutElement::Image(img) => {
-                img.offset
+            &LayoutElement::Image { offset, .. } => {
+                offset
             }
         }
     }
 
     pub(crate) fn allocated_size(&self, i: usize) -> u64 {
         match &self.elements[i] {
-            LayoutElement::Buffer(buff) => {
-                buff.allocated_size
+            &LayoutElement::Buffer { allocated_size, .. } => {
+                allocated_size
             },
-            LayoutElement::Image(img) => {
-                img.allocated_size
+            &LayoutElement::Image { allocated_size, .. } => {
+                allocated_size
             }
         }
     }
 
     pub(crate) fn buffer(&self, i: usize) -> vk::Buffer {
         match &self.elements[i] {
-            LayoutElement::Buffer(buff) => {
-                buff.vk_buffer
+            &LayoutElement::Buffer { vk_buffer, .. } => {
+                vk_buffer
             },
-            LayoutElement::Image(_) => {
+            _ => {
                 panic!("Wrong memory element. Expected Buffer found Image");
             }
         }
@@ -499,73 +496,71 @@ impl Layout {
 
     pub(crate) fn image(&self, i: usize) -> vk::Image {
         match &self.elements[i] {
-            LayoutElement::Buffer(_) => {
-                panic!("Wrong memory element. Expected Image found Buffer");
+            &LayoutElement::Image { vk_image, .. } => {
+                vk_image
             },
-            LayoutElement::Image(img) => {
-                img.vk_image
+            _ => {
+                panic!("Wrong memory element. Expected Image found Buffer");
             }
         }
     }
 
     pub(crate) fn image_view(&self, i: usize) -> vk::ImageView {
         match &self.elements[i] {
-            LayoutElement::Buffer(_) => {
-                panic!("Wrong memory element. Expected Image found Buffer");
+            &LayoutElement::Image { vk_image_view, .. } => {
+                vk_image_view
             },
-            LayoutElement::Image(img) => {
-                img.vk_image_view
+            _ => {
+                panic!("Wrong memory element. Expected Image found Buffer");
             }
         }
     }
 
     pub(crate) fn extent(&self, i: usize) -> vk::Extent3D {
         match &self.elements[i] {
-            LayoutElement::Buffer(_) => {
-                panic!("Wrong memory element. Expected Image found Buffer");
+            &LayoutElement::Image { extent, .. } => {
+                extent
             },
-            LayoutElement::Image(img) => {
-                img.extent
+            _ => {
+                panic!("Wrong memory element. Expected Image found Buffer");
             }
         }
     }
 
     pub(crate) fn subresource(&self, i: usize) -> vk::ImageSubresourceRange {
         match &self.elements[i] {
-            LayoutElement::Buffer(_) => {
-                panic!("Wrong memory element. Expected Image found Buffer");
+            &LayoutElement::Image { subresource, .. } => {
+                subresource
             },
-            LayoutElement::Image(img) => {
-                img.subresource
+            _ => {
+                panic!("Wrong memory element. Expected Image found Buffer");
             }
         }
     }
 
     pub(crate) fn format(&self, i: usize) -> vk::Format {
         match &self.elements[i] {
-            LayoutElement::Buffer(_) => {
-                panic!("Wrong memory element. Expected Image found Buffer");
+            &LayoutElement::Image { format, .. } => {
+                format
             },
-            LayoutElement::Image(img) => {
-                img.format
+            _ => {
+                panic!("Wrong memory element. Expected Image found Buffer");
             }
         }
     }
 
     pub(crate) fn subresource_layer(&self, i: usize) -> vk::ImageSubresourceLayers {
         match &self.elements[i] {
-            LayoutElement::Buffer(_) => {
-                panic!("Wrong memory element. Expected Image found Buffer");
-            },
-            LayoutElement::Image(img) => {
-                let subres = img.subresource;
-
+            LayoutElement::Image { subresource, .. } => {
                 vk::ImageSubresourceLayers {
-                    aspect_mask: subres.aspect_mask,
-                    mip_level: subres.base_mip_level,
-                    base_array_layer: subres.base_array_layer,
-                    layer_count: subres.layer_count
+                    aspect_mask: subresource.aspect_mask,
+                    mip_level: subresource.base_mip_level,
+                    base_array_layer: subresource.base_array_layer,
+                    layer_count: subresource.layer_count
                 }
+            },
+            _ => {
+                panic!("Wrong memory element. Expected Image found Buffer");
             }
         }
 
@@ -590,12 +585,53 @@ impl fmt::Display for Layout {
             write!(f, "---------------\n")?;
 
             match elem {
-                LayoutElement::Buffer(ref buff) => {
+                LayoutElement::Buffer { vk_buffer, offset, allocated_size, size } => {
                     write!(f,
-                        "type: buffer\nindex: {:?}\n{:?}", i, buff)?;
+                        "
+                        type: buffer\n\
+                        index: {:?}\n\
+                        vk_buffer: {:?}\n\
+                        offset: {:?}\n\
+                        allocated_size: {:?}\n\
+                        size: {:?}\n",
+                        i,
+                        vk_buffer,
+                        offset,
+                        allocated_size,
+                        size
+                    )?;
                 },
-                LayoutElement::Image(ref img) => {
-                    write!(f, "type: image\nindex: {:?}\n{:?}", i, img)?;
+                LayoutElement::Image {
+                    vk_image,
+                    vk_image_view,
+                    extent,
+                    subresource,
+                    format,
+                    offset,
+                    allocated_size,
+                    is_swapchain_image
+                } => {
+                    write!(f,
+                        "type: image\n\
+                        index: {:?}\n\
+                        vk_image: {:?}\n\
+                        vk_image_view: {:?}\n\
+                        extent: {:?}\n\
+                        subresource: {:?}\n\
+                        format: {:?}\n\
+                        offset: {:?}\n\
+                        allocated_size: {:?}\n\
+                        is_swapchain_image: {:?}",
+                        i,
+                        vk_image,
+                        vk_image_view,
+                        extent,
+                        subresource,
+                        format,
+                        offset,
+                        allocated_size,
+                        is_swapchain_image
+                    )?;
                 }
             }
         }
@@ -677,16 +713,16 @@ fn free_elements(device: &dev::Core, elements: &Vec<LayoutElement>) {
 
     for elem in elements {
         match elem {
-            LayoutElement::Buffer(buffer) => unsafe {
-                vk_device.destroy_buffer(buffer.vk_buffer, vk_allocator);
+            &LayoutElement::Buffer { vk_buffer, .. } => unsafe {
+                vk_device.destroy_buffer(vk_buffer, vk_allocator);
             },
-            LayoutElement::Image(image) => unsafe {
-                if !image.is_swapchain_image {
-                    vk_device.destroy_image(image.vk_image, vk_allocator);
-                    vk_device.destroy_image_view(image.vk_image_view, vk_allocator);
+            &LayoutElement::Image { vk_image, vk_image_view, is_swapchain_image, .. } => unsafe {
+                if !is_swapchain_image {
+                    vk_device.destroy_image(vk_image, vk_allocator);
+                    vk_device.destroy_image_view(vk_image_view, vk_allocator);
                 }
                 else {
-                    vk_device.destroy_image_view(image.vk_image_view, vk_allocator);
+                    vk_device.destroy_image_view(vk_image_view, vk_allocator);
                 }
             }
         }

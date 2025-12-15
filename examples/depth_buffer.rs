@@ -78,13 +78,13 @@ fn main() {
     let surf_format = capabilities.formats().next().expect("No available formats").format;
 
     let buffers = [
-        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+        memory::LayoutElementCfg::Buffer {
             size: 16*9,
             usage: memory::VERTEX,
             queue_families: &[queue.index()],
             simultaneous_access: false,
             count: 1
-        })
+        }
     ];
 
     let vertex_data = memory::Memory::allocate_host_coherent_memory(
@@ -107,7 +107,7 @@ fn main() {
     vertex_data.access(&mut set_vrtx_buffer, 0).expect("Failed to fill the buffer");
 
     let depth_buffer_cfg = [
-        memory::LayoutElementCfg::Image(memory::ImageCfg {
+        memory::LayoutElementCfg::Image {
             queue_families: &[queue.index()],
             simultaneous_access: false,
             format: memory::ImageFormat::D32_SFLOAT,
@@ -117,7 +117,7 @@ fn main() {
             aspect: memory::ImageAspect::DEPTH,
             tiling: memory::Tiling::OPTIMAL,
             count: 1
-        })
+        }
     ];
 
     let depth_buffer = memory::Memory::allocate_device_memory(
@@ -153,11 +153,7 @@ fn main() {
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
 
-    let cmd_pool_type = cmd::PoolCfg {
-        queue_index: queue.index(),
-    };
-
-    let cmd_pool = cmd::Pool::new(&device, &cmd_pool_type).expect("Failed to allocate command pool");
+    let cmd_pool = cmd::Pool::new(&device, queue.index()).expect("Failed to allocate command pool");
 
     let cmd_buffer = cmd_pool.allocate().expect("Failed to allocate command pool");
 

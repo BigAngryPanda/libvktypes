@@ -332,12 +332,8 @@ pub fn get_cmd_pool() -> &'static cmd::Pool {
             let queue = get_graphics_queue();
             let dev = get_graphics_device();
 
-            let pool_type = cmd::PoolCfg {
-                queue_index: queue.index(),
-            };
-
             #[allow(static_mut_refs)]
-            CMD_POOL.write(cmd::Pool::new(dev, &pool_type).expect("Failed to allocate command pool"));
+            CMD_POOL.write(cmd::Pool::new(dev, queue.index()).expect("Failed to allocate command pool"));
         });
 
         #[allow(static_mut_refs)]

@@ -73,13 +73,13 @@ fn main() {
     let frag_shader = shader::Shader::from_file(&device, &frag_shader_type).expect("Failed to create fragment shader module");
 
     let buffers = [
-        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+        memory::LayoutElementCfg::Buffer {
             size: 16*4,
             usage: memory::VERTEX,
             queue_families: &[queue.index()],
             simultaneous_access: false,
             count: 1
-        })
+        }
     ];
 
     let vertex_data = memory::Memory::allocate_host_memory(&device, &mut buffers.iter()).expect("Failed to allocate memory");
@@ -123,11 +123,7 @@ fn main() {
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
 
-    let cmd_pool_type = cmd::PoolCfg {
-        queue_index: queue.index(),
-    };
-
-    let cmd_pool = cmd::Pool::new(&device, &cmd_pool_type).expect("Failed to allocate command pool");
+    let cmd_pool = cmd::Pool::new(&device, queue.index()).expect("Failed to allocate command pool");
 
     let cmd_buffer = cmd_pool.allocate().expect("Failed to allocate command pool");
 

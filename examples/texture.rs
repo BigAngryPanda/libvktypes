@@ -109,11 +109,7 @@ fn main() {
 
     let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-    let cmd_pool_type = cmd::PoolCfg {
-        queue_index: queue.index(),
-    };
-
-    let cmd_pool = cmd::Pool::new(&device, &cmd_pool_type).expect("Failed to allocate command pool");
+    let cmd_pool = cmd::Pool::new(&device, queue.index()).expect("Failed to allocate command pool");
 
     let copy_cmd_queue = cmd_pool.allocate().expect("Failed to allocate command pool");
 
@@ -156,27 +152,27 @@ fn main() {
         .expect("Failed to create fragment shader module");
 
     let buffers = [
-        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+        memory::LayoutElementCfg::Buffer {
             size: size_of_val(VERTEX_DATA) as u64,
             usage: memory::VERTEX,
             queue_families: &[queue.index()],
             simultaneous_access: false,
             count: 1
-        }),
-        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+        },
+        memory::LayoutElementCfg::Buffer {
             size: size_of_val(INDICES) as u64,
             usage: memory::INDEX,
             queue_families: &[queue.index()],
             simultaneous_access: false,
             count: 1
-        }),
-        memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+        },
+        memory::LayoutElementCfg::Buffer {
             size: (TEXTURE_SIZE*size_of::<u32>()) as u64,
             usage: memory::BufferUsageFlags::TRANSFER_SRC,
             queue_families: &[queue.index()],
             simultaneous_access: false,
             count: 1
-        })
+        }
     ];
 
     let data = memory::Memory::allocate_host_memory(&device, &mut buffers.iter()).expect("Failed to allocate memory");
@@ -198,7 +194,7 @@ fn main() {
     }).expect("Failed to fill index buffer");
 
     let image_cfgs = [
-        memory::LayoutElementCfg::Image(memory::ImageCfg {
+        memory::LayoutElementCfg::Image {
             queue_families: &[queue.index()],
             simultaneous_access: false,
             format: memory::ImageFormat::R8G8B8A8_SRGB,
@@ -208,7 +204,7 @@ fn main() {
             aspect: memory::ImageAspect::COLOR,
             tiling: memory::Tiling::OPTIMAL,
             count: 1
-        })
+        }
     ];
 
     let texture_memory =

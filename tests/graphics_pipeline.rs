@@ -73,13 +73,13 @@ mod graphics_pipeline {
         let queue = test_context::get_graphics_queue();
 
         let buffers = [
-            memory::LayoutElementCfg::Buffer(memory::BufferCfg {
+            memory::LayoutElementCfg::Buffer {
                 size: 16,
                 usage: memory::UNIFORM,
                 queue_families: &[queue.index()],
                 simultaneous_access: false,
                 count: 1
-            })
+            }
         ];
 
         let uniform_data = memory::Memory::allocate_host_memory(

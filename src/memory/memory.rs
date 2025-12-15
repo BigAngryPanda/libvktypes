@@ -16,7 +16,6 @@ use memory::layout::{
 };
 
 use memory::{
-    ImageElement,
     LayoutElement,
     Layout,
     BufferUsageFlags
@@ -237,7 +236,7 @@ impl Memory {
             .get_image_memory_requirements(image)
         };
 
-        let image_element = vec![LayoutElement::Image(ImageElement {
+        let image_element = vec![LayoutElement::Image {
             vk_image: image,
             vk_image_view: img_view,
             extent: Extent3D {
@@ -256,7 +255,7 @@ impl Memory {
             offset: 0,
             allocated_size: requirements.size,
             is_swapchain_image: true
-        })];
+        }];
 
         let layout = Layout {
             core: core.clone(),

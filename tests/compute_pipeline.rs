@@ -39,15 +39,13 @@ mod compute_pipeline {
 
         let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-        let compute_memory = memory::BufferCfg {
+        let mem_cfg = [memory::LayoutElementCfg::Buffer {
             size: 1,
             usage: memory::STORAGE,
             queue_families: &[queue.index()],
             simultaneous_access: false,
             count: 1
-        };
-
-        let mem_cfg = [memory::LayoutElementCfg::Buffer(compute_memory)];
+        }];
 
         let data = memory::Memory::allocate_host_memory(&device, &mut mem_cfg.iter()).expect("Failed to allocate memory");
 
