@@ -105,24 +105,8 @@ pub type CompositeAlphaFlags = vk::CompositeAlphaFlagsKHR;
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkImageTiling.html>"]
 pub type Tiling = vk::ImageTiling;
 
-/// Configuration struct for memory region
-#[derive(Debug, Clone)]
-pub struct BufferCfg<'a> {
-    // Size in bytes
-    pub size: u64,
-    pub usage: BufferUsageFlags,
-    pub queue_families: &'a [u32],
-    /// Will two or more queues have access to the buffer at the same time
-    pub simultaneous_access: bool,
-    /// How many of this buffer you want to allocate one by one
-    ///
-    /// For example
-    /// `[<buffer cfg, count == 1>, <buffer cfg, count == 1>]` is equivalent to `[<buffer cfg, count == 2>]`
-    ///
-    /// Hence each buffer will be handled separately (e.g. for alignment)
-    pub count: usize
-}
-
+/// Buffer represents generic (except images) configuration struct for memory region
+///
 /// Images represent multidimensional - up to 3 - arrays of data
 ///
 /// # Access
@@ -147,26 +131,6 @@ pub struct BufferCfg<'a> {
 ///
 /// It is important for [`map_memory`](memory::ImageView::map_memory) function as you have to take into account
 /// returned buffer may be larger that you are expecting
-pub struct ImageCfg<'a> {
-    /// What queue families will have access to the image
-    pub queue_families: &'a [u32],
-    /// Will two or more queues have access to the buffer at the same time
-    pub simultaneous_access: bool,
-    pub format: ImageFormat,
-    pub extent: Extent3D,
-    pub usage: ImageUsageFlags,
-    pub layout: memory::ImageLayout,
-    pub aspect: ImageAspect,
-    pub tiling: Tiling,
-    /// How many of the image buffers we want to allocate one by one
-    ///
-    /// For example
-    /// `[<image cfg, count == 1>, <image cfg, count == 1>]` is equivalent to `[<image cfg, count == 2>]`
-    ///
-    /// Hence each image buffer will be handled separately (e.g. for alignment)
-    pub count: usize
-}
-
 #[derive(Debug)]
 pub enum LayoutElementCfg<'a> {
     Buffer {
