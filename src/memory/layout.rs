@@ -149,13 +149,13 @@ pub enum LayoutElementCfg<'a> {
         count: usize
     },
     Image {
+        usage: ImageUsageFlags,
         /// What queue families will have access to the image
         queue_families: &'a [u32],
         /// Will two or more queues have access to the buffer at the same time
         simultaneous_access: bool,
         format: ImageFormat,
         extent: Extent3D,
-        usage: ImageUsageFlags,
         layout: memory::ImageLayout,
         aspect: ImageAspect,
         tiling: Tiling,
@@ -166,6 +166,162 @@ pub enum LayoutElementCfg<'a> {
         ///
         /// Hence each image buffer will be handled separately (e.g. for alignment)
         count: usize
+    }
+}
+
+impl<'a> LayoutElementCfg<'a> {
+    /// Set [`size`](LayoutElementCfg::Buffer::size) for [`Buffer`](LayoutElementCfg::Buffer)
+    ///
+    /// Do nothing for [`Image`](LayoutElementCfg::Image)
+    pub fn size(&mut self, new_size: u64) {
+        match self {
+            LayoutElementCfg::Buffer { size, .. } => {
+                *size = new_size;
+            },
+            _ => { }
+        }
+    }
+
+    /// Set [`usage`](LayoutElementCfg::Buffer::usage) for [`Buffer`](LayoutElementCfg::Buffer)
+    ///
+    /// Do nothing for [`Image`](LayoutElementCfg::Image)
+    pub fn buffer_usage(&mut self, new_usage: BufferUsageFlags) {
+        match self {
+            LayoutElementCfg::Buffer { usage, .. } => {
+                *usage = new_usage;
+            },
+            _ => { }
+        }
+    }
+
+    /// Set `simultaneous_access` for [`Buffer`](LayoutElementCfg::Buffer)
+    /// or [`Image`](LayoutElementCfg::Image)
+    pub fn simultaneous_access(&mut self, flag: bool) {
+        match self {
+            LayoutElementCfg::Buffer { simultaneous_access, .. } => {
+                *simultaneous_access = flag;
+            },
+            LayoutElementCfg::Image { simultaneous_access, .. } => {
+                *simultaneous_access = flag;
+            }
+        }
+    }
+
+    /// Set `count` for [`Buffer`](LayoutElementCfg::Buffer)
+    /// or [`Image`](LayoutElementCfg::Image)
+    pub fn count(&mut self, new_count: usize) {
+        match self {
+            LayoutElementCfg::Buffer { count, .. } => {
+                *count = new_count;
+            },
+            LayoutElementCfg::Image { count, .. } => {
+                *count = new_count;
+            }
+        }
+    }
+
+    /// Set [`usage`](LayoutElementCfg::Image::usage) for [`Image`](LayoutElementCfg::Image)
+    ///
+    /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
+    pub fn image_usage(&mut self, new_usage: ImageUsageFlags) {
+        match self {
+            LayoutElementCfg::Image { usage, .. } => {
+                *usage = new_usage;
+            },
+            _ => { }
+        }
+    }
+
+    /// Set [`format`](LayoutElementCfg::Image::format) for [`Image`](LayoutElementCfg::Image)
+    ///
+    /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
+    pub fn format(&mut self, new_format: ImageFormat) {
+        match self {
+            LayoutElementCfg::Image { format, .. } => {
+                *format = new_format;
+            },
+            _ => { }
+        }
+    }
+
+    /// Set [`layout`](LayoutElementCfg::Image::layout) for [`Image`](LayoutElementCfg::Image)
+    ///
+    /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
+    pub fn layout(&mut self, new_layout: memory::ImageLayout) {
+        match self {
+            LayoutElementCfg::Image { layout, .. } => {
+                *layout = new_layout;
+            },
+            _ => { }
+        }
+    }
+
+    /// Set [`aspect`](LayoutElementCfg::Image::aspect) for [`Image`](LayoutElementCfg::Image)
+    ///
+    /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
+    pub fn aspect(&mut self, new_aspect: ImageAspect) {
+        match self {
+            LayoutElementCfg::Image { aspect, .. } => {
+                *aspect = new_aspect;
+            },
+            _ => { }
+        }
+    }
+
+    /// Set [`tiling`](LayoutElementCfg::Image::aspect) for [`Image`](LayoutElementCfg::Image)
+    ///
+    /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
+    pub fn tiling(&mut self, new_tiling: Tiling) {
+        match self {
+            LayoutElementCfg::Image { tiling, .. } => {
+                *tiling = new_tiling;
+            },
+            _ => { }
+        }
+    }
+}
+
+pub struct LayoutBuilder<'a> {
+    data: Vec<LayoutElementCfg<'a>>
+}
+
+impl<'a> LayoutBuilder<'a> {
+    pub fn new() -> LayoutBuilder<'a> {
+        LayoutBuilder {
+            data: Vec::new()
+        }
+    }
+
+    pub fn data(&'_ self) -> impl Iterator<Item = &LayoutElementCfg<'_>> {
+        self.data.iter()
+    }
+
+    pub fn buffer(&mut self) -> &mut LayoutElementCfg<'a> {
+        self.data.push(LayoutElementCfg::Buffer {
+            size: 0,
+            queue_families: &[],
+            simultaneous_access: false,
+            usage: BufferUsageFlags::empty(),
+            count: 0
+        });
+
+        self.data.last_mut().unwrap()
+    }
+
+    pub fn image(&mut self) -> &mut LayoutElementCfg<'a> {
+        self.data.push(LayoutElementCfg::Image {
+            queue_families: &[],
+            simultaneous_access: false,
+            format: ImageFormat::R32G32B32A32_SFLOAT,
+            extent: Extent3D { width: 0, height: 0, depth: 0 },
+            usage: ImageUsageFlags::empty(),
+            layout: memory::ImageLayout::from_raw(0),
+            aspect: ImageAspect::empty(),
+            tiling: Tiling::from_raw(0),
+            count: 0
+        });
+
+        self.data.last_mut().unwrap()
     }
 }
 
