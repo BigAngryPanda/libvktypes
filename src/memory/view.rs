@@ -5,7 +5,7 @@ use ash::vk;
 use crate::memory;
 
 /// `BufferView` provides interface to the memory region
-/// which represents [buffer](crate::memory::layout::BufferCfg)
+/// which represents [buffer](crate::memory::layout::LayoutElementCfg)
 ///
 /// Typically you need to implement only [`memory`](Self::memory) and [`index`](Self::index)
 ///
@@ -36,9 +36,6 @@ pub trait BufferView : Copy + Clone {
     ///
     /// Note: this is dangerous operation and you should use it with cautious
     /// As one range of the memory is mapped you *cannot* map another region of the same memory
-    ///
-    /// Better alternative is to [map full range](crate::memory::Memory::map_memory)
-    /// and use [`mapped_slice`](Self::mapped_slice)
     fn map_memory<'a, 'b : 'a, T>(&'b self) -> Result<&'a mut [T], memory::MemoryError> {
         self.memory().region().map_memory(self.offset(), self.size(), self.allocated_size())
     }
@@ -64,7 +61,7 @@ pub trait BufferView : Copy + Clone {
 }
 
 /// `ImageView` provides interface to the memory region
-/// which represents [image](crate::memory::layout::ImageCfg)
+/// which represents [image](crate::memory::layout::LayoutElementCfg)
 ///
 /// Typically you need to implement only [`memory`](Self::memory) and [`index`](Self::index)
 ///
@@ -90,9 +87,6 @@ pub trait ImageView : Copy + Clone {
     ///
     /// Note: this is dangerous operation and you should use it with cautious
     /// As one range of the memory is mapped you *cannot* map another region of the same memory
-    ///
-    /// Better alternative is to [map full range](crate::memory::Memory::map_memory)
-    /// and use [`mapped_slice`](Self::mapped_slice)
     fn map_memory<'a, 'b : 'a, T>(&'b self) -> Result<&'a mut [T], memory::MemoryError> {
         self.memory().region().map_memory(self.offset(), self.allocated_size(), self.allocated_size())
     }
@@ -162,7 +156,7 @@ impl<'a> BufferView for RefView<'a> {
 
 /// "Pointer-like" struct for the image
 ///
-/// Mapping image memory is tight to a image [`layout`](Self::memory::ImageLayout)
+/// Mapping image memory is tight to a image [`layout`](memory::layout::LayoutElementCfg::Image)
 #[derive(Debug, Clone, Copy)]
 pub struct RefImageView<'a> {
     i_memory: &'a memory::Memory,

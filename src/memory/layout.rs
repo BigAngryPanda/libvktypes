@@ -120,9 +120,6 @@ pub type Tiling = vk::ImageTiling;
 /// [`Swapchain::images`](crate::swapchain::Swapchain::images) provides already allocated images
 /// so no extra allocation will be performed
 ///
-/// However as [`ImageMemory`] does not own image memory
-/// you must not call [`access`](crate::memory::ImageView::access) on such images
-///
 /// Nonetheless size of such memory may be non-zero
 ///
 /// # Image size
@@ -173,30 +170,34 @@ impl<'a> LayoutElementCfg<'a> {
     /// Set [`size`](LayoutElementCfg::Buffer::size) for [`Buffer`](LayoutElementCfg::Buffer)
     ///
     /// Do nothing for [`Image`](LayoutElementCfg::Image)
-    pub fn size(&mut self, new_size: u64) {
+    pub fn size(&mut self, new_size: u64) -> &mut Self {
         match self {
             LayoutElementCfg::Buffer { size, .. } => {
                 *size = new_size;
             },
             _ => { }
         }
+
+        self
     }
 
     /// Set [`usage`](LayoutElementCfg::Buffer::usage) for [`Buffer`](LayoutElementCfg::Buffer)
     ///
     /// Do nothing for [`Image`](LayoutElementCfg::Image)
-    pub fn buffer_usage(&mut self, new_usage: BufferUsageFlags) {
+    pub fn buffer_usage(&mut self, new_usage: BufferUsageFlags) -> &mut Self {
         match self {
             LayoutElementCfg::Buffer { usage, .. } => {
                 *usage = new_usage;
             },
             _ => { }
         }
+
+        self
     }
 
     /// Set `simultaneous_access` for [`Buffer`](LayoutElementCfg::Buffer)
     /// or [`Image`](LayoutElementCfg::Image)
-    pub fn simultaneous_access(&mut self, flag: bool) {
+    pub fn simultaneous_access(&mut self, flag: bool) -> &mut Self {
         match self {
             LayoutElementCfg::Buffer { simultaneous_access, .. } => {
                 *simultaneous_access = flag;
@@ -205,11 +206,13 @@ impl<'a> LayoutElementCfg<'a> {
                 *simultaneous_access = flag;
             }
         }
+
+        self
     }
 
     /// Set `count` for [`Buffer`](LayoutElementCfg::Buffer)
     /// or [`Image`](LayoutElementCfg::Image)
-    pub fn count(&mut self, new_count: usize) {
+    pub fn count(&mut self, new_count: usize) -> &mut Self {
         match self {
             LayoutElementCfg::Buffer { count, .. } => {
                 *count = new_count;
@@ -218,66 +221,135 @@ impl<'a> LayoutElementCfg<'a> {
                 *count = new_count;
             }
         }
+
+        self
     }
 
     /// Set [`usage`](LayoutElementCfg::Image::usage) for [`Image`](LayoutElementCfg::Image)
     ///
     /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
-    pub fn image_usage(&mut self, new_usage: ImageUsageFlags) {
+    pub fn image_usage(&mut self, new_usage: ImageUsageFlags) -> &mut Self {
         match self {
             LayoutElementCfg::Image { usage, .. } => {
                 *usage = new_usage;
             },
             _ => { }
         }
+
+        self
     }
 
     /// Set [`format`](LayoutElementCfg::Image::format) for [`Image`](LayoutElementCfg::Image)
     ///
     /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
-    pub fn format(&mut self, new_format: ImageFormat) {
+    pub fn format(&mut self, new_format: ImageFormat) -> &mut Self {
         match self {
             LayoutElementCfg::Image { format, .. } => {
                 *format = new_format;
             },
             _ => { }
         }
+
+        self
     }
 
     /// Set [`layout`](LayoutElementCfg::Image::layout) for [`Image`](LayoutElementCfg::Image)
     ///
     /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
-    pub fn layout(&mut self, new_layout: memory::ImageLayout) {
+    pub fn layout(&mut self, new_layout: memory::ImageLayout) -> &mut Self {
         match self {
             LayoutElementCfg::Image { layout, .. } => {
                 *layout = new_layout;
             },
             _ => { }
         }
+
+        self
     }
 
     /// Set [`aspect`](LayoutElementCfg::Image::aspect) for [`Image`](LayoutElementCfg::Image)
     ///
     /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
-    pub fn aspect(&mut self, new_aspect: ImageAspect) {
+    pub fn aspect(&mut self, new_aspect: ImageAspect) -> &mut Self {
         match self {
             LayoutElementCfg::Image { aspect, .. } => {
                 *aspect = new_aspect;
             },
             _ => { }
         }
+
+        self
     }
 
     /// Set [`tiling`](LayoutElementCfg::Image::aspect) for [`Image`](LayoutElementCfg::Image)
     ///
     /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
-    pub fn tiling(&mut self, new_tiling: Tiling) {
+    pub fn tiling(&mut self, new_tiling: Tiling) -> &mut Self {
         match self {
             LayoutElementCfg::Image { tiling, .. } => {
                 *tiling = new_tiling;
             },
             _ => { }
         }
+
+        self
+    }
+
+    /// Set `count` for [`Buffer`](LayoutElementCfg::Buffer)
+    /// or [`Image`](LayoutElementCfg::Image)
+    pub fn queue_families<'b : 'a>(&mut self, qfs: &'b [u32]) -> &mut Self {
+        match self {
+            LayoutElementCfg::Buffer { queue_families, .. } => {
+                *queue_families = qfs;
+            },
+            LayoutElementCfg::Image { queue_families, .. } => {
+                *queue_families = qfs;
+            }
+        }
+
+        self
+    }
+
+    /// Set [`width`](LayoutElementCfg::Image::extent.width) for [`Image`](LayoutElementCfg::Image)
+    ///
+    /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
+    pub fn width(&mut self, width: u32) -> &mut Self {
+        match self {
+            LayoutElementCfg::Image { extent, .. } => {
+                extent.width = width;
+            },
+            _ => { }
+        }
+
+        self
+    }
+
+    /// Set [`height`](LayoutElementCfg::Image::extent.height) for [`Image`](LayoutElementCfg::Image)
+    ///
+    /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
+    pub fn height(&mut self, height: u32) -> &mut Self {
+        match self {
+            LayoutElementCfg::Image { extent, .. } => {
+                extent.height = height;
+            },
+            _ => { }
+        }
+
+        self
+    }
+
+    /// Set [`depth`](LayoutElementCfg::Image::extent.depth) for [`Image`](LayoutElementCfg::Image)
+    ///
+    /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
+    pub fn depth(&mut self, depth: u32) -> &mut Self {
+        match self {
+            LayoutElementCfg::Image { extent, .. } => {
+                extent.depth = depth;
+            },
+            _ => { }
+        }
+
+        self
     }
 }
 

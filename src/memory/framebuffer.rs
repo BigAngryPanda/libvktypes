@@ -1,6 +1,6 @@
 //! Framebuffer represents a collection of images which will be used in render pass
 //!
-//! [`Framebuffer`] connects [`render pass`](graphics::render_pass::RenderPass) and [`images`](memory::image::ImageMemory)
+//! [`Framebuffer`] connects [`render pass`](graphics::render_pass::RenderPass) and [`images`](memory::view::ImageView)
 //!
 //! Detailed info you can found [here](https://stackoverflow.com/questions/39557141/what-is-the-difference-between-framebuffer-and-image-in-vulkan)
 use ash::vk;
@@ -29,7 +29,7 @@ pub struct Framebuffer {
 }
 
 impl Framebuffer {
-    /// Create new framebuffer from existing [image](crate::memory::ImageMemory)
+    /// Create new framebuffer from existing [images](crate::memory::view::ImageView)
     pub fn new<T : memory::ImageView>(
         device: &dev::Device,
         cfg: &mut FramebufferCfg<T>

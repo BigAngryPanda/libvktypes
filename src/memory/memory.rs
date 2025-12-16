@@ -66,11 +66,11 @@ pub const INDEX_REASSEMBLY_UINT8: u8 = 0xff;
 /// # Allocation
 ///
 /// Memory allocated in single chunk
-/// in order which is provided by [`LayoutElementCfg`](crate::memory::layout::LayoutElementCfg)
+/// in order which is provided by [`LayoutElementCfg`]
 /// so no rearranges will be performed
 ///
 /// Size of allocated memory is greater or equal to the requested size
-/// (sum of all [`BufferCfg::size`] in [`MemoryCfg::buffers`]) due to alignment requirements
+/// (sum of all [`LayoutElementCfg::Buffer::size`] in `cfgs`) due to alignment requirements
 ///
 /// Functions like `allocate_host_memory` use default memory filter
 ///
@@ -80,7 +80,7 @@ pub const INDEX_REASSEMBLY_UINT8: u8 = 0xff;
 ///
 /// # Alignment
 ///
-/// Each buffer from [`MemoryCfg::buffers`] will be separately aligned at least
+/// Each layout element will be separately aligned at least
 /// for [`hw::memory_alignment`](crate::hw::HWDevice::memory_alignment)
 ///
 /// Various types of buffers (uniform, storage etc.) may have their own alignment requirements
@@ -90,9 +90,10 @@ pub const INDEX_REASSEMBLY_UINT8: u8 = 0xff;
 ///
 /// # Memory View
 ///
-/// Whole memory chunk is split into regions (buffers) which are defined by [`MemoryCfg::buffers`]
+/// Whole memory chunk is split into regions which are defined by `cfgs`
 ///
-/// To help with managing regions [`Memory View`](crate::memory::View) struct was provided
+/// To help with managing regions [`Memory View`](crate::memory::view::BufferView) or
+/// [`Image View`](crate::memory::view::ImageView) structs were provided
 pub struct Memory {
     i_core: Arc<dev::Core>,
     i_layout: memory::layout::Layout,
@@ -302,7 +303,7 @@ impl Memory {
     /// Unmap the **whole** memory
     ///
     /// After this call any pointer acquired by [`Memory::map_memory`](Self::map_memory)
-    /// or [`View::map_memory`](memory::View::map_memory)
+    /// or [`BufferView::map_memory`](memory::view::BufferView::map_memory)
     /// will be invalid
     ///
     /// You **must not** use such pointer

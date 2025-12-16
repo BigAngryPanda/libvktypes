@@ -203,7 +203,7 @@ impl Buffer {
 
     /// Copy `src` buffer into `dst`
     ///
-    /// If `dst` has less capacity then copy only first (`dst.size()`)[crate::memory::View::size()] bytes
+    /// If `dst` has less capacity then copy only first `dst.size()` bytes
     ///
     /// If `src` has less capacity then rest of the `dst` memory will be left intact
     pub fn copy_memory<T: memory::BufferView>(&self, src: T, dst: T) {
