@@ -83,9 +83,9 @@ impl Error for ShaderError {}
 ///
 /// You may think of it as file handler
 pub struct Shader {
-	i_core: Arc<dev::Core>,
-	i_module: vk::ShaderModule,
-	i_entry: CString,
+    i_core: Arc<dev::Core>,
+    i_module: vk::ShaderModule,
+    i_entry: CString,
 }
 
 impl Shader {
@@ -164,8 +164,7 @@ impl Shader {
         &self.i_entry
     }
 
-    #[doc(hidden)]
-    pub fn module(&self) -> vk::ShaderModule {
+    pub(crate) fn module(&self) -> vk::ShaderModule {
         self.i_module
     }
 }

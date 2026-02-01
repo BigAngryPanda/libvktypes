@@ -135,7 +135,7 @@ pub type CullMode = vk::CullModeFlags;
 /// # Assembly restarting
 /// Affects [indexed drawing](crate::cmd::Buffer::draw_indexed)
 ///
-/// `enable_depth_test` controls whether a special vertex index value is treated as restarting the assembly of primitives
+/// `enable_primitive_restart` controls whether a special vertex index value is treated as restarting the assembly of primitives
 ///
 /// For example the special index value is
 /// [`INDEX_REASSEMBLY_UINT32`](memory::INDEX_REASSEMBLY_UINT32) for `IndexBufferType::UINT32`
@@ -383,7 +383,7 @@ impl Pipeline {
         };
 
         let pipeline_layout = unsafe { on_error_ret!(
-		    device.device().create_pipeline_layout(&layout_create_info, device.allocator()),
+            device.device().create_pipeline_layout(&layout_create_info, device.allocator()),
             PipelineError::Layout
         )};
 

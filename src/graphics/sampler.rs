@@ -154,12 +154,17 @@ impl Sampler {
             on_error_ret!(device.device().create_sampler(&info, device.allocator()), SamplerError::Creation)
         };
 
-        Ok(
-            Sampler {
-                i_core: device.core().clone(),
-                i_sampler: sampler,
-            }
-        )
+        Ok(Sampler {
+            i_core: device.core().clone(),
+            i_sampler: sampler,
+        })
+    }
+
+    pub fn empty(device: &dev::Device) -> Sampler {
+        Sampler {
+            i_core: device.core().clone(),
+            i_sampler: vk::Sampler::null(),
+        }
     }
 
     pub(crate) fn sampler(&self) -> vk::Sampler {
@@ -169,6 +174,10 @@ impl Sampler {
 
 impl Drop for Sampler {
     fn drop(&mut self) {
+        if self.i_sampler == vk::Sampler::null() {
+            return;
+        }
+
         unsafe {
             self.i_core.device().destroy_sampler(self.i_sampler, self.i_core.allocator());
         }

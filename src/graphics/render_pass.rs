@@ -413,8 +413,7 @@ impl RenderPass {
         RenderPass::new(&device, &rp_cfg)
     }
 
-    #[doc(hidden)]
-    pub fn render_pass(&self) -> vk::RenderPass {
+    pub(crate) fn render_pass(&self) -> vk::RenderPass {
         self.i_rp
     }
 }
