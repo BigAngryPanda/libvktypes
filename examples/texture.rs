@@ -246,7 +246,7 @@ fn main() {
 
     let cmd_queue = queue::Queue::new(&device, &queue_cfg);
 
-    let fences = [sync::Fence::new(&device, false).expect("Failed to create fence")];
+    let fence = sync::Fence::new(&device, false).expect("Failed to create fence");
 
     let copy_exec_info = queue::ExecInfo {
         buffer: &copy_cmd_queue.commit().expect("Failed to commit buffer"),
@@ -254,14 +254,10 @@ fn main() {
         timeout: u64::MAX,
         wait: &[],
         signal: &[],
-        fence: &fences[0]
+        fence: &fence
     };
 
-    cmd_queue.exec(&copy_exec_info).expect("Failed to copy texture");
-
-    device.wait_for_fences(&mut fences.iter(), false, u64::MAX).expect("Failed to wait for fences");
-
-    device.reset_fences(&mut fences.iter()).expect("Failed to reset fences");
+    cmd_queue.exec_with_fence(&copy_exec_info, false, u64::MAX).expect("Failed to copy texture");
 
     let sampler_cfg = graphics::SamplerCfg {
         address_mode_u: graphics::SamplerAddressMode::MIRRORED_REPEAT,
@@ -338,7 +334,7 @@ fn main() {
 
     let exec_buffer = cmd_buffer.commit().expect("Failed to commit buffer");
 
-    let fences = [sync::Fence::new(&device, false).expect("Failed to create fence")];
+    let fence = sync::Fence::new(&device, false).expect("Failed to create fence");
 
     let exec_info = queue::ExecInfo {
         buffer: &exec_buffer,
@@ -346,7 +342,7 @@ fn main() {
         timeout: u64::MAX,
         wait: &[&img_sem],
         signal: &[&render_sem],
-        fence: &fences[0]
+        fence: &fence
     };
 
     cmd_queue.exec(&exec_info).expect("Failed to execute queue");
@@ -359,7 +355,7 @@ fn main() {
 
     cmd_queue.present(&present_info).expect("Failed to present frame");
 
-    device.wait_for_fences(&mut fences.iter(), false, u64::MAX).expect("Failed to wait for fences");
+    device.wait_for_fence(&fence, false, u64::MAX).expect("Failed to wait or reset Fence");
 
     event_loop.run(move |event, control_flow| {
         match event {

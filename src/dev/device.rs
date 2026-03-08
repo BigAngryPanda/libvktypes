@@ -150,7 +150,8 @@ impl Device {
 
     /// [`vkWaitForFences`]
     /// (https://docs.vulkan.org/refpages/latest/refpages/source/vkWaitForFences.html) call
-    pub fn wait_for_fences(&self,
+    pub fn wait_for_fences(
+        &self,
         fences: &mut dyn Iterator<Item = &sync::Fence>,
         wait_all: bool,
         timeout: u64
@@ -163,6 +164,85 @@ impl Device {
             },
             Err(_) => {
                 Err(DeviceError::WaitForFences)
+            }
+        }
+    }
+
+    /// Combine [`wait_for_fences`](Self::wait_for_fences) and
+    /// [`reset_fences`](Self::reset_fences) methods
+    pub fn wait_and_reset_fences(
+        &self,
+        fences: &mut dyn Iterator<Item = &sync::Fence>,
+        wait_all: bool,
+        timeout: u64
+    ) -> Result<(), DeviceError> {
+        let vk_fences: Vec<vk::Fence> = fences.map(|f| f.fence()).collect();
+
+        match unsafe { self.i_core.device().wait_for_fences(&vk_fences, wait_all, timeout) } {
+            Ok(_) => { },
+            Err(_) => {
+                return Err(DeviceError::WaitForFences);
+            }
+        }
+
+        match unsafe { self.i_core.device().reset_fences(&vk_fences) } {
+            Ok(_) => { },
+            Err(_) => {
+                return Err(DeviceError::ResetFences);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Combine [`wait_for_fence`](Self::wait_for_fence) and
+    /// [`reset_fence`](Self::reset_fence)
+    pub fn wait_and_reset_fence(&self,
+        fence: &sync::Fence,
+        wait_all: bool,
+        timeout: u64
+    ) -> Result<(), DeviceError> {
+        match self.wait_for_fence(&fence, wait_all, timeout) {
+            Ok(_) => { },
+            Err(err) => {
+                return Err(err);
+            }
+        }
+
+        match self.reset_fence(&fence) {
+            Ok(_) => { },
+            Err(err) => {
+                return Err(err);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// [`wait_for_fences`](Self::wait_for_fences) for single fence
+    pub fn wait_for_fence(&self,
+        fence: &sync::Fence,
+        wait_all: bool,
+        timeout: u64
+    ) -> Result<(), DeviceError> {
+        match unsafe { self.i_core.device().wait_for_fences(&[fence.fence()], wait_all, timeout) } {
+            Ok(_) => {
+                Ok(())
+            },
+            Err(_) => {
+                Err(DeviceError::WaitForFences)
+            }
+        }
+    }
+
+    /// [`reset_fences`](Self::reset_fences) for single fence
+    pub fn reset_fence(&self, fence: &sync::Fence) -> Result<(), DeviceError> {
+        match unsafe { self.i_core.device().reset_fences(&[fence.fence()]) } {
+            Ok(_) => {
+                Ok(())
+            },
+            Err(_) => {
+                Err(DeviceError::ResetFences)
             }
         }
     }

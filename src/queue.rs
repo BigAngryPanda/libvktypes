@@ -31,9 +31,7 @@ pub enum QueueError {
     /// [submit](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkQueueSubmit.html)
     /// queue
     Execution,
-    /// Failed to
-    /// [create](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateFence.html)
-    /// fence
+    /// Failed to wait or reset Fence
     Fence,
     /// Execution time exceed max time
     Timeout,
@@ -124,6 +122,32 @@ impl Queue {
         }
 
         Ok(())
+    }
+
+    /// Execute selected buffer and wait for [Fence](crate::sync::Fence)
+    ///
+    /// Reset Fence after successful exec
+    ///
+    /// Note: it won't save you from synchronization after calling [`present`](Self::present)
+    pub fn exec_with_fence(&self, info: &ExecInfo, wait_all: bool, timeout: u64) -> Result<(), QueueError> {
+        let device = self.i_core.device();
+
+        match self.exec(info) {
+            Ok(res) => {
+                if unsafe { device.wait_for_fences(&[info.fence.fence()], wait_all, timeout).is_err() } {
+                    return Err(QueueError::Fence);
+                }
+
+                if unsafe { device.reset_fences(&[info.fence.fence()]).is_err() } {
+                    return Err(QueueError::Fence);
+                }
+
+                Ok(res)
+            },
+            Err(err) => {
+                Err(err)
+            }
+        }
     }
 
     /// Return queue family index
