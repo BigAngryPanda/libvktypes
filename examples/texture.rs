@@ -12,7 +12,8 @@ use libvktypes::{
     graphics,
     sync,
     cmd,
-    queue
+    queue,
+    pipeline
 };
 
 use libvktypes::memory::BufferView;
@@ -208,7 +209,7 @@ fn main() {
     ];
 
     let texture_memory =
-        memory::Memory::allocate_host_memory(&device, &mut image_cfgs.iter()).expect("Failed to allocate texture memory");
+        memory::Memory::allocate_device_memory(&device, &mut image_cfgs.iter()).expect("Failed to allocate texture memory");
 
     let texture = memory::view::RefImageView::new(&texture_memory, 0);
 
@@ -255,51 +256,6 @@ fn main() {
 
     cmd_queue.exec(&copy_exec_info).expect("Failed to copy texture");
 
-    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
-        .expect("Failed to create render pass");
-
-    let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
-        graphics::BindingCfg {
-            resource_type: graphics::DescriptorType::COMBINED_IMAGE_SAMPLER,
-            stage: graphics::ShaderStage::FRAGMENT,
-            count: 1,
-        }
-    ]]).expect("Failed to allocate resources");
-
-    let vert_input = [
-        graphics::VertexInputCfg {
-            location: 0,
-            binding: 0,
-            format: memory::ImageFormat::R32G32B32A32_SFLOAT,
-            offset: 0,
-        },
-        graphics::VertexInputCfg {
-            location: 1,
-            binding: 0,
-            format: memory::ImageFormat::R32G32_SFLOAT,
-            offset: size_of::<[f32; 4]>() as u32,
-        }
-    ];
-
-    let pipe_type = graphics::PipelineCfg {
-        vertex_shader: &vert_shader,
-        vertex_size: size_of::<[f32; 6]>() as u32,
-        vert_input: &vert_input,
-        frag_shader: &frag_shader,
-        geom_shader: None,
-        topology: graphics::Topology::TRIANGLE_LIST,
-        extent: capabilities.extent2d(),
-        push_constant_size: 0,
-        render_pass: &render_pass,
-        subpass_index: 0,
-        enable_depth_test: false,
-        enable_primitive_restart: false,
-        cull_mode: graphics::CullMode::BACK,
-        descriptor: &descs
-    };
-
-    let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
-
     let sampler_cfg = graphics::SamplerCfg {
         address_mode_u: graphics::SamplerAddressMode::MIRRORED_REPEAT,
         address_mode_v: graphics::SamplerAddressMode::MIRRORED_REPEAT,
@@ -308,14 +264,33 @@ fn main() {
 
     let sampler = graphics::Sampler::new(&device, &sampler_cfg).expect("Failed to create sampler");
 
-    descs.update(&[graphics::UpdateInfo {
-        set: 0,
-        binding: 0,
-        starting_array_element: 0,
-        resources: graphics::ShaderBinding::Samplers::<memory::RefView, _>(&[
-            graphics::SamplerBinding::new(sampler, texture, memory::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-        ]),
-    }]);
+    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
+        .expect("Failed to create render pass");
+
+    let layout = pipeline::PipelineLayoutBuilder::with_sets(1)
+        .binding(0, 0, graphics::ShaderStage::FRAGMENT,
+            pipeline::DescriptorType::COMBINED_IMAGE_SAMPLER, 1)
+        .build(&device)
+        .expect("Failed to crate pipeline layout");
+
+    let bindings = pipeline::PipelineBindings::new(&device, &layout).expect("Failed to create bindings");
+
+    let mut write_info = pipeline::WriteInfo::new();
+    write_info
+        .image(0, 0, pipeline::DescriptorType::COMBINED_IMAGE_SAMPLER)
+        .value(texture, &sampler, memory::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+
+    bindings.write(&write_info);
+
+    let pipeline = pipeline::GraphicsPipelineBuilder::new()
+        .vertex_shader(&vert_shader)
+        .vertex_input(0, 0, memory::ImageFormat::R32G32B32A32_SFLOAT, 0, std::mem::size_of::<[f32; 4]>() as u32)
+        .vertex_input(1, 1, memory::ImageFormat::R32G32_SFLOAT, size_of::<[f32; 4]>() as u32, std::mem::size_of::<[f32; 2]>() as u32)
+        .frag_shader(&frag_shader)
+        .render_pass(&render_pass)
+        .extent2d(capabilities.extent2d())
+        .build(&device, &layout)
+        .expect("failed to create pipeline");
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
@@ -348,7 +323,7 @@ fn main() {
 
     cmd_buffer.bind_index_buffer(indices, 0, memory::IndexBufferType::UINT32);
 
-    cmd_buffer.bind_resources(&pipeline, &descs, &[]);
+    cmd_buffer.bind_resources(&layout, &bindings, &[]);
 
     cmd_buffer.draw_indexed(INDICES.len() as u32, 1, 0, 0, 0);
 

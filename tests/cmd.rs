@@ -9,7 +9,7 @@ mod cmd {
         libvk,
         memory,
         shader,
-        compute,
+        pipeline,
         cmd,
         queue,
         formats,
@@ -106,19 +106,30 @@ mod cmd {
 
         let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");
 
-        let pipe_type = compute::PipelineCfg {
-            buffers: &[compute_buffer],
-            shader: &shader,
-            push_constant_size: 0,
-        };
+        let layout = pipeline::PipelineLayoutBuilder::with_sets(1)
+            .binding(0, 0, pipeline::ShaderStage::COMPUTE, pipeline::DescriptorType::STORAGE_BUFFER, 1)
+            .build(&device)
+            .expect("Failed to crate pipeline layout");
 
-        let pipeline = compute::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
+        let bindings = pipeline::PipelineBindings::new(&device, &layout).expect("Failed to create bindings");
+
+        let mut write_info = pipeline::WriteInfo::new();
+        write_info
+            .buffer(0, 0, pipeline::DescriptorType::STORAGE_BUFFER)
+            .value(compute_buffer);
+
+        bindings.write(&write_info);
+
+        let pipe = pipeline::ComputePipelineBuilder::new()
+            .compute_shader(&shader)
+            .build(&device, &layout)
+            .expect("Failed to create compute pipeline");
 
         let cmd_pool = cmd::Pool::new(&device, queue.index()).expect("Failed to allocate command pool");
 
         let cmd_buffer = cmd_pool.allocate().expect("Failed to allocate command buffer");
 
-        cmd_buffer.bind_compute_pipeline(&pipeline);
+        cmd_buffer.bind_compute_pipeline(&pipe, &layout, &bindings);
 
         cmd_buffer.dispatch(1, 1, 1);
 
@@ -143,13 +154,18 @@ mod cmd {
     }
 
     fn write_graphics_cmds() {
-        let pipeline = test_context::get_graphics_pipeline();
+        let render_pass = test_context::get_render_pass();
+
+        let pipeline = test_context::graphics_pipeline(
+            test_context::get_graphics_device(),
+            test_context::get_surface_capabilities(),
+            render_pass,
+            test_context::get_vert_shader(),
+            test_context::get_frag_shader());
 
         let framebuffers = &test_context::get_framebuffers();
 
         let pool = test_context::get_cmd_pool();
-
-        let render_pass = test_context::get_render_pass();
 
         let cmd_buffer = pool.allocate().expect("Failed to allocate cmd buffer");
 

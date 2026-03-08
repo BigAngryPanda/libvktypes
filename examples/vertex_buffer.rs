@@ -96,29 +96,18 @@ fn main() {
     let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");
 
-    let pipe_type = graphics::PipelineCfg {
-        vertex_shader: &vert_shader,
-        vertex_size: std::mem::size_of::<[f32; 4]>() as u32,
-        vert_input: &[graphics::VertexInputCfg {
-            location: 0,
-            binding: 0,
-            format: memory::ImageFormat::R32G32B32A32_SFLOAT,
-            offset: 0,
-        }],
-        frag_shader: &frag_shader,
-        geom_shader: None,
-        topology: graphics::Topology::TRIANGLE_STRIP,
-        extent: capabilities.extent2d(),
-        push_constant_size: 0,
-        render_pass: &render_pass,
-        subpass_index: 0,
-        enable_depth_test: false,
-        enable_primitive_restart: false,
-        cull_mode: graphics::CullMode::BACK,
-        descriptor: &graphics::PipelineDescriptor::empty(&device)
-    };
+    let layout = pipeline::PipelineLayoutBuilder::new()
+        .build(&device)
+        .expect("Failed to crate pipeline layout");
 
-    let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
+    let pipeline = pipeline::GraphicsPipelineBuilder::new()
+        .vertex_shader(&vert_shader)
+        .vertex_input(0, 0, memory::ImageFormat::R32G32B32A32_SFLOAT, 0, std::mem::size_of::<[f32; 4]>() as u32)
+        .frag_shader(&frag_shader)
+        .render_pass(&render_pass)
+        .extent(capabilities.extent2d().width, capabilities.extent2d().height)
+        .build(&device, &layout)
+        .expect("failed to create pipeline");
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");

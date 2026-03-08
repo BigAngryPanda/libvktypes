@@ -12,7 +12,8 @@ use libvktypes::{
     graphics,
     sync,
     cmd,
-    queue
+    queue,
+    pipeline
 };
 
 const VERT_SHADER: &str = "
@@ -169,47 +170,30 @@ fn main() {
     let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");
 
-    let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
-        graphics::BindingCfg {
-            resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
-            stage: graphics::ShaderStage::FRAGMENT,
-            count: 2,
-        }
-    ]]).expect("Failed to allocate resources");
+    let layout = pipeline::PipelineLayoutBuilder::with_sets(2)
+        .binding(0, 0, graphics::ShaderStage::FRAGMENT,
+            pipeline::DescriptorType::UNIFORM_BUFFER, 2)
+        .build(&device)
+        .expect("Failed to crate pipeline layout");
 
-    let pipe_type = graphics::PipelineCfg {
-        vertex_shader: &vert_shader,
-        vertex_size: std::mem::size_of::<[f32; 4]>() as u32,
-        vert_input: &[graphics::VertexInputCfg {
-            location: 0,
-            binding: 0,
-            format: memory::ImageFormat::R32G32B32A32_SFLOAT,
-            offset: 0,
-        }],
-        frag_shader: &frag_shader,
-        geom_shader: None,
-        topology: graphics::Topology::TRIANGLE_STRIP,
-        extent: capabilities.extent2d(),
-        push_constant_size: 0,
-        render_pass: &render_pass,
-        subpass_index: 0,
-        enable_depth_test: false,
-        enable_primitive_restart: false,
-        cull_mode: graphics::CullMode::BACK,
-        descriptor: &descs
-    };
+    let bindings = pipeline::PipelineBindings::new(&device, &layout).expect("Failed to create bindings");
 
-    let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
+    let mut write_info = pipeline::WriteInfo::new();
+    write_info
+        .buffer(0, 0, pipeline::DescriptorType::UNIFORM_BUFFER)
+        .value(first_color)
+        .value(second_color);
 
-    descs.update(&[graphics::UpdateInfo {
-        set: 0,
-        binding: 0,
-        starting_array_element: 0,
-        resources: graphics::ShaderBinding::Buffers::<_, memory::RefImageView>(&[
-            graphics::BufferBinding::new(first_color),
-            graphics::BufferBinding::new(second_color)
-        ]),
-    }]);
+    bindings.write(&write_info);
+
+    let pipeline = pipeline::GraphicsPipelineBuilder::new()
+        .vertex_shader(&vert_shader)
+        .vertex_input(0, 0, memory::ImageFormat::R32G32B32A32_SFLOAT, 0, std::mem::size_of::<[f32; 4]>() as u32)
+        .frag_shader(&frag_shader)
+        .render_pass(&render_pass)
+        .extent(capabilities.extent2d().width, capabilities.extent2d().height)
+        .build(&device, &layout)
+        .expect("failed to create pipeline");
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
@@ -240,7 +224,7 @@ fn main() {
 
     cmd_buffer.bind_vertex_buffers(&[graphics::VertexView::new(vertices)]);
 
-    cmd_buffer.bind_resources(&pipeline, &descs, &[]);
+    cmd_buffer.bind_resources(&layout, &bindings, &[]);
 
     cmd_buffer.draw(4, 1, 0, 0);
 

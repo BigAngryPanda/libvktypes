@@ -1,7 +1,11 @@
 use ash::vk;
 
+use crate::dev::{
+    Device,
+    Core
+};
+
 use crate::{
-    dev::Device,
     pipeline::LayoutError
 };
 
@@ -10,19 +14,7 @@ use crate::{
     data_ptr
 };
 
-/// Describe how vertices should be assembled into primitives
-///
-#[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.PrimitiveTopology.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPrimitiveTopology.html>"]
-pub type Topology = vk::PrimitiveTopology;
-
-/// Specifies which triangles will be discarderd based on their orientation
-///
-#[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.CullModeFlags.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkCullModeFlagBits.html>"]
-pub type CullMode = vk::CullModeFlags;
+use std::sync::Arc;
 
 /// ShaderStage specifies shader stage within single pipeline
 ///
@@ -60,12 +52,21 @@ impl PipelineLayoutBuilder {
         }
     }
 
+    /// `count` - hint for builder to preallocate memory
+    /// for sets information
+    pub fn with_sets(count: usize) -> PipelineLayoutBuilder {
+        PipelineLayoutBuilder {
+            push_constants: Vec::new(),
+            bindings: vec![Vec::new(); count]
+        }
+    }
+
     pub fn push_constant(
-        &mut self,
+        mut self,
         stage: ShaderStage,
         offset: u32,
         size: u32
-    ) -> &mut Self {
+    ) -> Self {
         self.push_constants.push(
             vk::PushConstantRange {
                 stage_flags: stage,
@@ -77,31 +78,24 @@ impl PipelineLayoutBuilder {
         self
     }
 
-    /// Allocate memory for sets bindings
-    ///
-    /// You must do it before calling [`binding`]
-    ///
-    /// Calling again will invalidate current bindings
-    pub fn sets(&mut self, count: usize) -> &mut Self {
-        self.bindings = vec![Vec::new(); count];
-
-        self
-    }
-
     pub fn binding(
-        &mut self,
+        mut self,
         set: usize,
         binding: u32,
         stage: ShaderStage,
         resource_type: DescriptorType,
         count: u32
-    ) -> &mut Self {
+    ) -> Self {
+        if self.bindings.len() <= set {
+            self.bindings.resize(set + 1, Vec::new());
+        }
+
         self.bindings[set].push(BindingType { binding, resource_type, stage, count });
 
         self
     }
 
-    pub fn build(self, device: &Device) -> Result<PipelineLayout, LayoutError> {
+    pub fn build(&mut self, device: &Device) -> Result<PipelineLayout, LayoutError> {
         let mut sets_layout: Vec<vk::DescriptorSetLayout> = Vec::new();
 
         for bindings in &self.bindings {
@@ -131,9 +125,10 @@ impl PipelineLayoutBuilder {
         )};
 
         Ok(PipelineLayout {
-            sets_layouts: sets_layout,
-            layout: pipeline_layout,
-            bindings: self.bindings
+            i_core: device.core().clone(),
+            i_sets_layouts: sets_layout,
+            i_layout: pipeline_layout,
+            i_bindings: self.bindings.clone()
         })
     }
 }
@@ -143,18 +138,23 @@ impl PipelineLayoutBuilder {
 */
 #[derive(Debug)]
 pub struct PipelineLayout {
-    pub(crate) sets_layouts: Vec<vk::DescriptorSetLayout>,
-    pub(crate) layout: vk::PipelineLayout,
-    pub(crate) bindings: Vec<Vec<BindingType>>
+    i_core: Arc<Core>,
+    i_sets_layouts: Vec<vk::DescriptorSetLayout>,
+    i_layout: vk::PipelineLayout,
+    i_bindings: Vec<Vec<BindingType>>
 }
 
 impl PipelineLayout {
+    pub(crate) fn bindings(&self) -> &Vec<Vec<BindingType>> {
+        &self.i_bindings
+    }
+
     pub(crate) fn layout(&self) -> vk::PipelineLayout {
-        self.layout
+        self.i_layout
     }
 
     pub(crate) fn sets_layouts(&self) -> &Vec<vk::DescriptorSetLayout> {
-        &self.sets_layouts
+        &self.i_sets_layouts
     }
 }
 
@@ -198,6 +198,22 @@ fn clear_sets_layout(
             device
             .device()
             .destroy_descriptor_set_layout(set, device.allocator());
+        }
+    }
+}
+
+impl Drop for PipelineLayout {
+    fn drop(&mut self) {
+        let device = self.i_core.device();
+        let alloc  = self.i_core.allocator();
+
+        unsafe {
+            for &set in &self.i_sets_layouts {
+                device
+                .destroy_descriptor_set_layout(set, alloc);
+            }
+
+            device.destroy_pipeline_layout(self.i_layout, alloc);
         }
     }
 }

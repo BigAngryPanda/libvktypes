@@ -8,7 +8,7 @@ mod compute_pipeline {
         libvk,
         memory,
         shader,
-        compute,
+        pipeline
     };
 
     #[test]
@@ -58,12 +58,24 @@ mod compute_pipeline {
 
         let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");
 
-        let pipe_type = compute::PipelineCfg {
-            buffers: &[view],
-            shader: &shader,
-            push_constant_size: 0,
-        };
+        let layout = pipeline::PipelineLayoutBuilder::with_sets(1)
+            .binding(0, 0, pipeline::ShaderStage::COMPUTE, pipeline::DescriptorType::STORAGE_BUFFER, 1)
+            .build(&device)
+            .expect("Failed to crate pipeline layout");
 
-        assert!(compute::Pipeline::new(&device, &pipe_type).is_ok());
+        let bindings = pipeline::PipelineBindings::new(&device, &layout).expect("Failed to create bindings");
+
+        let mut write_info = pipeline::WriteInfo::new();
+        write_info
+            .buffer(0, 0, pipeline::DescriptorType::STORAGE_BUFFER)
+            .value(view);
+
+        bindings.write(&write_info);
+
+        let pipe = pipeline::ComputePipelineBuilder::new()
+            .compute_shader(&shader)
+            .build(&device, &layout);
+
+        assert!(pipe.is_ok());
     }
 }

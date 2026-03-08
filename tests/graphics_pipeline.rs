@@ -2,34 +2,32 @@ mod test_context;
 
 #[cfg(test)]
 mod graphics_pipeline {
-    use libvktypes::{graphics, memory};
+    use libvktypes::{
+        graphics,
+        memory,
+        pipeline
+    };
 
     use super::test_context;
 
     #[test]
     fn create_pipeline() {
-        let dev = test_context::get_graphics_device();
+        let device = test_context::get_graphics_device();
 
         let capabilities = test_context::get_surface_capabilities();
 
-        let pipe_type = graphics::PipelineCfg {
-            vertex_shader: test_context::get_vert_shader(),
-            vertex_size: std::mem::size_of::<[f32; 2]>() as u32,
-            vert_input: &[],
-            frag_shader: test_context::get_frag_shader(),
-            geom_shader: None,
-            topology: graphics::Topology::TRIANGLE_STRIP,
-            extent: capabilities.extent2d(),
-            push_constant_size: 0,
-            render_pass: test_context::get_render_pass(),
-            subpass_index: 0,
-            enable_depth_test: false,
-            enable_primitive_restart: false,
-            cull_mode: graphics::CullMode::BACK,
-            descriptor: &graphics::PipelineDescriptor::empty(dev)
-        };
+        let layout = pipeline::PipelineLayoutBuilder::new()
+            .build(&device)
+            .expect("Failed to crate pipeline layout");
 
-        assert!(graphics::Pipeline::new(dev, &pipe_type).is_ok());
+        let pipe = pipeline::GraphicsPipelineBuilder::new()
+            .vertex_shader(test_context::get_vert_shader())
+            .frag_shader(test_context::get_frag_shader())
+            .render_pass(test_context::get_render_pass())
+            .extent(capabilities.extent2d().width, capabilities.extent2d().height)
+            .build(&device, &layout);
+
+        assert!(pipe.is_ok());
     }
 
     #[test]
@@ -38,32 +36,20 @@ mod graphics_pipeline {
 
         let device = test_context::get_graphics_device();
 
-        let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
-            graphics::BindingCfg {
-                resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
-                stage: graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT,
-                count: 1,
-            }
-        ]]).expect("Failed to allocate resources");
+        let layout = pipeline::PipelineLayoutBuilder::with_sets(1)
+            .binding(0, 0, graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT,
+                pipeline::DescriptorType::UNIFORM_BUFFER, 1)
+            .build(&device)
+            .expect("Failed to crate pipeline layout");
 
-        let pipe_type = graphics::PipelineCfg {
-            vertex_shader: test_context::get_vert_shader(),
-            vertex_size: std::mem::size_of::<[f32; 2]>() as u32,
-            vert_input: &[],
-            frag_shader: test_context::get_frag_shader(),
-            geom_shader: None,
-            topology: graphics::Topology::TRIANGLE_STRIP,
-            extent: capabilities.extent2d(),
-            push_constant_size: 0,
-            render_pass: test_context::get_render_pass(),
-            subpass_index: 0,
-            enable_depth_test: false,
-            enable_primitive_restart: false,
-            cull_mode: graphics::CullMode::BACK,
-            descriptor: &descs
-        };
+        let pipe = pipeline::GraphicsPipelineBuilder::new()
+            .vertex_shader(test_context::get_vert_shader())
+            .frag_shader(test_context::get_frag_shader())
+            .render_pass(test_context::get_render_pass())
+            .extent(capabilities.extent2d().width, capabilities.extent2d().height)
+            .build(&device, &layout);
 
-        assert!(graphics::Pipeline::new(device, &pipe_type).is_ok());
+        assert!(pipe.is_ok());
     }
 
     #[test]
@@ -85,22 +71,20 @@ mod graphics_pipeline {
         let uniform_data = memory::Memory::allocate_host_memory(
             &device, &mut buffers.iter()).expect("Failed to allocate memory");
 
-        let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
-            graphics::BindingCfg {
-                resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
-                stage: graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT,
-                count: 1,
-            }
-        ]]).expect("Failed to allocate resources");
+        let layout = pipeline::PipelineLayoutBuilder::with_sets(1)
+            .binding(0, 0, graphics::ShaderStage::VERTEX | graphics::ShaderStage::FRAGMENT,
+                pipeline::DescriptorType::UNIFORM_BUFFER, 1)
+            .build(&device)
+            .expect("Failed to crate pipeline layout");
 
-        let view = memory::view::RefView::new(&uniform_data, 0);
+        let bindings = pipeline::PipelineBindings::new(&device, &layout).expect("Failed to create bindings");
 
-        descs.update::<_, memory::view::RefImageView<'_>>(&[graphics::UpdateInfo {
-            set: 0,
-            binding: 0,
-            starting_array_element: 0,
-            resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(view)]),
-        }])
+        let mut write_info = pipeline::WriteInfo::new();
+        write_info
+            .buffer(0, 0, pipeline::DescriptorType::STORAGE_BUFFER)
+            .value(memory::RefView::new(&uniform_data, 0));
+
+        bindings.write(&write_info);
     }
 
     #[test]

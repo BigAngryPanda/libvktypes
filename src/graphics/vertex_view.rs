@@ -2,10 +2,7 @@
 
 use ash::vk;
 
-use crate::{
-    memory,
-    graphics
-};
+use crate::memory;
 
 /// `VertexView` contains information about
 /// how vertex memory should be [bounded](crate::cmd::Buffer::bind_vertex_buffers)
@@ -25,13 +22,6 @@ impl<T : memory::BufferView> VertexView<T> {
         VertexView {
             i_view: view,
             i_offset: 0
-        }
-    }
-
-    pub fn from_cfg(view: T, cfg: graphics::VertexInputCfg) -> VertexView<T> {
-        VertexView {
-            i_view: view,
-            i_offset: cfg.offset
         }
     }
 

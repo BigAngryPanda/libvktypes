@@ -47,11 +47,11 @@ impl<T> WriteInfoEntry<T> {
 }
 
 impl WriteInfoEntry<BufferInfo> {
-    pub fn buffer<T: memory::BufferView>(&mut self, view: T) -> &mut Self {
-        self.buffer_with_params(view, 0, vk::WHOLE_SIZE)
+    pub fn value<T: memory::BufferView>(&mut self, view: T) -> &mut Self {
+        self.value_with_params(view, 0, vk::WHOLE_SIZE)
     }
 
-    pub fn buffer_with_params<T: memory::BufferView>(&mut self,
+    pub fn value_with_params<T: memory::BufferView>(&mut self,
         view: T,
         offset: u64,
         range: u64
@@ -67,7 +67,7 @@ impl WriteInfoEntry<BufferInfo> {
 }
 
 impl WriteInfoEntry<ImageInfo> {
-    pub fn image<U: memory::ImageView>(&mut self,
+    pub fn value<U: memory::ImageView>(&mut self,
         view: U,
         sampler: &graphics::Sampler,
         layout: memory::ImageLayout
@@ -129,7 +129,7 @@ impl PipelineBindings {
     {
         let mut desc_size: Vec<vk::DescriptorPoolSize> = Vec::new();
 
-        for set in &layout.bindings {
+        for set in layout.bindings() {
             for binding in set {
                 desc_size.push(vk::DescriptorPoolSize {
                     ty: binding.resource_type,
@@ -170,7 +170,7 @@ impl PipelineBindings {
         }
     }
 
-    pub fn write<T: memory::BufferView, U: memory::ImageView>(&self, write_info: &WriteInfo) {
+    pub fn write(&self, write_info: &WriteInfo) {
         let mut write_desc: Vec<vk::WriteDescriptorSet> =
             Vec::with_capacity(write_info.buffers.len() + write_info.images.len());
 
@@ -210,16 +210,21 @@ impl PipelineBindings {
             self.i_core.device().update_descriptor_sets(&write_desc, &[])
         };
     }
+
+    pub(crate) fn descriptors(&self) -> &[vk::DescriptorSet] {
+        &self.i_desc_sets
+    }
 }
 
 impl Drop for PipelineBindings {
     fn drop(&mut self) {
+        let device = self.i_core.device();
+        let alloc  = self.i_core.allocator();
+
         unsafe {
             if self.i_desc_pool != vk::DescriptorPool::null() {
-                self
-                .i_core
-                .device()
-                .destroy_descriptor_pool(self.i_desc_pool, self.i_core.allocator());
+                device
+                .destroy_descriptor_pool(self.i_desc_pool, alloc);
             }
         }
     }

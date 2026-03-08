@@ -11,7 +11,8 @@ use libvktypes::{
     shader,
     graphics,
     memory,
-    cmd
+    cmd,
+    pipeline
 };
 
 use winit::event_loop::EventLoop;
@@ -77,13 +78,49 @@ static INIT_CMD_POOL: Once = Once::new();
 
 static mut CMD_POOL: MaybeUninit<cmd::Pool> = MaybeUninit::<cmd::Pool>::uninit();
 
-static INIT_GRAPHICS_PIPELINE: Once = Once::new();
-
-static mut GRAPHICS_PIPELINE: MaybeUninit<graphics::Pipeline> = MaybeUninit::<graphics::Pipeline>::uninit();
-
 static INIT_FRAMEBUFFER: Once = Once::new();
 
 static mut FRAMEBUFFER: MaybeUninit<Vec<memory::Framebuffer>> = MaybeUninit::<Vec<memory::Framebuffer>>::uninit();
+
+pub struct WindowCtx {
+    pub ev: EventLoop<()>,
+    pub window: window::Window
+}
+
+impl WindowCtx {
+    pub fn new() -> WindowCtx {
+        let ev = window::eventloop().expect("Failed to create eventloop");
+        let window = window::create_window(&ev).expect("Failed to create window");
+
+        WindowCtx {
+            ev,
+            window
+        }
+    }
+}
+
+pub struct GraphicsDeviceCtx {
+    pub window_ctx: WindowCtx,
+    pub instance: libvk::Instance,
+    pub surface: surface::Surface,
+    pub hw: hw::HWDevice,
+    pub queue: hw::QueueFamilyDescription,
+    pub present_queue: hw::QueueFamilyDescription,
+    pub capabilities: surface::Capabilities,
+    pub device: dev::Device
+}
+
+impl GraphicsDeviceCtx {
+    pub fn new() -> WindowCtx {
+        let ev = window::eventloop().expect("Failed to create eventloop");
+        let window = window::create_window(&ev).expect("Failed to create window");
+
+        WindowCtx {
+            ev,
+            window
+        }
+    }
+}
 
 pub fn get_eventloop() -> &'static EventLoop<()> {
     unsafe {
@@ -341,43 +378,25 @@ pub fn get_cmd_pool() -> &'static cmd::Pool {
     }
 }
 
-pub fn get_graphics_pipeline() -> &'static graphics::Pipeline {
-    unsafe {
-        INIT_GRAPHICS_PIPELINE.call_once(|| {
-            let dev = get_graphics_device();
-            let capabilities = get_surface_capabilities();
+pub fn graphics_pipeline(
+    device: &dev::Device,
+    capabilities: &surface::Capabilities,
+    rp: &graphics::RenderPass,
+    vs: &shader::Shader,
+    fs: &shader::Shader) -> pipeline::GraphicsPipeline
+{
+    let layout = pipeline::PipelineLayoutBuilder::new()
+        .build(&device)
+        .expect("Failed to crate pipeline layout");
 
-            let vertex_cfg = graphics::VertexInputCfg {
-                location: 0,
-                binding: 0,
-                format: memory::ImageFormat::R32G32B32A32_SFLOAT,
-                offset: 0,
-            };
-
-            let pipe_type = graphics::PipelineCfg {
-                vertex_shader: get_vert_shader(),
-                vertex_size: std::mem::size_of::<[f32; 2]>() as u32,
-                vert_input: &[vertex_cfg],
-                frag_shader: get_frag_shader(),
-                geom_shader: None,
-                topology: graphics::Topology::TRIANGLE_STRIP,
-                extent: capabilities.extent2d(),
-                push_constant_size: 0,
-                render_pass: get_render_pass(),
-                subpass_index: 0,
-                enable_depth_test: false,
-                enable_primitive_restart: false,
-                cull_mode: graphics::CullMode::BACK,
-                descriptor: &graphics::PipelineDescriptor::empty(dev)
-            };
-
-            #[allow(static_mut_refs)]
-            GRAPHICS_PIPELINE.write(graphics::Pipeline::new(dev, &pipe_type).expect("Failed to create pipeline"));
-        });
-
-        #[allow(static_mut_refs)]
-        GRAPHICS_PIPELINE.assume_init_ref()
-    }
+    pipeline::GraphicsPipelineBuilder::new()
+        .vertex_shader(vs)
+        .frag_shader(fs)
+        .render_pass(rp)
+        .extent(capabilities.extent2d().width, capabilities.extent2d().height)
+        .vertex_input(0, 0, memory::ImageFormat::R32G32B32A32_SFLOAT, 0, std::mem::size_of::<[f32; 2]>() as u32)
+        .build(&device, &layout)
+        .expect("Failed to create pipeline")
 }
 
 pub fn get_framebuffers() -> &'static Vec<memory::Framebuffer> {

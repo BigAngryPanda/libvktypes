@@ -2,7 +2,12 @@
 
 use ash::vk;
 
-use crate::{dev, memory, compute, graphics};
+use crate::{
+    dev,
+    memory,
+    pipeline,
+    graphics
+};
 
 use crate::on_error_ret;
 
@@ -180,7 +185,12 @@ impl Buffer {
     /// Bind specifically *compute* pipeline
     ///
     /// For graphics see [`bind_graphics_pipeline`](Buffer::bind_graphics_pipeline)
-    pub fn bind_compute_pipeline(&self, pipe: &compute::Pipeline) {
+    pub fn bind_compute_pipeline(
+        &self,
+        pipe: &pipeline::ComputePipeline,
+        layout: &pipeline::PipelineLayout,
+        bindings: &pipeline::PipelineBindings
+    ) {
         let dev = self.i_pool.device();
 
         unsafe {
@@ -193,9 +203,9 @@ impl Buffer {
             dev.cmd_bind_descriptor_sets(
                 self.i_buffer,
                 vk::PipelineBindPoint::COMPUTE,
-                pipe.pipeline_layout(),
+                layout.layout(),
                 0,
-                &[pipe.descriptor_set()],
+                bindings.descriptors(),
                 &[]
             );
         }
@@ -371,12 +381,12 @@ impl Buffer {
     }
 
     /// Update push constatnts with raw data
-    pub fn update_push_constants(&self, pipe: &compute::Pipeline, data: &[u8]) {
+    pub fn update_push_constants(&self, layout: &pipeline::PipelineLayout, stage: pipeline::ShaderStage, data: &[u8]) {
         let dev = self.i_pool.device();
 
         unsafe {
             dev.cmd_push_constants(
-                self.i_buffer, pipe.pipeline_layout(), vk::ShaderStageFlags::COMPUTE, 0, data
+                self.i_buffer, layout.layout(), stage, 0, data
             )
         }
     }
@@ -440,7 +450,7 @@ impl Buffer {
     /// Bind specifically *graphics* pipeline
     ///
     /// For graphics see [`bind_compute_pipeline`](Buffer::bind_compute_pipeline)
-    pub fn bind_graphics_pipeline(&self, pipe: &graphics::Pipeline) {
+    pub fn bind_graphics_pipeline(&self, pipe: &pipeline::GraphicsPipeline) {
         let dev = self.i_pool.device();
 
         unsafe {
@@ -455,7 +465,11 @@ impl Buffer {
     /// See [more](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCmdBindDescriptorSets.html)
     ///
     /// If you do not care about `offsets` leave it as `&[]`
-    pub fn bind_resources(&self, pipe: &graphics::Pipeline, res: &graphics::PipelineDescriptor, offsets: &[u32]) {
+    pub fn bind_resources(
+        &self,
+        layout: &pipeline::PipelineLayout,
+        res: &pipeline::PipelineBindings,
+        offsets: &[u32]) {
         unsafe {
             self
             .i_pool
@@ -463,9 +477,9 @@ impl Buffer {
             .cmd_bind_descriptor_sets(
                 self.i_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                pipe.layout(),
+                layout.layout(),
                 0,
-                res.descriptor_sets(),
+                res.descriptors(),
                 offsets
             );
         }

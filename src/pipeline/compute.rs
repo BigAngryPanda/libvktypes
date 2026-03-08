@@ -3,7 +3,6 @@ use ash::vk;
 use crate::{
     dev,
     on_error_ret,
-    on_error,
     shader,
     pipeline
 };
@@ -41,20 +40,6 @@ impl ComputePipelineBuilder {
     ) -> Result<ComputePipeline, pipeline::PipelineError> {
         use std::marker::PhantomData;
 
-        let pipeline_cache_info = vk::PipelineCacheCreateInfo {
-            s_type: vk::StructureType::PIPELINE_CACHE_CREATE_INFO,
-            p_next: std::ptr::null(),
-            flags: vk::PipelineCacheCreateFlags::empty(),
-            initial_data_size: 0,
-            p_initial_data: std::ptr::null(),
-            _marker: PhantomData,
-        };
-
-        let pipeline_cache = unsafe { on_error_ret!(
-            device.device().create_pipeline_cache(&pipeline_cache_info, device.allocator()),
-            pipeline::PipelineError::PipelineCache
-        )};
-
         let pipeline_shader = vk::PipelineShaderStageCreateInfo {
             s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
             p_next: std::ptr::null(),
@@ -77,18 +62,13 @@ impl ComputePipelineBuilder {
             _marker: std::marker::PhantomData,
         };
 
-
-        let pipelines = unsafe { on_error!(
-            device.device().create_compute_pipelines(pipeline_cache, &[pipeline_info], device.allocator()),
-            {
-                device.device().destroy_pipeline_cache(pipeline_cache, device.allocator());
-                return Err(pipeline::PipelineError::ComputePipeline);
-            }
+        let pipelines = unsafe { on_error_ret!(
+            device.device().create_compute_pipelines(vk::PipelineCache::null(), &[pipeline_info], device.allocator()),
+            pipeline::PipelineError::ComputePipeline
         )};
 
         Ok(ComputePipeline {
             i_core: device.core().clone(),
-            i_pipeline_cache: pipeline_cache,
             i_pipeline: pipelines[0],
         })
     }
@@ -96,18 +76,22 @@ impl ComputePipelineBuilder {
 
 pub struct ComputePipeline {
     i_core: Arc<dev::Core>,
-    i_pipeline: vk::Pipeline,
-    i_pipeline_cache: vk::PipelineCache
+    i_pipeline: vk::Pipeline
+}
+
+impl ComputePipeline {
+    pub(crate) fn pipeline(&self) -> vk::Pipeline {
+        self.i_pipeline
+    }
 }
 
 impl Drop for ComputePipeline {
     fn drop(&mut self) {
         let device = self.i_core.device();
-        let alloc = self.i_core.allocator();
+        let alloc  = self.i_core.allocator();
 
         unsafe {
             device.destroy_pipeline(self.i_pipeline, alloc);
-            device.destroy_pipeline_cache(self.i_pipeline_cache, alloc);
         }
     }
 }

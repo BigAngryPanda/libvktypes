@@ -14,20 +14,6 @@ use std::sync::Arc;
 
 use core::ffi::c_char;
 
-/// Describe how vertices should be assembled into primitives
-///
-#[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.PrimitiveTopology.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPrimitiveTopology.html>"]
-pub type Topology = vk::PrimitiveTopology;
-
-/// Specifies which triangles will be discarderd based on their orientation
-///
-#[doc = "Possible values: <https://docs.rs/ash/latest/ash/vk/struct.CullModeFlags.html>"]
-///
-#[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkCullModeFlagBits.html>"]
-pub type CullMode = vk::CullModeFlags;
-
 /// Graphics pipeline configuration
 pub struct GraphicsPipelineBuilder {
     vert_shader: vk::ShaderModule,
@@ -38,13 +24,13 @@ pub struct GraphicsPipelineBuilder {
     frag_entry: *const c_char,
     geom_shader: vk::ShaderModule,
     geom_entry: *const c_char,
-    topology: Topology,
+    topology: pipeline::Topology,
     extent: vk::Extent2D,
     render_pass: vk::RenderPass,
     subpass_index: u32,
     enable_depth_test: bool,
     enable_primitive_restart: bool,
-    cull_mode: CullMode
+    cull_mode: pipeline::CullMode
 }
 
 impl GraphicsPipelineBuilder {
@@ -58,13 +44,13 @@ impl GraphicsPipelineBuilder {
             frag_entry: std::ptr::null(),
             geom_shader: vk::ShaderModule::null(),
             geom_entry: std::ptr::null(),
-            topology: Topology::TRIANGLE_LIST,
+            topology: pipeline::Topology::TRIANGLE_LIST,
             extent: memory::Extent2D::default(),
             render_pass: vk::RenderPass::null(),
             subpass_index: 0,
             enable_depth_test: false,
             enable_primitive_restart: false,
-            cull_mode: CullMode::BACK,
+            cull_mode: pipeline::CullMode::BACK,
         }
     }
 
@@ -84,6 +70,8 @@ impl GraphicsPipelineBuilder {
         self
     }
 
+    /// Optional
+    ///
     /// Configuration of pipeline's vertex stage input
     ///
     /// Example
@@ -99,33 +87,33 @@ impl GraphicsPipelineBuilder {
     /// ```
     /// // Vertex
     /// use libvktypes::memory::ImageFormat;
-    /// use libvktypes::graphics::VertexInputCfg;
+    /// use libvktypes::pipeline::GraphicsPipelineBuilder;
     ///
     /// struct Vertex {
     ///     pos: [f32; 4],
     ///     color: [f32; 4],
     /// }
     ///
-    /// let builder = PipelineBuilder::new();
+    /// let mut builder = GraphicsPipelineBuilder::new();
     ///
     /// // Position
-    /// builder.vertex_input(0, 0, ImageFormat::R32G32B32A32_SFLOAT, 0);
+    /// builder.vertex_input(0, 0, ImageFormat::R32G32B32A32_SFLOAT, 0, std::mem::size_of::<[f32; 4]>() as u32);
     ///
     /// // Color
-    /// builder.vertex_input(1, 0, ImageFormat::R32G32B32A32_SFLOAT, std::mem::size_of::<[f32; 4]>() as u32);
+    /// builder.vertex_input(1, 1, ImageFormat::R32G32B32A32_SFLOAT, std::mem::size_of::<[f32; 4]>() as u32, std::mem::size_of::<[f32; 4]>() as u32);
     /// ```
     ///
-    /// ## vertex_size
+    /// ## stride
     ///
     /// For example you may pass just vertex coordinates in 3D space as `[f32; 3]`
-    /// (vertex_size will be `size_of::<[f32; 3]>()`)
-    /// or with 4-th coordinate as `[f32; 4]` (vertex_size will be `size_of::<[f32; 4]>()`)
+    /// (stride will be `size_of::<[f32; 3]>()`)
+    /// or with 4-th coordinate as `[f32; 4]` (stride will be `size_of::<[f32; 4]>()`)
     pub fn vertex_input(&mut self,
         location: u32,
         binding: u32,
         format: memory::ImageFormat,
         offset: u32,
-        vertex_size: u32
+        stride: u32
     ) -> &mut Self {
         self.vert_input.push(
             vk::VertexInputAttributeDescription {
@@ -138,7 +126,7 @@ impl GraphicsPipelineBuilder {
         self.vert_sizes.push(
             vk::VertexInputBindingDescription {
                 binding,
-                stride: vertex_size,
+                stride,
                 input_rate: vk::VertexInputRate::VERTEX,
             });
 
@@ -155,9 +143,16 @@ impl GraphicsPipelineBuilder {
         self
     }
 
-    /// Must be caled
+    /// Must be caled or [`extent2d`](Self::extent2d)
     pub fn extent(&mut self, width: u32, height: u32) -> &mut Self {
         self.extent = vk::Extent2D { width, height };
+
+        self
+    }
+
+    /// Must be caled or [`extent`](Self::extent)
+    pub fn extent2d(&mut self, extent2d: memory::Extent2D) -> &mut Self {
+        self.extent = extent2d;
 
         self
     }
@@ -198,7 +193,7 @@ impl GraphicsPipelineBuilder {
     /// [here](https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#drawing-primitive-topology-class)
     ///
     /// Default is `Topology::TRIANGLE_LIST`
-    pub fn topology(&mut self, topology: Topology) -> &mut Self {
+    pub fn topology(&mut self, topology: pipeline::Topology) -> &mut Self {
         self.topology = topology;
 
         self
@@ -239,7 +234,7 @@ impl GraphicsPipelineBuilder {
     /// Optional
     ///
     /// Default is `CullMode::BACK`
-    pub fn cull_mode(&mut self, cull_mode: CullMode) -> &mut Self {
+    pub fn cull_mode(&mut self, cull_mode: pipeline::CullMode) -> &mut Self {
         self.cull_mode = cull_mode;
 
         self
@@ -476,8 +471,11 @@ impl GraphicsPipeline {
 
 impl Drop for GraphicsPipeline {
     fn drop(&mut self) {
+        let device = self.i_core.device();
+        let alloc  = self.i_core.allocator();
+
         unsafe {
-            self.i_core.device().destroy_pipeline(self.i_pipeline, self.i_core.allocator());
+            device.destroy_pipeline(self.i_pipeline, alloc);
         }
     }
 }

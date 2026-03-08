@@ -11,7 +11,6 @@ pub mod extensions;
 pub mod debug;
 pub mod memory;
 pub mod shader;
-pub mod compute;
 pub mod cmd;
 pub mod surface;
 pub mod window;

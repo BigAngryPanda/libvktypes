@@ -12,7 +12,8 @@ use libvktypes::{
     graphics,
     sync,
     cmd,
-    queue
+    queue,
+    pipeline
 };
 
 use libvktypes::winit;
@@ -300,35 +301,6 @@ fn main() {
     }, 3)
     .expect("Failed to fill color data");
 
-    let descs = graphics::PipelineDescriptor::allocate(&device, &[&[
-        graphics::BindingCfg {
-            resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
-            stage: graphics::ShaderStage::VERTEX,
-            count: 1,
-        },
-        graphics::BindingCfg {
-            resource_type: graphics::DescriptorType::UNIFORM_BUFFER,
-            stage: graphics::ShaderStage::FRAGMENT,
-            count: 1,
-        }
-    ]]).expect("Failed to allocate resources");
-
-    descs.update(&[
-        graphics::UpdateInfo {
-            set: 0,
-            binding: 0,
-            starting_array_element: 0,
-            resources: graphics::ShaderBinding::Buffers::<_, memory::view::RefImageView>(
-                &[graphics::BufferBinding::new(transforms)]),
-        },
-        graphics::UpdateInfo {
-            set: 0,
-            binding: 1,
-            starting_array_element: 0,
-            resources: graphics::ShaderBinding::Buffers(&[graphics::BufferBinding::new(color_data)]),
-        },
-    ]);
-
     let depth_buffer_cfg = [
         memory::LayoutElementCfg::Image {
             queue_families: &[queue.index()],
@@ -349,35 +321,37 @@ fn main() {
     let render_pass = graphics::RenderPass::with_depth_buffers(&device, surf_format, memory::ImageFormat::D32_SFLOAT, 1)
         .expect("Failed to create render pass");
 
-    let vertex_cfg = [
-        graphics::VertexInputCfg {
-            location: 0,
-            binding: 0,
-            format: memory::ImageFormat::R32G32B32A32_SFLOAT,
-            offset: 0,
-        }
-    ];
+    let layout = pipeline::PipelineLayoutBuilder::with_sets(2)
+        .binding(0, 0, graphics::ShaderStage::VERTEX,
+            pipeline::DescriptorType::UNIFORM_BUFFER, 1)
+        .binding(0, 1, graphics::ShaderStage::FRAGMENT,
+            pipeline::DescriptorType::UNIFORM_BUFFER, 1)
+        .build(&device)
+        .expect("Failed to crate pipeline layout");
+
+    let bindings = pipeline::PipelineBindings::new(&device, &layout).expect("Failed to create bindings");
+
+    let mut write_info = pipeline::WriteInfo::new();
+    write_info
+        .buffer(0, 0, pipeline::DescriptorType::UNIFORM_BUFFER)
+        .value(transforms);
+    write_info
+        .buffer(0, 1, pipeline::DescriptorType::UNIFORM_BUFFER)
+        .value(color_data);
+
+    bindings.write(&write_info);
+
+    let pipeline = pipeline::GraphicsPipelineBuilder::new()
+        .vertex_shader(&vert_shader)
+        .vertex_input(0, 0, memory::ImageFormat::R32G32B32A32_SFLOAT, 0, std::mem::size_of::<[f32; 4]>() as u32)
+        .frag_shader(&frag_shader)
+        .render_pass(&render_pass)
+        .extent(capabilities.extent2d().width, capabilities.extent2d().height)
+        .depth_test(true)
+        .build(&device, &layout)
+        .expect("failed to create pipeline");
 
     let vertex_view = graphics::VertexView::new(vertices);
-
-    let pipe_type = graphics::PipelineCfg {
-        vertex_shader: &vert_shader,
-        vertex_size: std::mem::size_of::<[f32; 4]>() as u32,
-        vert_input: &vertex_cfg,
-        frag_shader: &frag_shader,
-        geom_shader: None,
-        topology: graphics::Topology::TRIANGLE_LIST,
-        extent: capabilities.extent2d(),
-        push_constant_size: 0,
-        render_pass: &render_pass,
-        subpass_index: 0,
-        enable_depth_test: true,
-        enable_primitive_restart: false,
-        cull_mode: graphics::CullMode::BACK,
-        descriptor: &descs,
-    };
-
-    let pipeline = graphics::Pipeline::new(&device, &pipe_type).expect("Failed to create pipeline");
 
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
@@ -410,7 +384,7 @@ fn main() {
             cmd_buffer.bind_graphics_pipeline(&pipeline);
             cmd_buffer.bind_vertex_buffers(&[vertex_view.clone()]);
             cmd_buffer.bind_index_buffer(indices, 0, memory::IndexBufferType::UINT32);
-            cmd_buffer.bind_resources(&pipeline, &descs, &[]);
+            cmd_buffer.bind_resources(&layout, &bindings, &[]);
             cmd_buffer.draw_indexed(INDICES.len() as u32, 1, 0, 0, 0);
             cmd_buffer.end_render_pass();
 
