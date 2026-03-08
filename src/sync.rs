@@ -1,4 +1,4 @@
-//! Syncronization primitives
+//! Synchronization primitives
 
 use ash::vk;
 
