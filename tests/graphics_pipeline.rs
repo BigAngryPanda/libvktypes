@@ -82,7 +82,7 @@ mod graphics_pipeline {
         let mut write_info = pipeline::WriteInfo::new();
         write_info
             .buffer(0, 0, pipeline::DescriptorType::STORAGE_BUFFER)
-            .value(memory::RefView::new(&uniform_data, 0));
+            .element(memory::RefView::new(&uniform_data, 0));
 
         bindings.write(&write_info);
     }

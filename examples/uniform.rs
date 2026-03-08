@@ -181,8 +181,8 @@ fn main() {
     let mut write_info = pipeline::WriteInfo::new();
     write_info
         .buffer(0, 0, pipeline::DescriptorType::UNIFORM_BUFFER)
-        .value(first_color)
-        .value(second_color);
+        .element(first_color)
+        .element(second_color);
 
     bindings.write(&write_info);
 

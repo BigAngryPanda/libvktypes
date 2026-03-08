@@ -334,10 +334,10 @@ fn main() {
     let mut write_info = pipeline::WriteInfo::new();
     write_info
         .buffer(0, 0, pipeline::DescriptorType::UNIFORM_BUFFER)
-        .value(transforms);
+        .element(transforms);
     write_info
         .buffer(0, 1, pipeline::DescriptorType::UNIFORM_BUFFER)
-        .value(color_data);
+        .element(color_data);
 
     bindings.write(&write_info);
 

@@ -278,7 +278,7 @@ fn main() {
     let mut write_info = pipeline::WriteInfo::new();
     write_info
         .image(0, 0, pipeline::DescriptorType::COMBINED_IMAGE_SAMPLER)
-        .value(texture, &sampler, memory::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+        .element(texture, &sampler, memory::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
     bindings.write(&write_info);
 

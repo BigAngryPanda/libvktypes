@@ -20,6 +20,8 @@ use std::marker::PhantomData;
 pub type BufferInfo = vk::DescriptorBufferInfo;
 pub type ImageInfo  = vk::DescriptorImageInfo;
 
+/// Represents writing information for single layout entry
+/// ```layout(set, binding) ... data[N]; ```
 pub struct WriteInfoEntry<T> {
     set: u32,
     binding: u32,
@@ -47,11 +49,15 @@ impl<T> WriteInfoEntry<T> {
 }
 
 impl WriteInfoEntry<BufferInfo> {
-    pub fn value<T: memory::BufferView>(&mut self, view: T) -> &mut Self {
-        self.value_with_params(view, 0, vk::WHOLE_SIZE)
+    /// Add buffer for writing
+    ///
+    /// Call multiple times for array writing
+    pub fn element<T: memory::BufferView>(&mut self, view: T) -> &mut Self {
+        self.element_with_params(view, 0, vk::WHOLE_SIZE)
     }
 
-    pub fn value_with_params<T: memory::BufferView>(&mut self,
+    /// See [`value`](Self::element)
+    pub fn element_with_params<T: memory::BufferView>(&mut self,
         view: T,
         offset: u64,
         range: u64
@@ -67,7 +73,7 @@ impl WriteInfoEntry<BufferInfo> {
 }
 
 impl WriteInfoEntry<ImageInfo> {
-    pub fn value<U: memory::ImageView>(&mut self,
+    pub fn element<U: memory::ImageView>(&mut self,
         view: U,
         sampler: &graphics::Sampler,
         layout: memory::ImageLayout

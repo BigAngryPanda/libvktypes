@@ -116,7 +116,7 @@ mod cmd {
         let mut write_info = pipeline::WriteInfo::new();
         write_info
             .buffer(0, 0, pipeline::DescriptorType::STORAGE_BUFFER)
-            .value(compute_buffer);
+            .element(compute_buffer);
 
         bindings.write(&write_info);
 

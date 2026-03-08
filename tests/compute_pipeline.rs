@@ -68,7 +68,7 @@ mod compute_pipeline {
         let mut write_info = pipeline::WriteInfo::new();
         write_info
             .buffer(0, 0, pipeline::DescriptorType::STORAGE_BUFFER)
-            .value(view);
+            .element(view);
 
         bindings.write(&write_info);
 
