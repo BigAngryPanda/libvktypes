@@ -16,6 +16,7 @@ pub struct ExecInfo<'a> {
     pub timeout: u64,
     pub wait: &'a [&'a sync::Semaphore],
     pub signal: &'a [&'a sync::Semaphore],
+    pub fence: &'a sync::Fence
 }
 
 pub struct PresentInfo<'a, 'b : 'a> {
@@ -100,20 +101,6 @@ impl Queue {
 
     /// Execute selected buffer
     pub fn exec(&self, info: &ExecInfo) -> Result<(), QueueError> {
-        let dev = self.i_core.device();
-
-        let fence_info = vk::FenceCreateInfo {
-            s_type: vk::StructureType::FENCE_CREATE_INFO,
-            p_next: ptr::null(),
-            flags:  vk::FenceCreateFlags::empty(),
-            _marker: PhantomData,
-        };
-
-        let fence = on_error_ret!(
-            unsafe { dev.create_fence(&fence_info, self.i_core.allocator()) },
-            QueueError::Fence
-        );
-
         let wait_sems: Vec<vk::Semaphore> = info.wait.iter().map(|s| s.semaphore()).collect();
         let sign_sems: Vec<vk::Semaphore> = info.signal.iter().map(|s| s.semaphore()).collect();
 
@@ -131,20 +118,10 @@ impl Queue {
         };
 
         unsafe {
-            if dev.queue_submit(self.i_queue, &[submit_info], fence).is_err() {
-               dev.destroy_fence(fence, self.i_core.allocator());
+            if self.i_core.device().queue_submit(self.i_queue, &[submit_info], info.fence.fence()).is_err() {
                return Err(QueueError::Execution);
             }
         }
-
-        unsafe {
-            if dev.wait_for_fences(&[fence], true, info.timeout).is_err() {
-               dev.destroy_fence(fence, self.i_core.allocator());
-               return Err(QueueError::Timeout);
-            }
-        }
-
-        unsafe { dev.destroy_fence(fence, self.i_core.allocator()) };
 
         Ok(())
     }

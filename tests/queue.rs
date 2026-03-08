@@ -17,6 +17,6 @@ mod queue {
             queue_index: 0,
         };
 
-        let _ = device.get_queue(&cfg);
+        let _ = queue::Queue::new(device, &cfg);
     }
 }

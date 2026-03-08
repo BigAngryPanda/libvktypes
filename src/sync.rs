@@ -107,8 +107,14 @@ impl Fence {
         })
     }
 
-    #[doc(hidden)]
-    pub fn fence(&self) -> vk::Fence {
+    pub fn null(device: &dev::Device) -> Fence {
+        Fence {
+            i_core: device.core().clone(),
+            i_fence: vk::Fence::null(),
+        }
+    }
+
+    pub(crate) fn fence(&self) -> vk::Fence {
         self.i_fence
     }
 }
@@ -116,9 +122,11 @@ impl Fence {
 impl Drop for Fence {
     fn drop(&mut self) {
         unsafe {
-            self.i_core
-                .device()
-                .destroy_fence(self.i_fence, self.i_core.allocator());
+            if self.i_fence != vk::Fence::null() {
+                self.i_core
+                    .device()
+                    .destroy_fence(self.i_fence, self.i_core.allocator());
+            }
         }
     }
 }

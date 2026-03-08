@@ -399,12 +399,15 @@ fn main() {
 
     let cmd_queue = queue::Queue::new(&device, &queue_cfg);
 
+    let fences = [sync::Fence::new(&device, false).expect("Failed to create fence")];
+
     event_loop.run(move |event, control_flow| {
         match event {
             winit::event::Event::WindowEvent {
                 event: winit::event::WindowEvent::CloseRequested,
                 ..
             } => {
+                device.wait_idle().expect("Failed to wait idle");
                 control_flow.exit();
             },
             winit::event::Event::AboutToWait => {
@@ -434,6 +437,7 @@ fn main() {
                     timeout: u64::MAX,
                     wait: &[&img_sem],
                     signal: &[&render_sem],
+                    fence: &fences[0]
                 };
 
                 cmd_queue.exec(&exec_info).expect("Failed to execute queue");
@@ -445,6 +449,10 @@ fn main() {
                 };
 
                 cmd_queue.present(&present_info).expect("Failed to present frame");
+
+                device.wait_for_fences(&mut fences.iter(), false, u64::MAX).expect("Failed to wait for fences");
+
+                device.reset_fences(&mut fences.iter()).expect("Failed to reset fences");
 
                 std::thread::sleep(std::time::Duration::from_millis(10));
             },

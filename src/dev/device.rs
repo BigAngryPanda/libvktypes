@@ -4,8 +4,14 @@
 
 use ash::vk;
 
-use crate::{libvk, hw, alloc, queue, dev};
-use crate::on_error_ret;
+use crate::{
+    on_error_ret,
+    libvk,
+    hw,
+    alloc,
+    dev,
+    sync
+};
 
 use std::sync::Arc;
 use std::{ptr, fmt};
@@ -26,11 +32,29 @@ pub struct DeviceCfg<'a> {
 #[derive(Debug)]
 pub enum DeviceError {
     Creating,
+    WaitIdle,
+    ResetFences,
+    WaitForFences
 }
 
 impl fmt::Display for DeviceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Failed to create Device (vkCreateDevice call failed)")
+        let err_msg = match self {
+            Self::Creating => {
+                "Failed to create Device (vkCreateDevice call failed)"
+            },
+            Self::WaitIdle => {
+                "Failed to wait idle (vkDeviceWaitIdle call failed)"
+            },
+            Self::ResetFences => {
+                "Failed to allocate memory for buffer (vkDeviceWaitIdle call failed)"
+            },
+            Self::WaitForFences => {
+                "Failed to wait for fences (vkWaitForFences call failed)"
+            }
+        };
+
+        write!(f, "{:?}", err_msg)
     }
 }
 
@@ -97,11 +121,50 @@ impl Device {
         })
     }
 
-    /// Create new queue
-    ///
-    /// For more information see [queue crate](crate::queue)
-    pub fn get_queue(&self, cfg: &queue::QueueCfg) -> queue::Queue {
-        queue::Queue::new(self, cfg)
+    /// [`vkDeviceWaitIdle`](https://docs.vulkan.org/refpages/latest/refpages/source/vkDeviceWaitIdle.html) call
+    pub fn wait_idle(&self) -> Result<(), DeviceError> {
+        match unsafe { self.i_core.device().device_wait_idle() } {
+            Ok(_) => {
+                Ok(())
+            },
+            Err(_) => {
+                Err(DeviceError::WaitIdle)
+            }
+        }
+    }
+
+    /// [`vkResetFences`]
+    /// (https://docs.vulkan.org/refpages/latest/refpages/source/vkResetFences.html) call
+    pub fn reset_fences(&self, fences: &mut dyn Iterator<Item = &sync::Fence>) -> Result<(), DeviceError> {
+        let vk_fences: Vec<vk::Fence> = fences.map(|f| f.fence()).collect();
+
+        match unsafe { self.i_core.device().reset_fences(&vk_fences) } {
+            Ok(_) => {
+                Ok(())
+            },
+            Err(_) => {
+                Err(DeviceError::ResetFences)
+            }
+        }
+    }
+
+    /// [`vkWaitForFences`]
+    /// (https://docs.vulkan.org/refpages/latest/refpages/source/vkWaitForFences.html) call
+    pub fn wait_for_fences(&self,
+        fences: &mut dyn Iterator<Item = &sync::Fence>,
+        wait_all: bool,
+        timeout: u64
+    ) -> Result<(), DeviceError> {
+        let vk_fences: Vec<vk::Fence> = fences.map(|f| f.fence()).collect();
+
+        match unsafe { self.i_core.device().wait_for_fences(&vk_fences, wait_all, timeout) } {
+            Ok(_) => {
+                Ok(())
+            },
+            Err(_) => {
+                Err(DeviceError::WaitForFences)
+            }
+        }
     }
 
     pub(crate) fn core(&self) -> &Arc<dev::Core> {

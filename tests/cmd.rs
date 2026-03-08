@@ -13,7 +13,8 @@ mod cmd {
         cmd,
         queue,
         formats,
-        graphics
+        graphics,
+        sync
     };
 
     use libvktypes::memory::BufferView;
@@ -142,15 +143,22 @@ mod cmd {
 
         let queue = queue::Queue::new(&device, &queue_type);
 
+        let fences = [sync::Fence::new(&device, false).expect("Failed to create fence")];
+
         let exec_info = queue::ExecInfo {
             wait_stage: cmd::PipelineStage::COMPUTE_SHADER,
             buffer: &exec_buffer,
             timeout: u64::MAX,
             wait: &[],
             signal: &[],
+            fence: &fences[0]
         };
 
-        assert!(queue.exec(&exec_info).is_ok())
+        let res = queue.exec(&exec_info);
+
+        assert!(device.wait_for_fences(&mut fences.iter(), false, u64::MAX).is_ok());
+
+        assert!(res.is_ok())
     }
 
     fn write_graphics_cmds() {
@@ -260,15 +268,22 @@ mod cmd {
 
         let queue = queue::Queue::new(&device, &queue_type);
 
+        let fences = [sync::Fence::new(&device, false).expect("Failed to create fence")];
+
         let exec_info = queue::ExecInfo {
             wait_stage: cmd::PipelineStage::COMPUTE_SHADER,
             buffer: &exec_buffer,
             timeout: u64::MAX,
             wait: &[],
             signal: &[],
+            fence: &fences[0]
         };
 
-        assert!(queue.exec(&exec_info).is_ok())
+        let res = queue.exec(&exec_info);
+
+        assert!(device.wait_for_fences(&mut fences.iter(), false, u64::MAX).is_ok());
+
+        assert!(res.is_ok())
     }
 
     #[test]

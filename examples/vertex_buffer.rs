@@ -151,12 +151,15 @@ fn main() {
 
     let cmd_queue = queue::Queue::new(&device, &queue_cfg);
 
+    let fences = [sync::Fence::new(&device, false).expect("Failed to create fence")];
+
     let exec_info = queue::ExecInfo {
         buffer: &exec_buffer,
         wait_stage: cmd::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
         timeout: u64::MAX,
         wait: &[&img_sem],
         signal: &[&render_sem],
+        fence: &fences[0]
     };
 
     cmd_queue.exec(&exec_info).expect("Failed to execute queue");
@@ -169,12 +172,15 @@ fn main() {
 
     cmd_queue.present(&present_info).expect("Failed to present frame");
 
+    device.wait_for_fences(&mut fences.iter(), false, u64::MAX).expect("Failed to wait for fences");
+
     event_loop.run(move |event, control_flow| {
         match event {
             winit::event::Event::WindowEvent {
                 event: winit::event::WindowEvent::CloseRequested,
                 ..
             } => {
+                device.wait_idle().expect("Failed to wait idle");
                 control_flow.exit();
             },
             _ => ()
