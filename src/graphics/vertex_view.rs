@@ -37,6 +37,14 @@ impl<T : memory::BufferView> VertexView<T> {
         self.i_offset
     }
 
+    pub fn view(&self) -> &T {
+        &self.i_view
+    }
+
+    pub fn view_mut(&mut self) -> &mut T {
+        &mut self.i_view
+    }
+
     pub(crate) fn buffer(&self) -> vk::Buffer {
         memory::get_buffer(self.i_view)
     }

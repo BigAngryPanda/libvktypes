@@ -17,17 +17,17 @@ pub trait BufferView : Copy + Clone {
 
     fn index(&self) -> usize;
 
-    /// Return offset of the buffer
+    /// Return offset of the buffer in bytes
     fn offset(&self) -> u64 {
         self.memory().layout().offset(self.index())
     }
 
-    /// Return requested size of the buffer
+    /// Return requested size of the buffer in bytes
     fn size(&self) -> u64 {
         self.memory().layout().size(self.index())
     }
 
-    /// Return size of the buffer with respect to the alignment
+    /// Return size of the buffer with respect to the alignment in bytes
     fn allocated_size(&self) -> u64 {
         self.memory().layout().allocated_size(self.index())
     }
@@ -36,6 +36,8 @@ pub trait BufferView : Copy + Clone {
     ///
     /// Note: this is dangerous operation and you should use it with cautious
     /// As one range of the memory is mapped you *cannot* map another region of the same memory
+    ///
+    /// You must unmap memory with [`unmap_memory`](Self::unmap_memory)
     fn map_memory<'a, 'b : 'a, T>(&'b self) -> Result<&'a mut [T], memory::MemoryError> {
         self.memory().region().map_memory(self.offset(), self.size(), self.allocated_size())
     }
@@ -57,6 +59,19 @@ pub trait BufferView : Copy + Clone {
     /// Use for [`map_memory`](Self::map_memory)
     fn unmap_memory(&self) {
         self.memory().unmap_memory();
+    }
+
+    /// Return [`BufferView`](BufferView) part of the allocated memory as slice
+    ///
+    /// 1. It tries to find start and end indices by calling [`offset`](Self::offset)
+    /// and [`size`](Self::size)
+    ///
+    /// 2. View calls [`align_to_mut`](slice::align_to_mut) to get properly aligned slice from step 1
+    fn subslice<'a, T, U>(&self, data: &'a mut [T]) -> &'a mut [U] {
+        let first_elem = (self.offset() / std::mem::size_of::<T>() as u64) as usize;
+        let last_elem = first_elem + (self.size() / std::mem::size_of::<T>() as u64) as usize;
+
+        unsafe { data[first_elem..last_elem].align_to_mut::<U>().1 }
     }
 }
 
