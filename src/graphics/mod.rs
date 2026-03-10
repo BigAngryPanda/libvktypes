@@ -3,13 +3,10 @@
 use ash::vk;
 
 pub mod render_pass;
-pub mod vertex_view;
 pub mod sampler;
 
 #[doc(hidden)]
 pub use crate::graphics::render_pass::*;
-#[doc(hidden)]
-pub use vertex_view::*;
 #[doc(hidden)]
 pub use sampler::*;
 

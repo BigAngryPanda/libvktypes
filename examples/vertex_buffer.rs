@@ -136,7 +136,7 @@ fn main() {
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    cmd_buffer.bind_vertex_buffers(&[graphics::VertexView::new(memory::RefView::new(&vertex_data, 0))]);
+    cmd_buffer.bind_vertex_buffers(&[memory::RefView::new(&vertex_data, 0)]);
 
     cmd_buffer.draw(4, 1, 0, 0);
 

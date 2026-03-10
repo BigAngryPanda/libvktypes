@@ -320,9 +320,9 @@ fn main() {
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    cmd_buffer.bind_vertex_buffers(&[
-        graphics::VertexView::new(vertices),
-        graphics::VertexView::with_offset(vertices, size_of::<[f32; 4]>() as u32)]);
+    cmd_buffer.bind_vertex_buffers_with_offsets(&[
+        (vertices, 0),
+        (vertices, size_of::<[f32; 4]>() as u64)]);
 
     cmd_buffer.bind_index_buffer(indices, 0, memory::IndexBufferType::UINT32);
 

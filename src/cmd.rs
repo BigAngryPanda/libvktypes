@@ -436,11 +436,22 @@ impl Buffer {
     /// Update vertex bindings
     ///
     /// Updating starts from **first** binding
-    pub fn bind_vertex_buffers<T: memory::BufferView>(&self, buffers: &[graphics::VertexView<T>]) {
+    pub fn bind_vertex_buffers_with_offsets<T: memory::BufferView>(&self, buffers: &[(T, u64)]) {
         let dev = self.i_pool.device();
 
-        let vertex_buffers: Vec<vk::Buffer> = buffers.iter().map(|x| x.buffer()).collect();
-        let offsets: Vec<vk::DeviceSize> = buffers.iter().map(|x| x.offset() as u64).collect();
+        let vertex_buffers: Vec<vk::Buffer> = buffers.iter().map(|x| memory::get_buffer(x.0)).collect();
+        let offsets: Vec<vk::DeviceSize> = buffers.iter().map(|x| x.1 as u64).collect();
+
+        unsafe {
+            dev.cmd_bind_vertex_buffers(self.i_buffer, 0, vertex_buffers.as_slice(), offsets.as_slice())
+        }
+    }
+
+    pub fn bind_vertex_buffers<T: memory::BufferView>(&self, buffers: &[T]) {
+        let dev = self.i_pool.device();
+
+        let vertex_buffers: Vec<vk::Buffer> = buffers.iter().map(|&x| memory::get_buffer(x)).collect();
+        let offsets: Vec<vk::DeviceSize> = vec![0; buffers.len()];
 
         unsafe {
             dev.cmd_bind_vertex_buffers(self.i_buffer, 0, vertex_buffers.as_slice(), offsets.as_slice())

@@ -351,8 +351,6 @@ fn main() {
         .build(&device, &layout)
         .expect("failed to create pipeline");
 
-    let vertex_view = graphics::VertexView::new(vertices);
-
     let img_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
     let render_sem = sync::Semaphore::new(&device).expect("Failed to create semaphore");
 
@@ -382,7 +380,7 @@ fn main() {
 
             cmd_buffer.begin_render_pass(&render_pass, &frame);
             cmd_buffer.bind_graphics_pipeline(&pipeline);
-            cmd_buffer.bind_vertex_buffers(&[vertex_view.clone()]);
+            cmd_buffer.bind_vertex_buffers(&[vertices]);
             cmd_buffer.bind_index_buffer(indices, 0, memory::IndexBufferType::UINT32);
             cmd_buffer.bind_resources(&layout, &bindings, &[]);
             cmd_buffer.draw_indexed(INDICES.len() as u32, 1, 0, 0, 0);

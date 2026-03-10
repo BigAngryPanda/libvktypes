@@ -222,7 +222,7 @@ fn main() {
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    cmd_buffer.bind_vertex_buffers(&[graphics::VertexView::new(vertices)]);
+    cmd_buffer.bind_vertex_buffers(&[vertices]);
 
     cmd_buffer.bind_resources(&layout, &bindings, &[]);
 
