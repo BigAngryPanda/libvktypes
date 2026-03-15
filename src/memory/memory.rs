@@ -97,7 +97,7 @@ pub const INDEX_REASSEMBLY_UINT8: u8 = 0xff;
 pub struct Memory {
     i_core: Arc<dev::Core>,
     i_layout: memory::layout::Layout,
-    i_memory: memory::Region
+    i_memory: Arc<memory::Region>
 }
 
 impl Memory {
@@ -194,7 +194,29 @@ impl Memory {
         Ok(Memory {
             i_core: device.core().clone(),
             i_layout: layout,
-            i_memory: dev_memory
+            i_memory: Arc::new(dev_memory)
+        })
+    }
+
+    /// Create new memory layout but uses already allocated memory
+    ///
+    /// Internal memory will be free after last [`Memory`](Self) will be dropped
+    ///
+    /// Access *is not* synchronized so it is your responsibility to implement
+    /// correct usage
+    pub fn from_existing(
+        &self,
+        device: &dev::Device,
+        cfgs: &mut dyn Iterator<Item = &LayoutElementCfg>
+    ) -> Result<Memory, memory::MemoryError> {
+        let mut layout = memory::layout::Layout::new(device, cfgs)?;
+
+        layout.bind(self.i_memory.memory())?;
+
+         Ok(Memory {
+            i_core: self.i_core.clone(),
+            i_layout: layout,
+            i_memory: self.i_memory.clone()
         })
     }
 
@@ -269,7 +291,7 @@ impl Memory {
         Ok(Memory {
             i_core: core.clone(),
             i_layout: layout,
-            i_memory: memory::Region::empty(core, requirements.size)
+            i_memory: Arc::new(memory::Region::empty(core, requirements.size))
         })
     }
 
