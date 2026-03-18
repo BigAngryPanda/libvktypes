@@ -30,7 +30,12 @@ pub struct GraphicsPipelineBuilder {
     subpass_index: u32,
     enable_depth_test: bool,
     enable_primitive_restart: bool,
-    cull_mode: pipeline::CullMode
+    cull_mode: pipeline::CullMode,
+    src_color_blend_factor: vk::BlendFactor,
+    dst_color_blend_factor: vk::BlendFactor,
+    src_alpha_blend_factor: vk::BlendFactor,
+    dst_alpha_blend_factor: vk::BlendFactor,
+    enable_dynamic_scissor: bool
 }
 
 impl GraphicsPipelineBuilder {
@@ -51,6 +56,11 @@ impl GraphicsPipelineBuilder {
             enable_depth_test: false,
             enable_primitive_restart: false,
             cull_mode: pipeline::CullMode::BACK,
+            src_color_blend_factor: vk::BlendFactor::ONE,
+            dst_color_blend_factor: vk::BlendFactor::ZERO,
+            src_alpha_blend_factor: vk::BlendFactor::ONE,
+            dst_alpha_blend_factor: vk::BlendFactor::ZERO,
+            enable_dynamic_scissor: false
         }
     }
 
@@ -251,6 +261,51 @@ impl GraphicsPipelineBuilder {
         self
     }
 
+    /// Optional
+    ///
+    /// Default is `BlendFactor::ONE`
+    pub fn src_color_blend_factor(&mut self, factor: pipeline::BlendFactor) -> &mut Self {
+        self.src_color_blend_factor = factor;
+
+        self
+    }
+
+    /// Optional
+    ///
+    /// Default is `BlendFactor::ZERO`
+    pub fn dst_color_blend_factor(&mut self, factor: pipeline::BlendFactor) -> &mut Self {
+        self.dst_color_blend_factor = factor;
+
+        self
+    }
+
+    /// Optional
+    ///
+    /// Default is `BlendFactor::ONE`
+    pub fn src_alpha_blend_factor(&mut self, factor: pipeline::BlendFactor) -> &mut Self {
+        self.src_alpha_blend_factor = factor;
+
+        self
+    }
+
+    /// Optional
+    ///
+    /// Default is `BlendFactor::ZERO`
+    pub fn dst_alpha_blend_factor(&mut self, factor: pipeline::BlendFactor) -> &mut Self {
+        self.dst_alpha_blend_factor = factor;
+
+        self
+    }
+
+    /// Optional
+    ///
+    /// Default is `false`
+    pub fn dynamic_scissor(&mut self, enable: bool) -> &mut Self {
+        self.enable_dynamic_scissor = enable;
+
+        self
+    }
+
     /// Try to create pipeline
     pub fn build(&self,
         device: &dev::Device,
@@ -385,11 +440,11 @@ impl GraphicsPipelineBuilder {
 
         let color_blend_attachment_state = vk::PipelineColorBlendAttachmentState {
             blend_enable: ash::vk::FALSE,
-            src_color_blend_factor: vk::BlendFactor::ONE,
-            dst_color_blend_factor: vk::BlendFactor::ZERO,
+            src_color_blend_factor: self.src_color_blend_factor,
+            dst_color_blend_factor: self.dst_color_blend_factor,
             color_blend_op: vk::BlendOp::ADD,
-            src_alpha_blend_factor: vk::BlendFactor::ONE,
-            dst_alpha_blend_factor: vk::BlendFactor::ZERO,
+            src_alpha_blend_factor: self.src_alpha_blend_factor,
+            dst_alpha_blend_factor: self.dst_alpha_blend_factor,
             alpha_blend_op: vk::BlendOp::ADD,
             color_write_mask: vk::ColorComponentFlags::RGBA,
         };
@@ -422,6 +477,21 @@ impl GraphicsPipelineBuilder {
             _marker: PhantomData,
         };
 
+        let mut dynamic_states: Vec<vk::DynamicState> = Vec::new();
+
+        if self.enable_dynamic_scissor {
+            dynamic_states.push(vk::DynamicState::SCISSOR);
+        }
+
+        let dynamic_state_info = vk::PipelineDynamicStateCreateInfo {
+            s_type: vk::StructureType::PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::PipelineDynamicStateCreateFlags::empty(),
+            dynamic_state_count: dynamic_states.len() as u32,
+            p_dynamic_states: data_ptr!(&dynamic_states),
+            _marker: PhantomData,
+        };
+
         let pipeline_create_info = vk::GraphicsPipelineCreateInfo {
             s_type: vk::StructureType::GRAPHICS_PIPELINE_CREATE_INFO,
             p_next: std::ptr::null(),
@@ -440,10 +510,10 @@ impl GraphicsPipelineBuilder {
                 std::ptr::null()
             },
             p_color_blend_state: &color_blend_state_create_info,
-            p_dynamic_state: std::ptr::null(),
+            p_dynamic_state: &dynamic_state_info,
             layout: layout.layout(),
             render_pass: self.render_pass,
-            subpass: 0,
+            subpass: self.subpass_index,
             base_pipeline_handle: vk::Pipeline::null(),
             base_pipeline_index: -1,
             _marker: PhantomData,

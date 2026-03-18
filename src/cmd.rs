@@ -551,6 +551,24 @@ impl Buffer {
         }
     }
 
+    pub fn set_scissors_2d(&self, scissors: &[memory::Extent2D]) {
+        let dev = self.i_pool.device();
+
+        let vk_scissors: Vec<vk::Rect2D> = scissors.iter().map(|&extent| {
+            vk::Rect2D {
+                offset: vk::Offset2D {
+                    x: 0,
+                    y: 0,
+                },
+                extent,
+            }
+        }).collect();
+
+        unsafe {
+            dev.cmd_set_scissor(self.i_buffer, 0, &vk_scissors);
+        }
+    }
+
     /// End render pass
     ///
     /// Must be after [`begin_render_pass`](crate::cmd::Buffer::begin_render_pass)

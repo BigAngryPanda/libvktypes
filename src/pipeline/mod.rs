@@ -41,6 +41,13 @@ pub type CullMode = vk::CullModeFlags;
 #[doc = "Vulkan documentation <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkShaderStageFlagBits.html>"]
 pub type ShaderStage = vk::ShaderStageFlags;
 
+/// Framebuffer blending factors
+///
+#[doc = "Ash documentation about possible values <https://docs.rs/ash/latest/ash/vk/struct.BlendFactor.html>"]
+///
+#[doc = "<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkBlendFactor.html>"]
+pub type BlendFactor = vk::BlendFactor;
+
 #[derive(Debug)]
 pub enum LayoutError {
     DescriptorSet,
