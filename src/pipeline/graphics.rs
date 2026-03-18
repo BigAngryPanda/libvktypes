@@ -35,7 +35,8 @@ pub struct GraphicsPipelineBuilder {
     dst_color_blend_factor: vk::BlendFactor,
     src_alpha_blend_factor: vk::BlendFactor,
     dst_alpha_blend_factor: vk::BlendFactor,
-    enable_dynamic_scissor: bool
+    enable_dynamic_scissor: bool,
+    enable_blend: bool
 }
 
 impl GraphicsPipelineBuilder {
@@ -60,7 +61,8 @@ impl GraphicsPipelineBuilder {
             dst_color_blend_factor: vk::BlendFactor::ZERO,
             src_alpha_blend_factor: vk::BlendFactor::ONE,
             dst_alpha_blend_factor: vk::BlendFactor::ZERO,
-            enable_dynamic_scissor: false
+            enable_dynamic_scissor: false,
+            enable_blend: false
         }
     }
 
@@ -306,6 +308,15 @@ impl GraphicsPipelineBuilder {
         self
     }
 
+    /// Optional
+    ///
+    /// Default is `false`
+    pub fn blend(&mut self, enable: bool) -> &mut Self {
+        self.enable_blend = enable;
+
+        self
+    }
+
     /// Try to create pipeline
     pub fn build(&self,
         device: &dev::Device,
@@ -439,7 +450,7 @@ impl GraphicsPipelineBuilder {
         };
 
         let color_blend_attachment_state = vk::PipelineColorBlendAttachmentState {
-            blend_enable: ash::vk::FALSE,
+            blend_enable: if self.enable_blend { ash::vk::TRUE } else { ash::vk::FALSE },
             src_color_blend_factor: self.src_color_blend_factor,
             dst_color_blend_factor: self.dst_color_blend_factor,
             color_blend_op: vk::BlendOp::ADD,
@@ -465,8 +476,8 @@ impl GraphicsPipelineBuilder {
             s_type: vk::StructureType::PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
             p_next: std::ptr::null(),
             flags: vk::PipelineDepthStencilStateCreateFlags::empty(),
-            depth_test_enable: 1,
-            depth_write_enable: 1,
+            depth_test_enable: if self.enable_depth_test { ash::vk::TRUE } else { ash::vk::FALSE },
+            depth_write_enable: ash::vk::TRUE,
             depth_compare_op: vk::CompareOp::LESS_OR_EQUAL,
             depth_bounds_test_enable: 0,
             stencil_test_enable: 0,
@@ -504,11 +515,7 @@ impl GraphicsPipelineBuilder {
             p_viewport_state: &viewport_state_create_info,
             p_rasterization_state: &rasterization_state_create_info,
             p_multisample_state: &multisample_state_create_info,
-            p_depth_stencil_state: if self.enable_depth_test {
-                &depth_cfg
-            } else {
-                std::ptr::null()
-            },
+            p_depth_stencil_state: &depth_cfg,
             p_color_blend_state: &color_blend_state_create_info,
             p_dynamic_state: &dynamic_state_info,
             layout: layout.layout(),
