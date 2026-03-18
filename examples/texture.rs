@@ -192,7 +192,7 @@ fn main() {
 
     texture_stage.access(&mut |bytes: &mut [u32]| {
         bytes.clone_from_slice(&TEXTURE_DATA);
-    }).expect("Failed to fill index buffer");
+    }).expect("Failed to fill texture buffer");
 
     let image_cfgs = [
         memory::LayoutElementCfg::Image {
@@ -287,8 +287,9 @@ fn main() {
 
     let pipeline = pipeline::GraphicsPipelineBuilder::new()
         .vertex_shader(&vert_shader)
-        .vertex_input(0, 0, memory::ImageFormat::R32G32B32A32_SFLOAT, 0, std::mem::size_of::<[f32; 4]>() as u32)
-        .vertex_input(1, 1, memory::ImageFormat::R32G32_SFLOAT, size_of::<[f32; 4]>() as u32, std::mem::size_of::<[f32; 2]>() as u32)
+        .vertex_binding_input(0, std::mem::size_of::<[f32; 6]>() as u32)
+        .vertex_input(0, 0, memory::ImageFormat::R32G32B32A32_SFLOAT, 0)
+        .vertex_input(1, 0, memory::ImageFormat::R32G32_SFLOAT, size_of::<[f32; 4]>() as u32)
         .frag_shader(&frag_shader)
         .render_pass(&render_pass)
         .extent2d(capabilities.extent2d())

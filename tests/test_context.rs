@@ -394,7 +394,8 @@ pub fn graphics_pipeline(
         .frag_shader(fs)
         .render_pass(rp)
         .extent(capabilities.extent2d().width, capabilities.extent2d().height)
-        .vertex_input(0, 0, memory::ImageFormat::R32G32B32A32_SFLOAT, 0, std::mem::size_of::<[f32; 2]>() as u32)
+        .vertex_binding_input(0, std::mem::size_of::<[f32; 2]>() as u32)
+        .vertex_input(0, 0, memory::ImageFormat::R32G32B32A32_SFLOAT, 0)
         .build(&device, &layout)
         .expect("Failed to create pipeline")
 }

@@ -96,11 +96,14 @@ impl GraphicsPipelineBuilder {
     ///
     /// let mut builder = GraphicsPipelineBuilder::new();
     ///
+    /// // Vertex
+    /// builder.vertex_binding_input(0, std::mem::size_of::<[f32; 6]>() as u32);
+    ///
     /// // Position
-    /// builder.vertex_input(0, 0, ImageFormat::R32G32B32A32_SFLOAT, 0, std::mem::size_of::<[f32; 4]>() as u32);
+    /// builder.vertex_input(0, 0, ImageFormat::R32G32B32A32_SFLOAT, 0);
     ///
     /// // Color
-    /// builder.vertex_input(1, 1, ImageFormat::R32G32B32A32_SFLOAT, std::mem::size_of::<[f32; 4]>() as u32, std::mem::size_of::<[f32; 4]>() as u32);
+    /// builder.vertex_input(1, 0, ImageFormat::R32G32B32A32_SFLOAT, std::mem::size_of::<[f32; 4]>() as u32);
     /// ```
     ///
     /// ## stride
@@ -112,8 +115,7 @@ impl GraphicsPipelineBuilder {
         location: u32,
         binding: u32,
         format: memory::ImageFormat,
-        offset: u32,
-        stride: u32
+        offset: u32
     ) -> &mut Self {
         self.vert_input.push(
             vk::VertexInputAttributeDescription {
@@ -123,6 +125,15 @@ impl GraphicsPipelineBuilder {
                 offset
             });
 
+        self
+    }
+
+    /// Must be called
+    ///
+    /// Specify vertex size
+    ///
+    /// See [more](Self::vertex_input) on how to use
+    pub fn vertex_binding_input(&mut self, binding: u32, stride: u32) -> &mut Self {
         self.vert_sizes.push(
             vk::VertexInputBindingDescription {
                 binding,
