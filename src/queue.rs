@@ -64,20 +64,6 @@ impl fmt::Display for QueueError {
 
 impl Error for QueueError {}
 
-/// Information about what queue to allocate
-///
-/// [`family_index`](crate::queue::QueueCfg::family_index)
-/// **must be** one of the defined in [`DeviceCfg`](crate::dev::DeviceCfg)
-///
-/// [`queue_index`](crate::queue::QueueCfg::queue_index)
-/// **must be** less than related queue count
-#[doc = "See more: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetDeviceQueue.html>"]
-#[derive(Debug)]
-pub struct QueueCfg {
-    pub family_index: u32,
-    pub queue_index: u32,
-}
-
 pub struct Queue {
     i_core: Arc<dev::Core>,
     i_queue: vk::Queue,
@@ -86,14 +72,22 @@ pub struct Queue {
 }
 
 impl Queue {
-    pub fn new(dev: &dev::Device, cfg: &QueueCfg) -> Queue {
+    /// Create new Queue
+    ///
+    /// [`family_index`](crate::queue::QueueCfg::family_index)
+    /// **must be** one of the defined in [`DeviceCfg`](crate::dev::DeviceCfg)
+    ///
+    /// [`queue_index`](crate::queue::QueueCfg::queue_index)
+    /// **must be** less than related queue count
+    #[doc = "See more: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetDeviceQueue.html>"]
+    pub fn new(dev: &dev::Device, family_index: u32, queue_index: u32) -> Queue {
         Queue {
             i_core: dev.core().clone(),
             i_queue: unsafe {
-                dev.device().get_device_queue(cfg.family_index, cfg.queue_index)
+                dev.device().get_device_queue(family_index, queue_index)
             },
-            i_family: cfg.family_index,
-            i_index: cfg.queue_index
+            i_family: family_index,
+            i_index: queue_index
         }
     }
 

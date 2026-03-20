@@ -391,12 +391,7 @@ fn main() {
         })
         .collect();
 
-    let queue_cfg = queue::QueueCfg {
-        family_index: queue.index(),
-        queue_index: 0
-    };
-
-    let cmd_queue = queue::Queue::new(&device, &queue_cfg);
+    let cmd_queue = queue::Queue::new(&device, queue.index(), 0);
 
     let fence = sync::Fence::new(&device, false).expect("Failed to create fence");
 

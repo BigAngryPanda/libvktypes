@@ -12,11 +12,6 @@ mod queue {
 
         let device = test_context::get_graphics_device();
 
-        let cfg = queue::QueueCfg {
-            family_index: graphics_queue.index(),
-            queue_index: 0,
-        };
-
-        let _ = queue::Queue::new(device, &cfg);
+        let _ = queue::Queue::new(device, graphics_queue.index(), 0);
     }
 }

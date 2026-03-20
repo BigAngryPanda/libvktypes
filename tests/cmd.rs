@@ -136,12 +136,7 @@ mod cmd {
 
         let exec_buffer = cmd_buffer.commit().expect("Failed to commit command buffer");
 
-        let queue_type = queue::QueueCfg {
-            family_index: queue.index(),
-            queue_index: 0,
-        };
-
-        let queue = queue::Queue::new(&device, &queue_type);
+        let queue = queue::Queue::new(&device, queue.index(), 0);
 
         let fences = [sync::Fence::new(&device, false).expect("Failed to create fence")];
 
@@ -261,12 +256,7 @@ mod cmd {
 
         let exec_buffer = cmd_buffer.commit().expect("Failed to commit command buffer");
 
-        let queue_type = queue::QueueCfg {
-            family_index: queue.index(),
-            queue_index: 0,
-        };
-
-        let queue = queue::Queue::new(&device, &queue_type);
+        let queue = queue::Queue::new(&device, queue.index(), 0);
 
         let fences = [sync::Fence::new(&device, false).expect("Failed to create fence")];
 
