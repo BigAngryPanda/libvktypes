@@ -11,6 +11,7 @@ use crate::layers::{DebugLayer, Layer};
 
 use std::ptr;
 use std::marker::PhantomData;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct InstanceType<'a> {
@@ -127,13 +128,11 @@ impl Instance {
 		})
     }
 
-    #[doc(hidden)]
-    pub fn instance(&self) -> &ash::Instance {
+    pub(crate) fn instance(&self) -> &ash::Instance {
         &self.i_instance
     }
 
-    #[doc(hidden)]
-    pub fn entry(&self) -> &ash::Entry {
+    pub(crate) fn entry(&self) -> &ash::Entry {
         &self.i_entry
     }
 }
@@ -145,5 +144,23 @@ impl Drop for Instance {
 		}
 
 		unsafe { self.i_instance.destroy_instance(None); }
+    }
+}
+
+impl fmt::Display for Instance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Entry: {:?}\n\
+            Instance: {:?}\n\
+            Debug loader: {:?}\n\
+            Debug messenger: {:#?}\n",
+            &self.i_entry as *const ash::Entry,
+            &self.i_instance as *const ash::Instance,
+            &self.i_debug_loader as *const debug_utils::Instance,
+            self.i_debug_messenger)
+        .unwrap();
+
+        Ok(())
     }
 }
