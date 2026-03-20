@@ -63,6 +63,7 @@ impl Error for DeviceError {}
 /// Core structure of the library
 ///
 /// `Device` represents logical device and provide API to the selected GPU
+#[derive(Debug)]
 pub struct Device {
     i_core: Arc<dev::Core>,
     i_hw: hw::HWDevice,

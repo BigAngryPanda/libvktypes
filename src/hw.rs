@@ -298,7 +298,7 @@ impl fmt::Display for MemoryDescription {
 
 pub type Features = vk::PhysicalDeviceFeatures;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct HWDevice {
     i_device: vk::PhysicalDevice,
     i_properties: vk::PhysicalDeviceProperties,
