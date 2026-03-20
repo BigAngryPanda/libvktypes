@@ -147,6 +147,17 @@ impl Drop for Instance {
     }
 }
 
+impl fmt::Debug for Instance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Instance")
+        .field("i_entry", &(&self.i_entry as *const ash::Entry))
+        .field("i_instance", &(&self.i_instance as *const ash::Instance))
+        .field("i_debug_loader", &(&self.i_debug_loader as *const debug_utils::Instance))
+        .field("i_debug_loader", &(&self.i_debug_messenger as *const vk::DebugUtilsMessengerEXT))
+        .finish()
+    }
+}
+
 impl fmt::Display for Instance {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
