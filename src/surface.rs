@@ -136,6 +136,7 @@ impl fmt::Display for CapabilitiesError {
 
 impl Error for CapabilitiesError {}
 
+#[derive(Debug)]
 pub struct Capabilities {
     i_modes: Vec<vk::PresentModeKHR>,
     i_capabilities: vk::SurfaceCapabilitiesKHR,
@@ -263,5 +264,14 @@ impl Capabilities {
         }
 
         None
+    }
+}
+
+impl fmt::Debug for Surface {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Surface")
+        .field("i_loader", &(&self.i_loader as *const surface::Instance))
+        .field("i_instance", &self.i_surface)
+        .finish()
     }
 }
