@@ -101,7 +101,7 @@ impl Queue {
             p_wait_semaphores: data_ptr!(wait_sems),
             p_wait_dst_stage_mask: &info.wait_stage,
             command_buffer_count: 1,
-            p_command_buffers: info.buffer.buffer(),
+            p_command_buffers: info.buffer,
             signal_semaphore_count: sign_sems.len() as u32,
             p_signal_semaphores: data_ptr!(sign_sems),
             _marker: PhantomData,

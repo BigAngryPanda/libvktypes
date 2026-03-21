@@ -17,6 +17,8 @@ use std::sync::Arc;
 use std::fmt;
 use std::marker::PhantomData;
 
+pub type ExecutableBuffer = vk::CommandBuffer;
+
 /// AccessType specifies memory access
 ///
 #[doc = "Ash documentation about possible values <https://docs.rs/ash/latest/ash/vk/struct.AccessFlags.html>"]
@@ -207,10 +209,10 @@ pub struct Buffer {
 }
 
 impl Buffer {
-    /// Modify buffer into executable
+    /// Return executable buffer
     ///
-    /// Original buffer will not be available
-    pub fn commit(self) -> Result<ExecutableBuffer, BufferError> {
+    /// Original buffer will be available only for reset
+    pub fn commit(&self) -> Result<ExecutableBuffer, BufferError> {
         let dev = self.i_pool.device();
 
         on_error_ret!(
@@ -218,12 +220,7 @@ impl Buffer {
             BufferError::Commit
         );
 
-        Ok(
-            ExecutableBuffer {
-                i_buffer: self.i_buffer,
-                i_pool: self.i_pool,
-            }
-        )
+        Ok(self.i_buffer)
     }
 
     /// Bind specifically *compute* pipeline
@@ -234,15 +231,14 @@ impl Buffer {
         pipe: &pipeline::ComputePipeline,
         layout: &pipeline::PipelineLayout,
         bindings: &pipeline::PipelineBindings
-    ) {
+    ) -> &Self {
         let dev = self.i_pool.device();
 
         unsafe {
             dev.cmd_bind_pipeline(
                 self.i_buffer,
                 vk::PipelineBindPoint::COMPUTE,
-                pipe.pipeline()
-            );
+                pipe.pipeline());
 
             dev.cmd_bind_descriptor_sets(
                 self.i_buffer,
@@ -250,9 +246,10 @@ impl Buffer {
                 layout.layout(),
                 0,
                 bindings.descriptors(),
-                &[]
-            );
+                &[]);
         }
+
+        &self
     }
 
     /// Copy `src` buffer into `dst`
@@ -260,7 +257,7 @@ impl Buffer {
     /// If `dst` has less capacity then copy only first `dst.size()` bytes
     ///
     /// If `src` has less capacity then rest of the `dst` memory will be left intact
-    pub fn copy_memory<T: memory::BufferView>(&self, src: T, dst: T) {
+    pub fn copy_memory<T: memory::BufferView>(&self, src: T, dst: T) -> &Self {
         let dev = self.i_pool.device();
 
         let copy_info = vk::BufferCopy {
@@ -277,6 +274,8 @@ impl Buffer {
                 &[copy_info]
             );
         }
+
+        &self
     }
 
     /// Copy `src` buffer into `dst`
@@ -289,7 +288,7 @@ impl Buffer {
         &self,
         src: T,
         dst: U
-    ) {
+    ) -> &Self {
         let dev = self.i_pool.device();
 
         let copy_info = vk::BufferImageCopy {
@@ -313,15 +312,19 @@ impl Buffer {
                 transfer_layout,
                 &[copy_info]);
         }
+
+        &self
     }
 
     /// Dispatch work groups
-    pub fn dispatch(&self, x: u32, y: u32, z: u32) {
+    pub fn dispatch(&self, x: u32, y: u32, z: u32) -> &Self {
         let dev = self.i_pool.device();
 
         unsafe {
-            dev.cmd_dispatch(self.i_buffer, x, y, z)
+            dev.cmd_dispatch(self.i_buffer, x, y, z);
         }
+
+        &self
     }
 
     // TODO can we infer AccessType and PipelineStage from buffer type?
@@ -337,15 +340,15 @@ impl Buffer {
     ///
     /// For more types see [AccessType]
     pub fn set_barrier<T: memory::BufferView>(
-        &mut self,
+        &self,
         mem: T,
         src_type: AccessType,
         dst_type: AccessType,
         src_stage: PipelineStage,
         dst_stage: PipelineStage,
         src_queue_family: u32,
-        dst_queue_family: u32)
-    {
+        dst_queue_family: u32
+    ) -> &Self {
         let dev = self.i_pool.device();
 
         let mem_barrier = vk::BufferMemoryBarrier {
@@ -369,9 +372,10 @@ impl Buffer {
                 vk::DependencyFlags::empty(),
                 &[],
                 &[mem_barrier],
-                &[]
-            )
+                &[]);
         }
+
+        &self
     }
 
     /// Set image memory barrier
@@ -394,8 +398,8 @@ impl Buffer {
         src_stage: PipelineStage,
         dst_stage: PipelineStage,
         src_queue_family: u32,
-        dst_queue_family: u32)
-    {
+        dst_queue_family: u32
+    ) -> &Self {
         let img_barrier = vk::ImageMemoryBarrier {
             s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
             p_next: ptr::null(),
@@ -419,26 +423,33 @@ impl Buffer {
                 vk::DependencyFlags::empty(),
                 &[],
                 &[],
-                &[img_barrier]
-            )
-        };
+                &[img_barrier]);
+        }
+
+        &self
     }
 
     /// Update push constatnts with raw data
-    pub fn update_push_constants(&self, layout: &pipeline::PipelineLayout, stage: pipeline::ShaderStage, data: &[u8]) {
+    pub fn update_push_constants(
+        &self,
+        layout: &pipeline::PipelineLayout,
+        stage: pipeline::ShaderStage,
+        data: &[u8]
+    ) -> &Self {
         let dev = self.i_pool.device();
 
         unsafe {
             dev.cmd_push_constants(
-                self.i_buffer, layout.layout(), stage, 0, data
-            )
+                self.i_buffer, layout.layout(), stage, 0, data)
         }
+
+        &self
     }
 
     /// Begin render pass with selected framebuffer
     ///
     /// Must be ended with [`end_render_pass`](crate::cmd::Buffer::end_render_pass)
-    pub fn begin_render_pass(&self, rp: &graphics::RenderPass, fb: &memory::Framebuffer) {
+    pub fn begin_render_pass(&self, rp: &graphics::RenderPass, fb: &memory::Framebuffer) -> &Self {
         let dev = self.i_pool.device();
 
         let clear_value = [
@@ -473,44 +484,52 @@ impl Buffer {
         };
 
         unsafe {
-            dev.cmd_begin_render_pass(self.i_buffer, &render_pass_begin_info, vk::SubpassContents::INLINE)
-        };
+            dev.cmd_begin_render_pass(self.i_buffer, &render_pass_begin_info, vk::SubpassContents::INLINE);
+        }
+
+        &self
     }
 
     /// Update vertex bindings
     ///
     /// Updating starts from **first** binding
-    pub fn bind_vertex_buffers_with_offsets<T: memory::BufferView>(&self, buffers: &[(T, u64)]) {
+    pub fn bind_vertex_buffers_with_offsets<T: memory::BufferView>(&self, buffers: &[(T, u64)]) -> &Self {
         let dev = self.i_pool.device();
 
         let vertex_buffers: Vec<vk::Buffer> = buffers.iter().map(|x| memory::get_buffer(x.0)).collect();
         let offsets: Vec<vk::DeviceSize> = buffers.iter().map(|x| x.1 as u64).collect();
 
         unsafe {
-            dev.cmd_bind_vertex_buffers(self.i_buffer, 0, vertex_buffers.as_slice(), offsets.as_slice())
+            dev.cmd_bind_vertex_buffers(self.i_buffer, 0, vertex_buffers.as_slice(), offsets.as_slice());
         }
+
+        &self
     }
 
-    pub fn bind_vertex_buffers<T: memory::BufferView>(&self, buffers: &[T]) {
+    pub fn bind_vertex_buffers<T: memory::BufferView>(&self, buffers: &[T]) -> &Self {
         let dev = self.i_pool.device();
 
         let vertex_buffers: Vec<vk::Buffer> = buffers.iter().map(|&x| memory::get_buffer(x)).collect();
         let offsets: Vec<vk::DeviceSize> = vec![0; buffers.len()];
 
         unsafe {
-            dev.cmd_bind_vertex_buffers(self.i_buffer, 0, vertex_buffers.as_slice(), offsets.as_slice())
+            dev.cmd_bind_vertex_buffers(self.i_buffer, 0, vertex_buffers.as_slice(), offsets.as_slice());
         }
+
+        &self
     }
 
     /// Bind specifically *graphics* pipeline
     ///
     /// For graphics see [`bind_compute_pipeline`](Buffer::bind_compute_pipeline)
-    pub fn bind_graphics_pipeline(&self, pipe: &pipeline::GraphicsPipeline) {
+    pub fn bind_graphics_pipeline(&self, pipe: &pipeline::GraphicsPipeline) -> &Self {
         let dev = self.i_pool.device();
 
         unsafe {
-            dev.cmd_bind_pipeline(self.i_buffer, vk::PipelineBindPoint::GRAPHICS, pipe.pipeline())
+            dev.cmd_bind_pipeline(self.i_buffer, vk::PipelineBindPoint::GRAPHICS, pipe.pipeline());
         }
+
+        &self
     }
 
     /// Enable resource usage for the `pipeline`
@@ -524,7 +543,8 @@ impl Buffer {
         &self,
         layout: &pipeline::PipelineLayout,
         res: &pipeline::PipelineBindings,
-        offsets: &[u32]) {
+        offsets: &[u32]
+    ) -> &Self {
         unsafe {
             self
             .i_pool
@@ -538,26 +558,37 @@ impl Buffer {
                 offsets
             );
         }
+
+        &self
     }
 
     /// Bind index buffer
-    pub fn bind_index_buffer<T: memory::BufferView>(&self, view: T, offset: u64, it: memory::IndexBufferType) {
+    pub fn bind_index_buffer<T: memory::BufferView>(
+        &self,
+        view: T,
+        offset: u64,
+        it: memory::IndexBufferType
+    ) -> &Self {
         let dev = self.i_pool.device();
 
         unsafe {
-            dev.cmd_bind_index_buffer(self.i_buffer, memory::get_buffer(view), offset, it)
+            dev.cmd_bind_index_buffer(self.i_buffer, memory::get_buffer(view), offset, it);
         }
+
+        &self
     }
 
     /// Add `vkCmdDraw` call to the buffer
     ///
     /// About args see [more](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCmdDraw.html)
-    pub fn draw(&self, vc: u32, ic: u32, fv: u32, fi: u32) {
+    pub fn draw(&self, vc: u32, ic: u32, fv: u32, fi: u32) -> &Self {
         let dev = self.i_pool.device();
 
         unsafe {
             dev.cmd_draw(self.i_buffer, vc, ic, fv, fi);
         }
+
+        &self
     }
 
     /// Draw primitives with indexed vertices
@@ -580,7 +611,7 @@ impl Buffer {
         first_index: u32,
         vertex_offset: i32,
         first_instance: u32,
-    ) {
+    ) -> &Self {
         let dev = self.i_pool.device();
 
         unsafe {
@@ -593,9 +624,11 @@ impl Buffer {
                 first_instance,
             );
         }
+
+        &self
     }
 
-    pub fn set_scissors_2d(&self, scissors: &[memory::Extent2D]) {
+    pub fn set_scissors_2d(&self, scissors: &[memory::Extent2D]) -> &Self {
         let dev = self.i_pool.device();
 
         let vk_scissors: Vec<vk::Rect2D> = scissors.iter().map(|&extent| {
@@ -611,29 +644,14 @@ impl Buffer {
         unsafe {
             dev.cmd_set_scissor(self.i_buffer, 0, &vk_scissors);
         }
+
+        &self
     }
 
     /// Read [more](https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#vkResetCommandBuffer)
     pub fn reset(&self, release_resources: bool) -> Result<(), BufferError> {
-        Self::reset_impl(self.i_pool.device(), self.i_buffer, release_resources)
-    }
-
-    /// End render pass
-    ///
-    /// Must be after [`begin_render_pass`](crate::cmd::Buffer::begin_render_pass)
-    pub fn end_render_pass(&self) {
         let dev = self.i_pool.device();
 
-        unsafe {
-            dev.cmd_end_render_pass(self.i_buffer);
-        }
-    }
-
-    pub(crate) fn reset_impl(
-        dev: &ash::Device,
-        buffer: vk::CommandBuffer,
-        release_resources: bool
-    ) -> Result<(), BufferError> {
         let flags = if release_resources {
             vk::CommandBufferResetFlags::RELEASE_RESOURCES
         } else {
@@ -641,11 +659,24 @@ impl Buffer {
         };
 
         unsafe {
-            match dev.reset_command_buffer(buffer, flags) {
+            match dev.reset_command_buffer(self.i_buffer, flags) {
                 Ok(_) => Ok(()),
                 Err(_) => Err(BufferError::Reset)
             }
         }
+    }
+
+    /// End render pass
+    ///
+    /// Must be after [`begin_render_pass`](crate::cmd::Buffer::begin_render_pass)
+    pub fn end_render_pass(&self) -> &Self {
+        let dev = self.i_pool.device();
+
+        unsafe {
+            dev.cmd_end_render_pass(self.i_buffer);
+        }
+
+        &self
     }
 }
 
@@ -654,42 +685,6 @@ impl fmt::Debug for Buffer {
         f.debug_struct("Buffer")
         .field("i_pool", &self.i_pool)
         .field("i_buffer", &self.i_buffer)
-        .finish()
-    }
-}
-
-/// Buffer which is ready for execution
-pub struct ExecutableBuffer {
-    i_buffer: vk::CommandBuffer,
-    i_pool: Pool,
-}
-
-impl ExecutableBuffer {
-    pub(crate) fn buffer(&self) -> &vk::CommandBuffer {
-        &self.i_buffer
-    }
-
-    /// Turns `ExecutableBuffer` to writable [Buffer]
-    ///
-    /// Read [more](https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#vkResetCommandBuffer)
-    pub fn reset(self, release_resources: bool) -> Result<Buffer, BufferError> {
-        match Buffer::reset_impl(self.i_pool.device(), self.i_buffer, release_resources) {
-            Ok(_) => {
-                Ok(Buffer {
-                    i_pool: self.i_pool,
-                    i_buffer: self.i_buffer,
-                })
-            },
-            Err(err) => Err(err)
-        }
-    }
-}
-
-impl fmt::Debug for ExecutableBuffer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Buffer")
-        .field("i_buffer", &self.i_buffer)
-        .field("i_pool", &self.i_pool)
         .finish()
     }
 }
