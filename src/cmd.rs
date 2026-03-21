@@ -144,6 +144,21 @@ impl Pool {
         )
     }
 
+    pub fn reset(&self, release_resources: bool) -> Result<(), PoolError> {
+        let flags = if release_resources {
+            vk::CommandPoolResetFlags::RELEASE_RESOURCES
+        } else {
+            vk::CommandPoolResetFlags::empty()
+        };
+
+        unsafe {
+            match self.device().reset_command_pool(self.0.i_pool, flags) {
+                Ok(_) => Ok(()),
+                Err(_) => Err(PoolError::Reset)
+            }
+        }
+    }
+
     pub(crate) fn device(&self) -> &ash::Device {
         self.0.i_core.device()
     }
