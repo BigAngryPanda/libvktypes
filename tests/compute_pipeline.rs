@@ -51,12 +51,10 @@ mod compute_pipeline {
 
         let view = memory::view::RefView::new(&data, 0);
 
-        let shader_type = shader::ShaderCfg {
-            path: "tests/compiled_shaders/fill_memory.spv",
-            entry: "main",
-        };
-
-        let shader = shader::Shader::from_file(&device, &shader_type).expect("Failed to create shader module");
+        let shader = shader::ShaderBuilder::new()
+            .path("tests/compiled_shaders/fill_memory.spv")
+            .from_file(&device)
+            .expect("Failed to create shader module");
 
         let layout = pipeline::PipelineLayoutBuilder::with_sets(1)
             .binding(0, 0, pipeline::ShaderStage::COMPUTE, pipeline::DescriptorType::STORAGE_BUFFER, 1)

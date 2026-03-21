@@ -41,23 +41,19 @@ mod shader {
 
         let device = dev::Device::new(&dev_type).expect("Failed to create device");
 
-        let shader_type = shader::ShaderCfg {
-            path: "tests/compiled_shaders/fill_memory.spv",
-            entry: "main",
-        };
-
-        assert!(shader::Shader::from_file(&device, &shader_type).is_ok());
+        assert!(shader::ShaderBuilder::new()
+            .path("tests/compiled_shaders/fill_memory.spv")
+            .from_file(&device)
+            .is_ok());
     }
 
     #[test]
     fn from_glsl() {
         let device = test_context::get_graphics_device();
 
-        let shader_type = shader::ShaderCfg {
-            path: "tests/shaders/single_dot.vert",
-            entry: "main",
-        };
-
-        assert!(shader::Shader::from_glsl_file(&device, &shader_type, shader::Kind::Vertex).is_ok());
+        assert!(shader::ShaderBuilder::new()
+            .path("tests/shaders/single_dot.vert")
+            .shader_type(shader::Kind::Vertex)
+            .from_glsl_file(&device).is_ok());
     }
 }

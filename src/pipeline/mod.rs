@@ -63,6 +63,8 @@ impl std::fmt::Display for LayoutError {
     }
 }
 
+impl std::error::Error for LayoutError { }
+
 #[derive(Debug)]
 pub enum BindingError {
     DescriptorPool,
@@ -77,6 +79,8 @@ impl std::fmt::Display for BindingError {
         }
     }
 }
+
+impl std::error::Error for BindingError { }
 
 #[derive(Debug)]
 pub enum PipelineError {

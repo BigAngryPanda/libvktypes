@@ -134,23 +134,19 @@ fn main() {
 
     let swapchain = swapchain::Swapchain::new(&lib, &device, &surface, &swp_type).expect("Failed to create swapchain");
 
-    let vert_shader_type = shader::ShaderCfg {
-        path: "VERT_DATA",
-        entry: "main",
-    };
-
-    let vert_shader =
-        shader::Shader::from_glsl(&device, &vert_shader_type, VERT_SHADER, shader::Kind::Vertex)
+    let vert_shader = shader::ShaderBuilder::new()
+        .path("VERT_DATA")
+        .glsl_src(VERT_SHADER)
+        .shader_type(shader::Kind::Vertex)
+        .from_glsl(&device)
         .expect("Failed to create vertex shader module");
 
-    let frag_shader_type = shader::ShaderCfg {
-        path: "FRAG_DATA",
-        entry: "main",
-    };
-
-    let frag_shader =
-        shader::Shader::from_glsl(&device, &frag_shader_type, FRAG_SHADER, shader::Kind::Fragment)
-        .expect("Failed to create fragment shader module");
+    let frag_shader = shader::ShaderBuilder::new()
+        .path("FRAG_DATA")
+        .glsl_src(FRAG_SHADER)
+        .shader_type(shader::Kind::Fragment)
+        .from_glsl(&device)
+        .expect("Failed to create vertex shader module");
 
     let buffers = [
         memory::LayoutElementCfg::Buffer {

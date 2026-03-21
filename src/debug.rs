@@ -6,7 +6,6 @@ use std::ffi::{
 };
 
 /// The callback function used in Debug Utils
-/// # Safety
 pub unsafe extern "system" fn vulkan_debug_utils_callback(
     message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
     message_type: vk::DebugUtilsMessageTypeFlagsEXT,

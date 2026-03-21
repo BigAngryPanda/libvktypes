@@ -61,19 +61,15 @@ fn main() {
 
     let swapchain = swapchain::Swapchain::new(&lib, &device, &surface, &swp_type).expect("Failed to create swapchain");
 
-    let vert_shader_type = shader::ShaderCfg {
-        path: "examples/compiled_shaders/depth_buffer.vert.spv",
-        entry: "main",
-    };
+    let vert_shader = shader::ShaderBuilder::new()
+        .path("examples/compiled_shaders/depth_buffer.vert.spv")
+        .from_file(&device)
+        .expect("Failed to create vertex shader module");
 
-    let vert_shader = shader::Shader::from_file(&device, &vert_shader_type).expect("Failed to create vertex shader module");
-
-    let frag_shader_type = shader::ShaderCfg {
-        path: "examples/compiled_shaders/depth_buffer.frag.spv",
-        entry: "main",
-    };
-
-    let frag_shader = shader::Shader::from_file(&device, &frag_shader_type).expect("Failed to create fragment shader module");
+    let frag_shader = shader::ShaderBuilder::new()
+        .path("examples/compiled_shaders/depth_buffer.frag.spv")
+        .from_file(&device)
+        .expect("Failed to create vertex shader module");
 
     let surf_format = capabilities.formats().next().expect("No available formats").format;
 

@@ -39,8 +39,22 @@ pub enum PoolError {
     /// Failed to
     /// [create](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateCommandPool.html)
     /// command pool
-    Creating
+    Creating,
+    /// Failed to [reset](https://docs.vulkan.org/refpages/latest/refpages/source/vkResetCommandPool.html)
+    /// command pool
+    Reset
 }
+
+impl std::fmt::Display for PoolError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Creating => write!(f, "vkCreateCommandPool call failed"),
+            Self::Reset => write!(f, "vkResetCommandPool call failed")
+        }
+    }
+}
+
+impl std::error::Error for PoolError { }
 
 struct CorePool {
     i_core: Arc<dev::Core>,
@@ -61,8 +75,7 @@ impl Drop for CorePool {
         unsafe {
             self.i_core.device()
                 .destroy_command_pool(
-                    self.i_pool, self.i_core.allocator()
-                );
+                    self.i_pool, self.i_core.allocator());
         }
     }
 }
@@ -149,8 +162,24 @@ pub enum BufferError {
     /// Failed to
     /// [complete](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkBeginCommandBuffer.html)
     /// buffer
-    Commit
+    Commit,
+    /// Failed to [reset](https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#vkResetCommandBuffer) buffer
+    Reset
 }
+
+impl std::fmt::Display for BufferError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Creating => write!(f, "vkAllocateCommandBuffers call failed"),
+            Self::Begin => write!(f, "vkBeginCommandBuffer call failed"),
+            Self::Commit => write!(f, "vkBeginCommandBuffer call failed"),
+            Self::Reset => write!(f, "vkResetCommandBuffer call failed")
+        }
+    }
+}
+
+impl std::error::Error for BufferError { }
+
 
 /// Buffer in which you can write commands
 ///
@@ -569,6 +598,11 @@ impl Buffer {
         }
     }
 
+    /// Read [more](https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#vkResetCommandBuffer)
+    pub fn reset(&self, release_resources: bool) -> Result<(), BufferError> {
+        Self::reset_impl(self.i_pool.device(), self.i_buffer, release_resources)
+    }
+
     /// End render pass
     ///
     /// Must be after [`begin_render_pass`](crate::cmd::Buffer::begin_render_pass)
@@ -577,6 +611,25 @@ impl Buffer {
 
         unsafe {
             dev.cmd_end_render_pass(self.i_buffer);
+        }
+    }
+
+    pub(crate) fn reset_impl(
+        dev: &ash::Device,
+        buffer: vk::CommandBuffer,
+        release_resources: bool
+    ) -> Result<(), BufferError> {
+        let flags = if release_resources {
+            vk::CommandBufferResetFlags::RELEASE_RESOURCES
+        } else {
+            vk::CommandBufferResetFlags::empty()
+        };
+
+        unsafe {
+            match dev.reset_command_buffer(buffer, flags) {
+                Ok(_) => Ok(()),
+                Err(_) => Err(BufferError::Reset)
+            }
         }
     }
 }
@@ -599,6 +652,11 @@ pub struct ExecutableBuffer {
 impl ExecutableBuffer {
     pub(crate) fn buffer(&self) -> &vk::CommandBuffer {
         &self.i_buffer
+    }
+
+    /// Read [more](https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#vkResetCommandBuffer)
+    pub fn reset(&self, release_resources: bool) -> Result<(), BufferError> {
+        Buffer::reset_impl(self.i_pool.device(), self.i_buffer, release_resources)
     }
 }
 

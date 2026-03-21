@@ -117,29 +117,26 @@ fn main() {
 
     let swapchain = swapchain::Swapchain::new(&lib, &device, &surface, &swp_type).expect("Failed to create swapchain");
 
-    let vert_shader_type = shader::ShaderCfg {
-        path: "VERT_SHADER",
-        entry: "main",
-    };
-
-    let vert_shader = shader::Shader::from_glsl(&device, &vert_shader_type, VERT_SHADER, shader::Kind::Vertex)
+    let vert_shader = shader::ShaderBuilder::new()
+        .path("VERT_SHADER")
+        .glsl_src(VERT_SHADER)
+        .shader_type(shader::Kind::Vertex)
+        .from_glsl(&device)
         .expect("Failed to create vertex shader module");
 
-    let frag_shader_type = shader::ShaderCfg {
-        path: "FRAG_SHADER",
-        entry: "main",
-    };
+    let frag_shader = shader::ShaderBuilder::new()
+        .path("FRAG_SHADER")
+        .glsl_src(FRAG_SHADER)
+        .shader_type(shader::Kind::Fragment)
+        .from_glsl(&device)
+        .expect("Failed to create vertex shader module");
 
-    let frag_shader = shader::Shader::from_glsl(&device, &frag_shader_type, FRAG_SHADER, shader::Kind::Fragment)
-        .expect("Failed to create fragment shader module");
-
-    let geom_shader_type = shader::ShaderCfg {
-        path: "GEOM_SHADER",
-        entry: "main",
-    };
-
-    let geom_shader = shader::Shader::from_glsl(&device, &geom_shader_type, GEOM_SHADER, shader::Kind::Geometry)
-        .expect("Failed to create geometry shader module");
+    let geom_shader = shader::ShaderBuilder::new()
+        .path("GEOM_SHADER")
+        .glsl_src(GEOM_SHADER)
+        .shader_type(shader::Kind::Geometry)
+        .from_glsl(&device)
+        .expect("Failed to create vertex shader module");
 
     let buffers = [
         memory::LayoutElementCfg::Buffer {

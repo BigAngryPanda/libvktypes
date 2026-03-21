@@ -47,9 +47,20 @@ pub struct Instance {
 pub enum InstanceError {
     LibraryLoad,
     Instance,
-    DebugUtilsCreating,
-    Unknown,
+    DebugUtilsCreating
 }
+
+impl std::fmt::Display for InstanceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::LibraryLoad => write!(f, "Failed to load library"),
+            Self::Instance => write!(f, "vkCreateInstance call failed"),
+            Self::DebugUtilsCreating => write!(f, "vkCreateDebugUtilsMessengerEXT call failed")
+        }
+    }
+}
+
+impl std::error::Error for InstanceError { }
 
 impl Instance {
     pub fn new(desc: &InstanceType) -> Result<Instance, InstanceError> {

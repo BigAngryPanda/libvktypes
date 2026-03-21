@@ -58,19 +58,15 @@ fn main() {
 
     let swapchain = swapchain::Swapchain::new(&lib, &device, &surface, &swp_type).expect("Failed to create swapchain");
 
-    let vert_shader_type = shader::ShaderCfg {
-        path: "examples/compiled_shaders/single_triangle.spv",
-        entry: "main",
-    };
+    let vert_shader = shader::ShaderBuilder::new()
+        .path("examples/compiled_shaders/single_triangle.spv")
+        .from_file(&device)
+        .expect("Failed to create vertex shader module");
 
-    let vert_shader = shader::Shader::from_file(&device, &vert_shader_type).expect("Failed to create vertex shader module");
-
-    let frag_shader_type = shader::ShaderCfg {
-        path: "examples/compiled_shaders/single_color.spv",
-        entry: "main",
-    };
-
-    let frag_shader = shader::Shader::from_file(&device, &frag_shader_type).expect("Failed to create fragment shader module");
+    let frag_shader = shader::ShaderBuilder::new()
+        .path("examples/compiled_shaders/single_color.spv")
+        .from_file(&device)
+        .expect("Failed to create vertex shader module");
 
     let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");
