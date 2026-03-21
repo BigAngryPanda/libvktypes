@@ -74,11 +74,9 @@ pub struct Queue {
 impl Queue {
     /// Create new Queue
     ///
-    /// [`family_index`](crate::queue::QueueCfg::family_index)
-    /// **must be** one of the defined in [`DeviceCfg`](crate::dev::DeviceCfg)
+    /// `family_index` **must be** one of the defined in [`DeviceCfg`](crate::dev::DeviceCfg)
     ///
-    /// [`queue_index`](crate::queue::QueueCfg::queue_index)
-    /// **must be** less than related queue count
+    /// `queue_index` **must be** less than related queue count
     #[doc = "See more: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetDeviceQueue.html>"]
     pub fn new(dev: &dev::Device, family_index: u32, queue_index: u32) -> Queue {
         Queue {

@@ -61,7 +61,7 @@ pub trait BufferView : Copy + Clone {
         self.memory().unmap_memory();
     }
 
-    /// Return [`BufferView`](BufferView) part of the allocated memory as slice
+    /// Return [BufferView] part of the allocated memory as slice
     ///
     /// 1. It tries to find start and end indices by calling [`offset`](Self::offset)
     /// and [`size`](Self::size)

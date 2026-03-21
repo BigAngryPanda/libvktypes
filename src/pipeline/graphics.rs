@@ -191,7 +191,7 @@ impl GraphicsPipelineBuilder {
 
     /// Optional
     ///
-    /// Subpass index inside [`RenderPass`]
+    /// Subpass index inside [RenderPass](graphics::RenderPass)
     ///
     /// Default is `0`
     pub fn subpass(&mut self, idx: u32) -> &mut Self {
@@ -224,7 +224,7 @@ impl GraphicsPipelineBuilder {
 
     /// Optional
     ///
-    /// Set [`enable_depth_test`](PipelineCfg::enable_depth_test) to perform depth test
+    /// Set flag to perform depth test
     ///
     /// However you have to allocate depth buffer and properly pass it to the render pass
     ///

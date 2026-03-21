@@ -669,9 +669,19 @@ impl ExecutableBuffer {
         &self.i_buffer
     }
 
+    /// Turns `ExecutableBuffer` to writable [Buffer]
+    ///
     /// Read [more](https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#vkResetCommandBuffer)
-    pub fn reset(&self, release_resources: bool) -> Result<(), BufferError> {
-        Buffer::reset_impl(self.i_pool.device(), self.i_buffer, release_resources)
+    pub fn reset(self, release_resources: bool) -> Result<Buffer, BufferError> {
+        match Buffer::reset_impl(self.i_pool.device(), self.i_buffer, release_resources) {
+            Ok(_) => {
+                Ok(Buffer {
+                    i_pool: self.i_pool,
+                    i_buffer: self.i_buffer,
+                })
+            },
+            Err(err) => Err(err)
+        }
     }
 }
 

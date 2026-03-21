@@ -134,8 +134,7 @@ impl Device {
         }
     }
 
-    /// [`vkResetFences`]
-    /// (https://docs.vulkan.org/refpages/latest/refpages/source/vkResetFences.html) call
+    /// [`vkResetFences``](https://docs.vulkan.org/refpages/latest/refpages/source/vkResetFences.html) call
     pub fn reset_fences(&self, fences: &mut dyn Iterator<Item = &sync::Fence>) -> Result<(), DeviceError> {
         let vk_fences: Vec<vk::Fence> = fences.map(|f| f.fence()).collect();
 
@@ -149,8 +148,7 @@ impl Device {
         }
     }
 
-    /// [`vkWaitForFences`]
-    /// (https://docs.vulkan.org/refpages/latest/refpages/source/vkWaitForFences.html) call
+    /// [`vkWaitForFences`](https://docs.vulkan.org/refpages/latest/refpages/source/vkWaitForFences.html) call
     pub fn wait_for_fences(
         &self,
         fences: &mut dyn Iterator<Item = &sync::Fence>,
