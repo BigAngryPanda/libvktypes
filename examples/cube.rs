@@ -440,7 +440,7 @@ fn main() {
 
                 cmd_queue.present(&present_info).expect("Failed to present frame");
 
-                device.wait_and_reset_fence(&fence, false, u64::MAX).expect("Failed to wait or reset Fence");
+                device.wait_and_reset_fence(&fence, u64::MAX).expect("Failed to wait or reset Fence");
 
                 std::thread::sleep(std::time::Duration::from_millis(10));
             },

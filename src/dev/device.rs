@@ -198,10 +198,9 @@ impl Device {
     /// [`reset_fence`](Self::reset_fence)
     pub fn wait_and_reset_fence(&self,
         fence: &sync::Fence,
-        wait_all: bool,
         timeout: u64
     ) -> Result<(), DeviceError> {
-        match self.wait_for_fence(&fence, wait_all, timeout) {
+        match self.wait_for_fence(&fence, timeout) {
             Ok(_) => { },
             Err(err) => {
                 return Err(err);
@@ -221,10 +220,9 @@ impl Device {
     /// [`wait_for_fences`](Self::wait_for_fences) for single fence
     pub fn wait_for_fence(&self,
         fence: &sync::Fence,
-        wait_all: bool,
         timeout: u64
     ) -> Result<(), DeviceError> {
-        match unsafe { self.i_core.device().wait_for_fences(&[fence.fence()], wait_all, timeout) } {
+        match unsafe { self.i_core.device().wait_for_fences(&[fence.fence()], true, timeout) } {
             Ok(_) => {
                 Ok(())
             },
