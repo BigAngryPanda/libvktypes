@@ -177,6 +177,7 @@ pub struct RenderPassCfg<'a, 'b: 'a> {
 }
 
 /// Context for executing graphics pipeline
+#[derive(Debug)]
 pub struct RenderPass {
     i_core: Arc<dev::Core>,
     i_rp: vk::RenderPass
