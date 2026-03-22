@@ -144,6 +144,36 @@ pub trait ImageView : Copy + Clone {
 }
 
 /// "Pointer-like" struct for the buffer
+///
+/// [`Memory`] *must* outlive `PtrView`
+///
+/// It is your responsibility to hold such guarantee
+#[derive(Debug, Clone, Copy)]
+pub struct PtrView {
+    i_memory: *const memory::Memory,
+    i_index: usize
+}
+
+impl PtrView {
+    pub fn new(storage: &memory::Memory, index: usize) -> PtrView {
+        PtrView {
+            i_memory: storage,
+            i_index: index
+        }
+    }
+}
+
+impl BufferView for PtrView {
+    fn memory(&self) -> &memory::Memory {
+        unsafe { &(*self.i_memory) }
+    }
+
+    fn index(&self) -> usize {
+        self.i_index
+    }
+}
+
+/// "Pointer-like" struct for the buffer
 #[derive(Debug, Clone, Copy)]
 pub struct RefView<'a> {
     i_memory: &'a memory::Memory,
@@ -162,6 +192,38 @@ impl<'a> RefView<'a> {
 impl<'a> BufferView for RefView<'a> {
     fn memory(&self) -> &memory::Memory {
         self.i_memory
+    }
+
+    fn index(&self) -> usize {
+        self.i_index
+    }
+}
+
+/// "Pointer-like" struct for the image
+///
+/// Mapping image memory is tight to a image [`layout`](memory::layout::LayoutElementCfg::Image)
+///
+/// [`Memory`] *must* outlive `PtrImageView`
+///
+/// It is your responsibility to hold such guarantee
+#[derive(Debug, Clone, Copy)]
+pub struct PtrImageView {
+    i_memory: *const memory::Memory,
+    i_index: usize
+}
+
+impl PtrImageView {
+    pub fn new(storage: &memory::Memory, index: usize) -> PtrImageView {
+        PtrImageView {
+            i_memory: storage,
+            i_index: index
+        }
+    }
+}
+
+impl ImageView for PtrImageView {
+    fn memory(&self) -> &memory::Memory {
+        unsafe { &(*self.i_memory) }
     }
 
     fn index(&self) -> usize {
