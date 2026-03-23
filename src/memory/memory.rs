@@ -213,7 +213,7 @@ impl Memory {
 
         layout.bind(self.i_memory.memory())?;
 
-         Ok(Memory {
+        Ok(Memory {
             i_core: self.i_core.clone(),
             i_layout: layout,
             i_memory: self.i_memory.clone()

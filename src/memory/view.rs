@@ -145,7 +145,7 @@ pub trait ImageView : Copy + Clone {
 
 /// "Pointer-like" struct for the buffer
 ///
-/// [`Memory`] *must* outlive `PtrView`
+/// [`Memory`](memory::Memory) *must* outlive `PtrView`
 ///
 /// It is your responsibility to hold such guarantee
 #[derive(Debug, Clone, Copy)]
@@ -203,7 +203,7 @@ impl<'a> BufferView for RefView<'a> {
 ///
 /// Mapping image memory is tight to a image [`layout`](memory::layout::LayoutElementCfg::Image)
 ///
-/// [`Memory`] *must* outlive `PtrImageView`
+/// [`Memory`](memory::Memory) *must* outlive `PtrImageView`
 ///
 /// It is your responsibility to hold such guarantee
 #[derive(Debug, Clone, Copy)]

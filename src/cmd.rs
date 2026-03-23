@@ -110,6 +110,9 @@ impl Pool {
     }
 
     /// Allocate new command buffer
+    ///
+    /// Note: after reset method will begin command buffer by calling
+    /// [`vkBeginCommandBuffer`](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkBeginCommandBuffer.html)
     pub fn allocate(&self) -> Result<Buffer, BufferError> {
         let cmd_buff_info = vk::CommandBufferAllocateInfo {
             s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
@@ -197,7 +200,6 @@ impl std::fmt::Display for BufferError {
 
 impl std::error::Error for BufferError { }
 
-
 /// Buffer in which you can write commands
 ///
 /// Note: this buffer is not ready for execution "as is"
@@ -209,6 +211,9 @@ pub struct Buffer {
 }
 
 impl Buffer {
+    /// End buffer by calling
+    /// [`vkEndCommandBuffer`](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEndCommandBuffer.html)
+    ///
     /// Return executable buffer
     ///
     /// Original buffer will be available only for reset
@@ -649,6 +654,9 @@ impl Buffer {
     }
 
     /// Read [more](https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#vkResetCommandBuffer)
+    ///
+    /// Note: after reset method will begin command buffer by calling
+    /// [`vkBeginCommandBuffer`](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkBeginCommandBuffer.html)
     pub fn reset(&self, release_resources: bool) -> Result<(), BufferError> {
         let dev = self.i_pool.device();
 
@@ -659,11 +667,23 @@ impl Buffer {
         };
 
         unsafe {
-            match dev.reset_command_buffer(self.i_buffer, flags) {
-                Ok(_) => Ok(()),
-                Err(_) => Err(BufferError::Reset)
-            }
+            on_error_ret!(dev.reset_command_buffer(self.i_buffer, flags), BufferError::Reset);
+
+            let cmd_begin_info = vk::CommandBufferBeginInfo {
+                s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+                p_next: ptr::null(),
+                flags:  vk::CommandBufferUsageFlags::empty(),
+                p_inheritance_info: ptr::null(),
+                _marker: PhantomData,
+            };
+
+            on_error_ret!(
+                dev.begin_command_buffer(self.i_buffer, &cmd_begin_info),
+                BufferError::Begin
+            );
         }
+
+        Ok(())
     }
 
     /// End render pass
