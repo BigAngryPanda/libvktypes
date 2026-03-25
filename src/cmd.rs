@@ -287,8 +287,11 @@ impl Buffer {
     ///
     /// Function does not check size of the buffers
     ///
-    /// `dst` image must has layout [`TRANSFER_DST_OPTIMAL`](memory::ImageLayout::TRANSFER_DST_OPTIMAL)
-    /// or [`GENERAL`](memory::ImageLayout::GENERAL) on creation or via [barrier](Buffer::set_image_barrier)
+    /// `dst` image must have one of the layouts:
+    /// [`TRANSFER_DST_OPTIMAL`](memory::ImageLayout::TRANSFER_DST_OPTIMAL)
+    /// [`GENERAL`](memory::ImageLayout::GENERAL)
+    /// [`SHARED_PRESENT_KHR`](memory::ImageLayout::SHARED_PRESENT_KHR)
+    /// on creation or via [barrier](Buffer::set_image_barrier)
     pub fn copy_buffer_to_image<T: memory::BufferView, U: memory::ImageView>(
         &self,
         src: T,
@@ -306,7 +309,9 @@ impl Buffer {
         };
 
         let transfer_layout = memory::ImageLayout::from_raw(
-            (memory::ImageLayout::TRANSFER_DST_OPTIMAL).as_raw() | (memory::ImageLayout::GENERAL).as_raw()
+            (memory::ImageLayout::TRANSFER_DST_OPTIMAL).as_raw() |
+            (memory::ImageLayout::GENERAL).as_raw() |
+            (memory::ImageLayout::SHARED_PRESENT_KHR).as_raw()
         );
 
         unsafe {
@@ -315,6 +320,34 @@ impl Buffer {
                 memory::get_buffer(src),
                 memory::get_image(dst),
                 transfer_layout,
+                &[copy_info]);
+        }
+
+        &self
+    }
+
+    /// See [`copy_buffer_to_image`](Self::copy_buffer_to_image)
+    pub fn copy_buffer_to_image_with_cfg<T: memory::BufferView, U: memory::ImageView>(
+        &self,
+        cfg: &CopyBufferToImageCfg
+    ) -> &Self {
+        let dev = self.i_pool.device();
+
+        let copy_info = vk::BufferImageCopy {
+            buffer_offset: 0,
+            buffer_row_length: 0,
+            buffer_image_height: 0,
+            image_subresource: cfg.image_subresource,
+            image_offset: cfg.image_offset,
+            image_extent: cfg.image_extent,
+        };
+
+        unsafe {
+            dev.cmd_copy_buffer_to_image(
+                self.i_buffer,
+                cfg.buffer,
+                cfg.image,
+                cfg.dst_image_layout,
                 &[copy_info]);
         }
 
@@ -706,5 +739,102 @@ impl fmt::Debug for Buffer {
         .field("i_pool", &self.i_pool)
         .field("i_buffer", &self.i_buffer)
         .finish()
+    }
+}
+
+pub struct CopyBufferToImageCfg {
+    pub(crate) buffer_offset: u64,
+    pub(crate) buffer_row_length: u32,
+    pub(crate) buffer_image_height: u32,
+    pub(crate) image_subresource: vk::ImageSubresourceLayers,
+    pub(crate) image_offset: vk::Offset3D,
+    pub(crate) image_extent: vk::Extent3D,
+    pub(crate) buffer: vk::Buffer,
+    pub(crate) image: vk::Image,
+    pub(crate) dst_image_layout: vk::ImageLayout
+}
+
+impl CopyBufferToImageCfg {
+    /// See [`copy_buffer_to_image`](Buffer::copy_buffer_to_image)
+    ///
+    /// By default all information was collected from views
+    ///
+    /// Use methods to override defaults
+    pub fn new<T: memory::BufferView, U: memory::ImageView>(src: T, dst: U) -> CopyBufferToImageCfg {
+        CopyBufferToImageCfg {
+            buffer_offset: 0,
+            buffer_row_length: 0,
+            buffer_image_height: 0,
+            image_subresource: dst.memory().layout().subresource_layer(dst.index()),
+            image_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
+            image_extent: dst.extent(),
+            buffer: memory::get_buffer(src),
+            image: memory::get_image(dst),
+            dst_image_layout: memory::ImageLayout::from_raw(
+                (memory::ImageLayout::TRANSFER_DST_OPTIMAL).as_raw() |
+                (memory::ImageLayout::GENERAL).as_raw() |
+                (memory::ImageLayout::SHARED_PRESENT_KHR).as_raw())
+        }
+    }
+
+    /// Default is 0
+    pub fn buffer_offset(mut self, offset: u64) -> Self {
+        self.buffer_offset = offset;
+
+        self
+    }
+
+    pub fn buffer_row_length(mut self, length: u32) -> Self {
+        self.buffer_row_length = length;
+
+        self
+    }
+
+    pub fn buffer_image_height(mut self, height: u32) -> Self {
+        self.buffer_image_height = height;
+
+        self
+    }
+
+    pub fn image_subresource_aspect(mut self, aspect: memory::ImageAspect) -> Self {
+        self.image_subresource.aspect_mask = aspect;
+
+        self
+    }
+
+    pub fn image_subresource_mip_level(mut self, mip_level: u32) -> Self {
+        self.image_subresource.mip_level = mip_level;
+
+        self
+    }
+
+    pub fn image_subresource_base_array_layer(mut self, base_array_layer: u32) -> Self {
+        self.image_subresource.base_array_layer = base_array_layer;
+
+        self
+    }
+
+    pub fn image_subresource_layer_count(mut self, layer_count: u32) -> Self {
+        self.image_subresource.layer_count = layer_count;
+
+        self
+    }
+
+    pub fn image_offset(mut self, x: i32, y: i32, z: i32) -> Self {
+        self.image_offset = vk::Offset3D { x, y, z };
+
+        self
+    }
+
+    pub fn image_extent(mut self, width: u32, height: u32, depth: u32) -> Self {
+        self.image_extent = vk::Extent3D { width, height, depth };
+
+        self
+    }
+
+    pub fn dst_image_layout(mut self, layout: memory::ImageLayout) -> Self {
+        self.dst_image_layout = layout;
+
+        self
     }
 }
