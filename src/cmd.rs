@@ -327,7 +327,7 @@ impl Buffer {
     }
 
     /// See [`copy_buffer_to_image`](Self::copy_buffer_to_image)
-    pub fn copy_buffer_to_image_with_cfg<T: memory::BufferView, U: memory::ImageView>(
+    pub fn copy_buffer_to_image_with_cfg(
         &self,
         cfg: &CopyBufferToImageCfg
     ) -> &Self {
