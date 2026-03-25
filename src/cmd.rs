@@ -290,7 +290,6 @@ impl Buffer {
     /// `dst` image must have one of the layouts:
     /// [`TRANSFER_DST_OPTIMAL`](memory::ImageLayout::TRANSFER_DST_OPTIMAL)
     /// [`GENERAL`](memory::ImageLayout::GENERAL)
-    /// [`SHARED_PRESENT_KHR`](memory::ImageLayout::SHARED_PRESENT_KHR)
     /// on creation or via [barrier](Buffer::set_image_barrier)
     pub fn copy_buffer_to_image<T: memory::BufferView, U: memory::ImageView>(
         &self,
@@ -310,8 +309,7 @@ impl Buffer {
 
         let transfer_layout = memory::ImageLayout::from_raw(
             (memory::ImageLayout::TRANSFER_DST_OPTIMAL).as_raw() |
-            (memory::ImageLayout::GENERAL).as_raw() |
-            (memory::ImageLayout::SHARED_PRESENT_KHR).as_raw()
+            (memory::ImageLayout::GENERAL).as_raw()
         );
 
         unsafe {
@@ -772,67 +770,70 @@ impl CopyBufferToImageCfg {
             image: memory::get_image(dst),
             dst_image_layout: memory::ImageLayout::from_raw(
                 (memory::ImageLayout::TRANSFER_DST_OPTIMAL).as_raw() |
-                (memory::ImageLayout::GENERAL).as_raw() |
-                (memory::ImageLayout::SHARED_PRESENT_KHR).as_raw())
+                (memory::ImageLayout::GENERAL).as_raw())
         }
     }
 
     /// Default is 0
-    pub fn buffer_offset(mut self, offset: u64) -> Self {
+    pub fn buffer_offset(&mut self, offset: u64) -> &mut Self {
         self.buffer_offset = offset;
 
         self
     }
 
-    pub fn buffer_row_length(mut self, length: u32) -> Self {
+    /// Default is 0
+    pub fn buffer_row_length(&mut self, length: u32) -> &mut Self {
         self.buffer_row_length = length;
 
         self
     }
 
-    pub fn buffer_image_height(mut self, height: u32) -> Self {
+    /// Default is 0
+    pub fn buffer_image_height(&mut self, height: u32) -> &mut Self {
         self.buffer_image_height = height;
 
         self
     }
 
-    pub fn image_subresource_aspect(mut self, aspect: memory::ImageAspect) -> Self {
+    pub fn image_subresource_aspect(&mut self, aspect: memory::ImageAspect) -> &mut Self {
         self.image_subresource.aspect_mask = aspect;
 
         self
     }
 
-    pub fn image_subresource_mip_level(mut self, mip_level: u32) -> Self {
+    pub fn image_subresource_mip_level(&mut self, mip_level: u32) -> &mut Self {
         self.image_subresource.mip_level = mip_level;
 
         self
     }
 
-    pub fn image_subresource_base_array_layer(mut self, base_array_layer: u32) -> Self {
+    pub fn image_subresource_base_array_layer(&mut self, base_array_layer: u32) -> &mut Self {
         self.image_subresource.base_array_layer = base_array_layer;
 
         self
     }
 
-    pub fn image_subresource_layer_count(mut self, layer_count: u32) -> Self {
+    pub fn image_subresource_layer_count(&mut self, layer_count: u32) -> &mut Self {
         self.image_subresource.layer_count = layer_count;
 
         self
     }
 
-    pub fn image_offset(mut self, x: i32, y: i32, z: i32) -> Self {
+    /// Default is 0
+    pub fn image_offset(&mut self, x: i32, y: i32, z: i32) -> &mut Self {
         self.image_offset = vk::Offset3D { x, y, z };
 
         self
     }
 
-    pub fn image_extent(mut self, width: u32, height: u32, depth: u32) -> Self {
+    pub fn image_extent(&mut self, width: u32, height: u32, depth: u32) -> &mut Self {
         self.image_extent = vk::Extent3D { width, height, depth };
 
         self
     }
 
-    pub fn dst_image_layout(mut self, layout: memory::ImageLayout) -> Self {
+    /// Default is `TRANSFER_DST_OPTIMAL | GENERAL`
+    pub fn dst_image_layout(&mut self, layout: memory::ImageLayout) -> &mut Self {
         self.dst_image_layout = layout;
 
         self
