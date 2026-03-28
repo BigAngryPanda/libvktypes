@@ -36,7 +36,8 @@ pub struct GraphicsPipelineBuilder {
     src_alpha_blend_factor: vk::BlendFactor,
     dst_alpha_blend_factor: vk::BlendFactor,
     enable_dynamic_scissor: bool,
-    enable_blend: bool
+    enable_blend: bool,
+    enable_dynamic_viewport: bool
 }
 
 impl GraphicsPipelineBuilder {
@@ -62,7 +63,8 @@ impl GraphicsPipelineBuilder {
             src_alpha_blend_factor: vk::BlendFactor::ONE,
             dst_alpha_blend_factor: vk::BlendFactor::ZERO,
             enable_dynamic_scissor: false,
-            enable_blend: false
+            enable_blend: false,
+            enable_dynamic_viewport: false
         }
     }
 
@@ -317,6 +319,15 @@ impl GraphicsPipelineBuilder {
         self
     }
 
+    /// Optional
+    ///
+    /// Default is `false`
+    pub fn dynamic_viewport(&mut self, enable: bool) -> &mut Self {
+        self.enable_dynamic_viewport = enable;
+
+        self
+    }
+
     /// Try to create pipeline
     pub fn build(&self,
         device: &dev::Device,
@@ -492,6 +503,10 @@ impl GraphicsPipelineBuilder {
 
         if self.enable_dynamic_scissor {
             dynamic_states.push(vk::DynamicState::SCISSOR);
+        }
+
+        if self.enable_dynamic_viewport {
+            dynamic_states.push(vk::DynamicState::VIEWPORT);
         }
 
         let dynamic_state_info = vk::PipelineDynamicStateCreateInfo {

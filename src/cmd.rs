@@ -664,6 +664,8 @@ impl Buffer {
         &self
     }
 
+    /// Pipeline must have enabled [corresponding](pipeline::GraphicsPipelineBuilder::dynamic_scissor)
+    /// dynamic state
     pub fn set_scissors_2d(&self, scissors: &[memory::Extent2D]) -> &Self {
         let dev = self.i_pool.device();
 
@@ -681,7 +683,27 @@ impl Buffer {
             dev.cmd_set_scissor(self.i_buffer, 0, &vk_scissors);
         }
 
-        &self
+        self
+    }
+
+    /// Pipeline must have enabled [corresponding](pipeline::GraphicsPipelineBuilder::dynamic_viewport)
+    /// dynamic state
+    pub fn set_viewport(
+        &self,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        min_depth: f32,
+        max_depth: f32
+    ) -> &Self {
+        let dev = self.i_pool.device();
+
+        unsafe {
+            dev.cmd_set_viewport(self.i_buffer, 0, &[vk::Viewport { x, y, width, height, min_depth, max_depth }]);
+        }
+
+        self
     }
 
     /// Read [more](https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#vkResetCommandBuffer)
