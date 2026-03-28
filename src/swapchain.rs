@@ -107,7 +107,7 @@ impl Swapchain {
                dev: &dev::Device,
                surface: &surface::Surface,
                swp_type: &SwapchainCfg,
-               old_swapchain: Option<Self>
+               old_swapchain: Option<&Self>
     ) -> Result<Swapchain, SwapchainError> {
         let loader = swapchain::Device::new(lib.instance(), dev.device());
 
