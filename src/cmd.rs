@@ -666,21 +666,22 @@ impl Buffer {
 
     /// Pipeline must have enabled [corresponding](pipeline::GraphicsPipelineBuilder::dynamic_scissor)
     /// dynamic state
-    pub fn set_scissors_2d(&self, scissors: &[memory::Extent2D]) -> &Self {
+    pub fn set_scissor(&self, width: u32, height: u32) -> &Self {
         let dev = self.i_pool.device();
 
-        let vk_scissors: Vec<vk::Rect2D> = scissors.iter().map(|&extent| {
-            vk::Rect2D {
-                offset: vk::Offset2D {
-                    x: 0,
-                    y: 0,
-                },
-                extent,
-            }
-        }).collect();
+        let vk_scissor: vk::Rect2D = vk::Rect2D {
+            offset: vk::Offset2D {
+                x: 0,
+                y: 0,
+            },
+            extent: vk::Extent2D {
+                width,
+                height,
+            },
+        };
 
         unsafe {
-            dev.cmd_set_scissor(self.i_buffer, 0, &vk_scissors);
+            dev.cmd_set_scissor(self.i_buffer, 0, &[vk_scissor]);
         }
 
         self
