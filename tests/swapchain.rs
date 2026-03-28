@@ -45,9 +45,9 @@ mod swapchain {
             flags: memory::UsageFlags::COLOR_ATTACHMENT,
             extent: capabilities.extent2d(),
             transform: capabilities.pre_transformation(),
-            alpha: capabilities.alpha_composition(),
+            alpha: capabilities.alpha_composition()
         };
 
-        assert!(swapchain::Swapchain::new(lib_ref, device, surface_ref, &swp_type).is_ok());
+        assert!(swapchain::Swapchain::new(lib_ref, device, surface_ref, &swp_type, None).is_ok());
     }
 }

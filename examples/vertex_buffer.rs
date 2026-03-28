@@ -56,7 +56,7 @@ fn main() {
         alpha: capabilities.first_alpha_composition().expect("No alpha composition")
     };
 
-    let swapchain = swapchain::Swapchain::new(&lib, &device, &surface, &swp_type).expect("Failed to create swapchain");
+    let swapchain = swapchain::Swapchain::new(&lib, &device, &surface, &swp_type, None).expect("Failed to create swapchain");
 
     let vert_shader = shader::ShaderBuilder::new()
         .path("examples/compiled_shaders/vertex_input.spv")

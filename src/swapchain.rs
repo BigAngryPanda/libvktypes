@@ -106,7 +106,8 @@ impl Swapchain {
     pub fn new(lib: &libvk::Instance,
                dev: &dev::Device,
                surface: &surface::Surface,
-               swp_type: &SwapchainCfg
+               swp_type: &SwapchainCfg,
+               old_swapchain: Option<Self>
     ) -> Result<Swapchain, SwapchainError> {
         let loader = swapchain::Device::new(lib.instance(), dev.device());
 
@@ -128,7 +129,11 @@ impl Swapchain {
             composite_alpha: swp_type.alpha,
             present_mode: swp_type.present_mode,
             clipped: ash::vk::TRUE,
-            old_swapchain: vk::SwapchainKHR::null(),
+            old_swapchain: if let Some(swapchain) = old_swapchain {
+                swapchain.i_swapchain
+            } else {
+                vk::SwapchainKHR::null()
+            },
             _marker: PhantomData,
         };
 

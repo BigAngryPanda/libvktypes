@@ -283,7 +283,7 @@ pub fn get_swapchain() -> &'static swapchain::Swapchain {
             };
 
             #[allow(static_mut_refs)]
-            SWAPCHAIN.write(swapchain::Swapchain::new(lib_ref, device, surface_ref, &swp_type).expect("Failed to create swapchain"));
+            SWAPCHAIN.write(swapchain::Swapchain::new(lib_ref, device, surface_ref, &swp_type, None).expect("Failed to create swapchain"));
         });
 
         #[allow(static_mut_refs)]
