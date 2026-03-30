@@ -49,8 +49,7 @@ impl Semaphore {
         })
     }
 
-    #[doc(hidden)]
-    pub fn semaphore(&self) -> vk::Semaphore {
+    pub(crate) fn semaphore(&self) -> vk::Semaphore {
         self.i_semaphore
     }
 }
@@ -78,6 +77,7 @@ impl fmt::Display for FenceError {
 
 impl error::Error for FenceError {}
 
+#[derive(Debug)]
 pub struct Fence {
     i_core: Arc<dev::Core>,
     i_fence: vk::Fence,
