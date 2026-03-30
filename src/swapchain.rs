@@ -199,19 +199,44 @@ impl Swapchain {
         Ok(result)
     }
 
-    #[doc(hidden)]
-    pub fn loader(&self) -> &swapchain::Device {
+    pub(crate) fn loader(&self) -> &swapchain::Device {
         &self.i_loader
     }
 
-    #[doc(hidden)]
-    pub fn swapchain(&self) -> vk::SwapchainKHR {
+    pub(crate) fn swapchain(&self) -> vk::SwapchainKHR {
         self.i_swapchain
     }
+}
 
-    #[doc(hidden)]
-    pub fn format(&self) -> vk::Format {
-        self.i_format
+impl fmt::Debug for Swapchain {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Swapchain")
+        .field("i_core", &self.i_core)
+        .field("i_loader", &(&self.i_loader as *const swapchain::Device))
+        .field("i_swapchain", &self.i_swapchain)
+        .field("i_format", &self.i_format)
+        .field("i_extent", &self.i_extent)
+        .finish()
+    }
+}
+
+impl fmt::Display for Swapchain {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Core: {:?}\n\
+            Loader: {:?}\n\
+            Swapchain: {:?}\n\
+            Format: {:?}\n\
+            Extent: {:?}\n",
+            &self.i_core,
+            &(&self.i_loader as *const swapchain::Device),
+            &self.i_swapchain,
+            &self.i_format,
+            &self.i_extent)
+        .unwrap();
+
+        Ok(())
     }
 }
 

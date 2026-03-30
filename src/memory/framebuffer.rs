@@ -13,8 +13,8 @@ use crate::{
 };
 
 use std::sync::Arc;
-use std::ptr;
 use std::marker::PhantomData;
+use std::ptr;
 
 pub struct FramebufferCfg<'a, 'b : 'a, T : memory::ImageView> {
     pub images: &'a mut dyn Iterator<Item = &'b T>,
@@ -22,6 +22,7 @@ pub struct FramebufferCfg<'a, 'b : 'a, T : memory::ImageView> {
     pub render_pass: &'a graphics::RenderPass
 }
 
+#[derive(Debug)]
 pub struct Framebuffer {
     i_core: Arc<dev::Core>,
     i_frame: vk::Framebuffer,
