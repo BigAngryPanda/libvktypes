@@ -740,6 +740,21 @@ impl Buffer {
         Ok(())
     }
 
+    /// Pipeline must have enabled [corresponding](pipeline::GraphicsPipelineBuilder::dynamic_line_width)
+    /// dynamic state
+    ///
+    /// For exception read
+    /// [more](https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdSetLineWidth.html#_description)
+    pub fn set_line_width(&self, width: f32) -> &Self {
+        let dev = self.i_pool.device();
+
+        unsafe {
+            dev.cmd_set_line_width(self.i_buffer, width);
+        }
+
+        &self
+    }
+
     /// End render pass
     ///
     /// Must be after [`begin_render_pass`](crate::cmd::Buffer::begin_render_pass)

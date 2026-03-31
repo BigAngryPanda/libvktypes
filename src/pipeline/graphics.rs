@@ -28,16 +28,18 @@ pub struct GraphicsPipelineBuilder {
     extent: vk::Extent2D,
     render_pass: vk::RenderPass,
     subpass_index: u32,
-    enable_depth_test: bool,
-    enable_primitive_restart: bool,
     cull_mode: pipeline::CullMode,
     src_color_blend_factor: vk::BlendFactor,
     dst_color_blend_factor: vk::BlendFactor,
     src_alpha_blend_factor: vk::BlendFactor,
     dst_alpha_blend_factor: vk::BlendFactor,
+    line_width: f32,
+    enable_depth_test: bool,
+    enable_primitive_restart: bool,
     enable_dynamic_scissor: bool,
     enable_blend: bool,
-    enable_dynamic_viewport: bool
+    enable_dynamic_viewport: bool,
+    enable_dynamic_line_width: bool
 }
 
 impl GraphicsPipelineBuilder {
@@ -55,16 +57,18 @@ impl GraphicsPipelineBuilder {
             extent: memory::Extent2D::default(),
             render_pass: vk::RenderPass::null(),
             subpass_index: 0,
-            enable_depth_test: false,
-            enable_primitive_restart: false,
             cull_mode: pipeline::CullMode::BACK,
             src_color_blend_factor: vk::BlendFactor::ONE,
             dst_color_blend_factor: vk::BlendFactor::ZERO,
             src_alpha_blend_factor: vk::BlendFactor::ONE,
             dst_alpha_blend_factor: vk::BlendFactor::ZERO,
+            line_width: 1.0,
+            enable_depth_test: false,
+            enable_primitive_restart: false,
             enable_dynamic_scissor: false,
             enable_blend: false,
-            enable_dynamic_viewport: false
+            enable_dynamic_viewport: false,
+            enable_dynamic_line_width: false
         }
     }
 
@@ -328,6 +332,24 @@ impl GraphicsPipelineBuilder {
         self
     }
 
+    /// Optional
+    ///
+    /// Default is `false`
+    pub fn dynamic_line_width(&mut self, enable: bool) -> &mut Self {
+        self.enable_dynamic_line_width = enable;
+
+        self
+    }
+
+    /// Optional
+    ///
+    /// Default is `1.0`
+    pub fn line_width(&mut self, width: f32) -> &mut Self {
+        self.line_width = width;
+
+        self
+    }
+
     /// Try to create pipeline
     pub fn build(&self,
         device: &dev::Device,
@@ -440,7 +462,7 @@ impl GraphicsPipelineBuilder {
             depth_bias_constant_factor: 0.0,
             depth_bias_clamp: 0.0,
             depth_bias_slope_factor: 0.0,
-            line_width: 1.0,
+            line_width: self.line_width,
             _marker: PhantomData,
         };
 
@@ -507,6 +529,10 @@ impl GraphicsPipelineBuilder {
 
         if self.enable_dynamic_viewport {
             dynamic_states.push(vk::DynamicState::VIEWPORT);
+        }
+
+        if self.enable_dynamic_line_width {
+            dynamic_states.push(vk::DynamicState::LINE_WIDTH);
         }
 
         let dynamic_state_info = vk::PipelineDynamicStateCreateInfo {
