@@ -34,6 +34,8 @@ pub struct GraphicsPipelineBuilder {
     src_alpha_blend_factor: vk::BlendFactor,
     dst_alpha_blend_factor: vk::BlendFactor,
     line_width: f32,
+    polygon_mode: vk::PolygonMode,
+    sample_count: vk::SampleCountFlags,
     enable_depth_test: bool,
     enable_primitive_restart: bool,
     enable_dynamic_scissor: bool,
@@ -63,6 +65,8 @@ impl GraphicsPipelineBuilder {
             src_alpha_blend_factor: vk::BlendFactor::ONE,
             dst_alpha_blend_factor: vk::BlendFactor::ZERO,
             line_width: 1.0,
+            polygon_mode: vk::PolygonMode::FILL,
+            sample_count: vk::SampleCountFlags::TYPE_1,
             enable_depth_test: false,
             enable_primitive_restart: false,
             enable_dynamic_scissor: false,
@@ -350,6 +354,24 @@ impl GraphicsPipelineBuilder {
         self
     }
 
+    /// Optional
+    ///
+    /// Default is `FILL`
+    pub fn polygon_mode(&mut self, polygon_mode: pipeline::PolygonMode) -> &mut Self {
+        self.polygon_mode = polygon_mode;
+
+        self
+    }
+
+    /// Optional
+    ///
+    /// Default is `TYPE_1 (0x00000001)`
+    pub fn sample_count(&mut self, flags: pipeline::SampleCountFlags) -> &mut Self {
+        self.sample_count = flags;
+
+        self
+    }
+
     /// Try to create pipeline
     pub fn build(&self,
         device: &dev::Device,
@@ -455,7 +477,7 @@ impl GraphicsPipelineBuilder {
             flags: vk::PipelineRasterizationStateCreateFlags::empty(),
             depth_clamp_enable: ash::vk::FALSE,
             rasterizer_discard_enable: ash::vk::FALSE,
-            polygon_mode: vk::PolygonMode::FILL,
+            polygon_mode: self.polygon_mode,
             cull_mode: self.cull_mode,
             front_face: vk::FrontFace::COUNTER_CLOCKWISE,
             depth_bias_enable: ash::vk::FALSE,
@@ -473,7 +495,7 @@ impl GraphicsPipelineBuilder {
             s_type: vk::StructureType::PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
             p_next: std::ptr::null(),
             flags: vk::PipelineMultisampleStateCreateFlags::empty(),
-            rasterization_samples: vk::SampleCountFlags::TYPE_1,
+            rasterization_samples: self.sample_count,
             sample_shading_enable: ash::vk::FALSE,
             min_sample_shading: 1.0,
             p_sample_mask: std::ptr::null(),
