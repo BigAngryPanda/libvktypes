@@ -22,6 +22,7 @@ pub type ImageInfo  = vk::DescriptorImageInfo;
 
 /// Represents writing information for single layout entry
 /// ```layout(set, binding) ... data[N]; ```
+#[derive(Debug)]
 pub struct WriteInfoEntry<T> {
     set: u32,
     binding: u32,
@@ -91,6 +92,7 @@ impl WriteInfoEntry<ImageInfo> {
 /// Allocates memory in the heap
 ///
 /// Better to prepare info in advance
+#[derive(Debug)]
 pub struct WriteInfo {
     pub(crate) buffers: Vec<WriteInfoEntry<vk::DescriptorBufferInfo>>,
     pub(crate) images:  Vec<WriteInfoEntry<vk::DescriptorImageInfo>>
@@ -123,6 +125,8 @@ impl WriteInfo {
     }
 }
 
+/// Contains information about what buffer or image will be passed to the pipeline
+#[derive(Debug)]
 pub struct PipelineBindings {
     i_core: Arc<dev::Core>,
     i_desc_pool: vk::DescriptorPool,

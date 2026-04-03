@@ -110,7 +110,7 @@ fn main() {
 
     cmd_buffer.bind_graphics_pipeline(&pipeline);
 
-    cmd_buffer.draw(4, 1, 0, 0);
+    cmd_buffer.draw(3, 1, 0, 0);
 
     cmd_buffer.end_render_pass();
 
