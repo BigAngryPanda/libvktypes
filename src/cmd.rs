@@ -955,6 +955,7 @@ impl BeginRenderPassCfg {
     /// Must be called
     pub fn framebuffer(mut self, fb: &memory::Framebuffer) -> Self {
         self.framebuffer = fb.framebuffer();
+        self.extent = fb.extent();
 
         self
     }
@@ -965,7 +966,7 @@ impl BeginRenderPassCfg {
         self
     }
 
-    /// Must be called
+    /// Call this method to overwrite extent from [`framebuffer`](Self::framebuffer)
     pub fn extent(mut self, width: u32, height: u32) -> Self {
         self.extent = vk::Extent2D { width, height };
 
