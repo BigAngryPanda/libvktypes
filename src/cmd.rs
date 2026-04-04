@@ -9,7 +9,10 @@ use crate::{
     graphics
 };
 
-use crate::on_error_ret;
+use crate::{
+    on_error_ret,
+    data_ptr
+};
 
 use std::{ptr, cmp};
 use std::iter::Iterator;
@@ -873,6 +876,121 @@ impl CopyBufferToImageCfg {
     /// Default is `TRANSFER_DST_OPTIMAL | GENERAL`
     pub fn dst_image_layout(&mut self, layout: memory::ImageLayout) -> &mut Self {
         self.dst_image_layout = layout;
+
+        self
+    }
+}
+
+pub struct BeginRenderPassCfg {
+    pub(crate) clear_values: Vec<vk::ClearValue>,
+    pub(crate) render_pass: vk::RenderPass,
+    pub(crate) framebuffer: vk::Framebuffer,
+    pub(crate) offset: vk::Offset2D,
+    pub(crate) extent: vk::Extent2D
+}
+
+impl BeginRenderPassCfg {
+    pub fn new() -> BeginRenderPassCfg {
+        BeginRenderPassCfg {
+            clear_values: Vec::new(),
+            render_pass: vk::RenderPass::null(),
+            framebuffer: vk::Framebuffer::null(),
+            offset: vk::Offset2D { x: 0, y: 0},
+            extent: vk::Extent2D { width: 0, height: 0 },
+        }
+    }
+
+    pub fn clear_color_f32(mut self, value: (f32, f32, f32, f32)) -> Self {
+        self.clear_values.push(
+            vk::ClearValue {
+                color: vk::ClearColorValue {
+                    float32: [value.0, value.1, value.2, value.3],
+                }
+            });
+
+        self
+    }
+
+    pub fn clear_color_i32(mut self, value: (i32, i32, i32, i32)) -> Self {
+        self.clear_values.push(
+            vk::ClearValue {
+                color: vk::ClearColorValue {
+                    int32: [value.0, value.1, value.2, value.3],
+                }
+            });
+
+        self
+    }
+
+    pub fn clear_color_u32(mut self, value: (u32, u32, u32, u32)) -> Self {
+        self.clear_values.push(
+            vk::ClearValue {
+                color: vk::ClearColorValue {
+                    uint32: [value.0, value.1, value.2, value.3],
+                }
+            });
+
+        self
+    }
+
+    pub fn depth_stencil(mut self, depth: f32, stencil: u32) -> Self {
+        self.clear_values.push(
+            vk::ClearValue {
+                depth_stencil: vk::ClearDepthStencilValue {
+                    depth,
+                    stencil
+                }
+            });
+
+        self
+    }
+
+    /// Must be called
+    pub fn render_pass(mut self, rp: &graphics::RenderPass) -> Self {
+        self.render_pass = rp.render_pass();
+
+        self
+    }
+
+    /// Must be called
+    pub fn framebuffer(mut self, fb: &memory::Framebuffer) -> Self {
+        self.framebuffer = fb.framebuffer();
+
+        self
+    }
+
+    pub fn offset(mut self, x: i32, y: i32) -> Self {
+        self.offset = vk::Offset2D { x, y };
+
+        self
+    }
+
+    /// Must be called
+    pub fn extent(mut self, width: u32, height: u32) -> Self {
+        self.extent = vk::Extent2D { width, height };
+
+        self
+    }
+
+    pub fn write_cmd(self, buffer: &Buffer) -> Self {
+        let render_pass_begin_info = vk::RenderPassBeginInfo {
+            s_type: vk::StructureType::RENDER_PASS_BEGIN_INFO,
+            p_next: ptr::null(),
+            render_pass: self.render_pass,
+            framebuffer: self.framebuffer,
+            render_area: vk::Rect2D {
+                offset: self.offset,
+                extent: self.extent,
+            },
+            clear_value_count: self.clear_values.len() as u32,
+            p_clear_values: data_ptr!(self.clear_values),
+            _marker: PhantomData,
+        };
+
+        unsafe {
+            buffer.i_pool.device()
+            .cmd_begin_render_pass(buffer.i_buffer, &render_pass_begin_info, vk::SubpassContents::INLINE);
+        }
 
         self
     }
