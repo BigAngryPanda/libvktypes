@@ -55,13 +55,6 @@ pub type BlendFactor = vk::BlendFactor;
 #[doc = "<https://docs.vulkan.org/refpages/latest/refpages/source/VkPolygonMode.html>"]
 pub type PolygonMode = vk::PolygonMode;
 
-/// Bitmask specifying sample counts supported for an image used for storage operations
-///
-#[doc = "Ash documentation about possible values <https://docs.rs/ash/latest/ash/vk/struct.SampleCountFlags.html>"]
-///
-#[doc = "<https://docs.vulkan.org/refpages/latest/refpages/source/VkSampleCountFlagBits.html>"]
-pub type SampleCountFlags = vk::SampleCountFlags;
-
 #[derive(Debug)]
 pub enum LayoutError {
     DescriptorSet,

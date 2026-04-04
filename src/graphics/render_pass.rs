@@ -72,6 +72,7 @@ pub const NO_ATTACHMENT: u32 =  vk::ATTACHMENT_UNUSED;
 #[derive(Debug)]
 pub struct AttachmentInfo {
     pub format: memory::ImageFormat,
+    pub sample_count: memory::SampleCountFlags,
     pub load_op: AttachmentLoadOp,
     pub store_op: AttachmentStoreOp,
     pub stencil_load_op: AttachmentLoadOp,
@@ -84,6 +85,7 @@ impl Default for AttachmentInfo {
     fn default() -> Self {
         AttachmentInfo {
             format: memory::ImageFormat::UNDEFINED,
+            sample_count: memory::SampleCountFlags::TYPE_1,
             load_op: AttachmentLoadOp::DONT_CARE,
             store_op: AttachmentStoreOp::DONT_CARE,
             stencil_load_op: AttachmentLoadOp::DONT_CARE,
@@ -100,7 +102,7 @@ impl From<&AttachmentInfo> for vk::AttachmentDescription {
         vk::AttachmentDescription {
             flags: vk::AttachmentDescriptionFlags::empty(),
             format: info.format,
-            samples: vk::SampleCountFlags::TYPE_1,
+            samples: info.sample_count,
             load_op: info.load_op,
             store_op: info.store_op,
             stencil_load_op: info.stencil_load_op,
@@ -288,7 +290,7 @@ impl RenderPass {
     }
 
     /// Create [`RenderPass`] with single subpass and single attachment
-    pub fn single_subpass(device: &dev::Device, img_format: memory::ImageFormat)
+    pub fn single_subpass(device: &dev::Device, img_format: memory::ImageFormat, sample_flags: memory::SampleCountFlags)
         -> Result<RenderPass, RenderPassError>
     {
         let subpass_info = [
@@ -304,6 +306,7 @@ impl RenderPass {
         let attachments = [
             AttachmentInfo {
                 format: img_format,
+                sample_count: sample_flags,
                 load_op: AttachmentLoadOp::CLEAR,
                 store_op: AttachmentStoreOp::STORE,
                 stencil_load_op: AttachmentLoadOp::DONT_CARE,
@@ -345,8 +348,10 @@ impl RenderPass {
     /// and number of depth buffers
     pub fn with_depth_buffers(
         device: &dev::Device,
-        img_format: memory::ImageFormat,
+        image_format: memory::ImageFormat,
+        image_sample_flags: memory::SampleCountFlags,
         depth_buffer_format: memory::ImageFormat,
+        depth_sample_flags: memory::SampleCountFlags,
         depth_buffers_count: u32)
         -> Result<RenderPass, RenderPassError>
     {
@@ -362,7 +367,8 @@ impl RenderPass {
 
         let mut attachments = vec![
             AttachmentInfo {
-                format: img_format,
+                format: image_format,
+                sample_count: image_sample_flags,
                 load_op: AttachmentLoadOp::CLEAR,
                 store_op: AttachmentStoreOp::STORE,
                 stencil_load_op: AttachmentLoadOp::DONT_CARE,
@@ -376,6 +382,7 @@ impl RenderPass {
             attachments.push(
                 AttachmentInfo {
                     format: depth_buffer_format,
+                    sample_count: depth_sample_flags,
                     load_op: AttachmentLoadOp::CLEAR,
                     store_op: AttachmentStoreOp::DONT_CARE,
                     stencil_load_op: AttachmentLoadOp::DONT_CARE,

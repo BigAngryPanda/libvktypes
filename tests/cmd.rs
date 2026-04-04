@@ -214,7 +214,8 @@ mod cmd {
                 layout: memory::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::COLOR,
                 tiling: memory::Tiling::OPTIMAL,
-                count: 1
+                count: 1,
+                sample_count: memory::SampleCountFlags::TYPE_1
             }
         ];
 

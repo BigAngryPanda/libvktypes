@@ -34,6 +34,7 @@ mod render_pass {
         let attachment = [
             graphics::AttachmentInfo {
                 format: cfg.formats().next().expect("No available formats").format,
+                sample_count: memory::SampleCountFlags::TYPE_1,
                 load_op: graphics::AttachmentLoadOp::CLEAR,
                 store_op: graphics::AttachmentStoreOp::STORE,
                 stencil_load_op: graphics::AttachmentLoadOp::DONT_CARE,

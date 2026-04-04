@@ -336,7 +336,8 @@ pub fn get_render_pass() -> &'static graphics::RenderPass {
             RENDER_PASS.write(
                 graphics::RenderPass::single_subpass(
                     dev,
-                    capabilities.formats().next().expect("No available formats").format)
+                    capabilities.formats().next().expect("No available formats").format,
+                    memory::SampleCountFlags::TYPE_1)
                     .expect("Failed to create render pass"));
         });
 

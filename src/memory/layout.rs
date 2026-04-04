@@ -105,6 +105,13 @@ pub type CompositeAlphaFlags = vk::CompositeAlphaFlagsKHR;
 #[doc = "Vulkan documentation: <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkImageTiling.html>"]
 pub type Tiling = vk::ImageTiling;
 
+/// Bitmask specifying sample counts supported for an image used for storage operations
+///
+#[doc = "Ash documentation about possible values <https://docs.rs/ash/latest/ash/vk/struct.SampleCountFlags.html>"]
+///
+#[doc = "<https://docs.vulkan.org/refpages/latest/refpages/source/VkSampleCountFlagBits.html>"]
+pub type SampleCountFlags = vk::SampleCountFlags;
+
 /// Buffer represents generic (except images) configuration struct for memory region
 ///
 /// Images represent multidimensional - up to 3 - arrays of data
@@ -162,7 +169,8 @@ pub enum LayoutElementCfg<'a> {
         /// `[<image cfg, count == 1>, <image cfg, count == 1>]` is equivalent to `[<image cfg, count == 2>]`
         ///
         /// Hence each image buffer will be handled separately (e.g. for alignment)
-        count: usize
+        count: usize,
+        sample_count: vk::SampleCountFlags
     }
 }
 
@@ -351,6 +359,20 @@ impl<'a> LayoutElementCfg<'a> {
 
         self
     }
+
+    /// Set `SampleCountFlags` for [`Image`](LayoutElementCfg::Image)
+    ///
+    /// Do nothing for [`Buffer`](LayoutElementCfg::Buffer)
+    pub fn sample_count(mut self, flags: SampleCountFlags) -> Self {
+        match self {
+            LayoutElementCfg::Image { ref mut sample_count, .. } => {
+                *sample_count = flags;
+            },
+            _ => { }
+        }
+
+        self
+    }
 }
 
 pub struct LayoutBuilder<'a> {
@@ -390,7 +412,8 @@ impl<'a> LayoutBuilder<'a> {
             layout: memory::ImageLayout::from_raw(0),
             aspect: ImageAspect::empty(),
             tiling: Tiling::from_raw(0),
-            count: 0
+            count: 0,
+            sample_count: vk::SampleCountFlags::TYPE_1
         });
 
         self.data.last_mut().unwrap()
@@ -494,7 +517,8 @@ impl Layout {
                     layout,
                     aspect,
                     tiling,
-                    count
+                    count,
+                    sample_count
                 } => {
                     let sharing_mode = if simultaneous_access {
                         vk::SharingMode::CONCURRENT
@@ -511,7 +535,7 @@ impl Layout {
                         extent: extent,
                         mip_levels: 1,
                         array_layers: 1,
-                        samples: vk::SampleCountFlags::TYPE_1,
+                        samples: sample_count,
                         tiling: tiling,
                         usage: usage,
                         sharing_mode: sharing_mode,

@@ -366,7 +366,7 @@ impl GraphicsPipelineBuilder {
     /// Optional
     ///
     /// Default is `TYPE_1 (0x00000001)`
-    pub fn sample_count(&mut self, flags: pipeline::SampleCountFlags) -> &mut Self {
+    pub fn sample_count(&mut self, flags: memory::SampleCountFlags) -> &mut Self {
         self.sample_count = flags;
 
         self

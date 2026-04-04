@@ -163,7 +163,7 @@ fn main() {
     }, 2)
     .expect("Failed to fill the ubo");
 
-    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
+    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format, memory::SampleCountFlags::TYPE_1)
         .expect("Failed to create render pass");
 
     let layout = pipeline::PipelineLayoutBuilder::with_sets(2)

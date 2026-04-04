@@ -200,7 +200,8 @@ fn main() {
             layout: memory::ImageLayout::UNDEFINED,
             aspect: memory::ImageAspect::COLOR,
             tiling: memory::Tiling::OPTIMAL,
-            count: 1
+            count: 1,
+            sample_count: memory::SampleCountFlags::TYPE_1
         }
     ];
 
@@ -258,7 +259,7 @@ fn main() {
 
     let sampler = graphics::Sampler::new(&device, &sampler_cfg).expect("Failed to create sampler");
 
-    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
+    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format, memory::SampleCountFlags::TYPE_1)
         .expect("Failed to create render pass");
 
     let layout = pipeline::PipelineLayoutBuilder::with_sets(1)

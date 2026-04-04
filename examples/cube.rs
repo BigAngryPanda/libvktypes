@@ -307,14 +307,20 @@ fn main() {
             layout: memory::ImageLayout::UNDEFINED,
             aspect: memory::ImageAspect::DEPTH,
             tiling: memory::Tiling::OPTIMAL,
-            count: 1
+            count: 1,
+            sample_count: memory::SampleCountFlags::TYPE_1
         }
     ];
 
     let depth_buffer = memory::Memory::allocate_device_memory(&device, &mut depth_buffer_cfg.iter())
         .expect("Failed to allocate depth buffer");
 
-    let render_pass = graphics::RenderPass::with_depth_buffers(&device, surf_format, memory::ImageFormat::D32_SFLOAT, 1)
+    let render_pass = graphics::RenderPass::with_depth_buffers(
+        &device,
+        surf_format,
+        memory::SampleCountFlags::TYPE_1,
+        memory::ImageFormat::D32_SFLOAT,
+        memory::SampleCountFlags::TYPE_1, 1)
         .expect("Failed to create render pass");
 
     let layout = pipeline::PipelineLayoutBuilder::with_sets(2)

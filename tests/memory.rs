@@ -127,7 +127,8 @@ mod memory {
                 layout: memory::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::DEPTH,
                 tiling: memory::Tiling::OPTIMAL,
-                count: 1
+                count: 1,
+                sample_count: memory::SampleCountFlags::TYPE_1
             }
         ];
 
@@ -226,7 +227,8 @@ mod memory {
                 layout: memory::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::DEPTH,
                 tiling: memory::Tiling::OPTIMAL,
-                count: 1
+                count: 1,
+                sample_count: memory::SampleCountFlags::TYPE_1
             },
             memory::LayoutElementCfg::Image {
                 queue_families: &[queue.index()],
@@ -237,7 +239,8 @@ mod memory {
                 layout: memory::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::COLOR,
                 tiling: memory::Tiling::OPTIMAL,
-                count: 2
+                count: 2,
+                sample_count: memory::SampleCountFlags::TYPE_1
             }
         ];
 
@@ -259,7 +262,8 @@ mod memory {
                 layout: memory::ImageLayout::UNDEFINED,
                 aspect: memory::ImageAspect::COLOR,
                 tiling: memory::Tiling::LINEAR,
-                count: 1
+                count: 1,
+                sample_count: memory::SampleCountFlags::TYPE_1
             }
         ];
 

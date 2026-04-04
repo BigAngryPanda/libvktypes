@@ -156,7 +156,7 @@ fn main() {
 
     vertex_data.access(&mut set_vrtx_buffer, 0).expect("Failed to fill the buffer");
 
-    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
+    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format, memory::SampleCountFlags::TYPE_1)
         .expect("Failed to create render pass");
 
     let layout = pipeline::PipelineLayoutBuilder::new()
