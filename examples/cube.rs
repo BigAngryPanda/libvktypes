@@ -318,9 +318,7 @@ fn main() {
     let render_pass = graphics::RenderPass::with_depth_buffers(
         &device,
         surf_format,
-        memory::SampleCountFlags::TYPE_1,
-        memory::ImageFormat::D32_SFLOAT,
-        memory::SampleCountFlags::TYPE_1, 1)
+        memory::ImageFormat::D32_SFLOAT, 1)
         .expect("Failed to create render pass");
 
     let layout = pipeline::PipelineLayoutBuilder::with_sets(2)

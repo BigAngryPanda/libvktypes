@@ -259,7 +259,7 @@ fn main() {
 
     let sampler = graphics::Sampler::new(&device, &sampler_cfg).expect("Failed to create sampler");
 
-    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format, memory::SampleCountFlags::TYPE_1)
+    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");
 
     let layout = pipeline::PipelineLayoutBuilder::with_sets(1)

@@ -68,7 +68,7 @@ fn main() {
         .from_file(&device)
         .expect("Failed to create vertex shader module");
 
-    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format, memory::SampleCountFlags::TYPE_1)
+    let render_pass = graphics::RenderPass::single_subpass(&device, surf_format)
         .expect("Failed to create render pass");
 
     let layout = pipeline::PipelineLayoutBuilder::new()

@@ -290,7 +290,7 @@ impl RenderPass {
     }
 
     /// Create [`RenderPass`] with single subpass and single attachment
-    pub fn single_subpass(device: &dev::Device, img_format: memory::ImageFormat, sample_flags: memory::SampleCountFlags)
+    pub fn single_subpass(device: &dev::Device, img_format: memory::ImageFormat)
         -> Result<RenderPass, RenderPassError>
     {
         let subpass_info = [
@@ -306,7 +306,7 @@ impl RenderPass {
         let attachments = [
             AttachmentInfo {
                 format: img_format,
-                sample_count: sample_flags,
+                sample_count: vk::SampleCountFlags::TYPE_1,
                 load_op: AttachmentLoadOp::CLEAR,
                 store_op: AttachmentStoreOp::STORE,
                 stencil_load_op: AttachmentLoadOp::DONT_CARE,
@@ -349,9 +349,7 @@ impl RenderPass {
     pub fn with_depth_buffers(
         device: &dev::Device,
         image_format: memory::ImageFormat,
-        image_sample_flags: memory::SampleCountFlags,
         depth_buffer_format: memory::ImageFormat,
-        depth_sample_flags: memory::SampleCountFlags,
         depth_buffers_count: u32)
         -> Result<RenderPass, RenderPassError>
     {
@@ -368,7 +366,7 @@ impl RenderPass {
         let mut attachments = vec![
             AttachmentInfo {
                 format: image_format,
-                sample_count: image_sample_flags,
+                sample_count: vk::SampleCountFlags::TYPE_1,
                 load_op: AttachmentLoadOp::CLEAR,
                 store_op: AttachmentStoreOp::STORE,
                 stencil_load_op: AttachmentLoadOp::DONT_CARE,
@@ -382,7 +380,7 @@ impl RenderPass {
             attachments.push(
                 AttachmentInfo {
                     format: depth_buffer_format,
-                    sample_count: depth_sample_flags,
+                    sample_count: vk::SampleCountFlags::TYPE_1,
                     load_op: AttachmentLoadOp::CLEAR,
                     store_op: AttachmentStoreOp::DONT_CARE,
                     stencil_load_op: AttachmentLoadOp::DONT_CARE,
