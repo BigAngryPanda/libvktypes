@@ -690,6 +690,29 @@ impl Buffer {
         self
     }
 
+    /// Pipeline must have enabled [corresponding](pipeline::GraphicsPipelineBuilder::dynamic_scissor)
+    /// dynamic state
+    pub fn set_scissor_with_offset(&self, x: i32, y: i32, width: u32, height: u32) -> &Self {
+        let dev = self.i_pool.device();
+
+        let vk_scissor: vk::Rect2D = vk::Rect2D {
+            offset: vk::Offset2D {
+                x,
+                y,
+            },
+            extent: vk::Extent2D {
+                width,
+                height,
+            },
+        };
+
+        unsafe {
+            dev.cmd_set_scissor(self.i_buffer, 0, &[vk_scissor]);
+        }
+
+        self
+    }
+
     /// Pipeline must have enabled [corresponding](pipeline::GraphicsPipelineBuilder::dynamic_viewport)
     /// dynamic state
     pub fn set_viewport(
