@@ -217,6 +217,7 @@ impl<'a, 'b, 'c, 'd> ShaderBuilder<'a, 'b, 'c, 'd> {
 /// Shader type represents loaded shader bytecode wrapper
 ///
 /// You may think of it as file handler
+#[derive(Debug)]
 pub struct Shader {
     i_core: Arc<dev::Core>,
     i_module: vk::ShaderModule,
