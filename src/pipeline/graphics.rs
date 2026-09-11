@@ -119,7 +119,7 @@ impl GraphicsPipelineBuilder {
     /// let mut builder = GraphicsPipelineBuilder::new();
     ///
     /// // Vertex
-    /// builder.vertex_binding_input(0, std::mem::size_of::<[f32; 6]>() as u32);
+    /// builder.vertex_binding_input(0, std::mem::size_of::<[f32; 8]>() as u32);
     ///
     /// // Position
     /// builder.vertex_input(0, 0, ImageFormat::R32G32B32A32_SFLOAT, 0);

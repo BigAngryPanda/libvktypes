@@ -461,7 +461,13 @@ impl Layout {
 
         for cfg in cfgs {
             match cfg {
-                &LayoutElementCfg::Buffer { size, usage, queue_families, simultaneous_access, count } => {
+                &LayoutElementCfg::Buffer {
+                    size,
+                    usage,
+                    queue_families,
+                    simultaneous_access,
+                    count
+                } => {
                     let sharing_mode = if simultaneous_access {
                         vk::SharingMode::CONCURRENT
                     } else {
@@ -473,7 +479,7 @@ impl Layout {
                         p_next: std::ptr::null(),
                         flags: vk::BufferCreateFlags::empty(),
                         size: size,
-                        usage: usage,
+                        usage,
                         sharing_mode: sharing_mode,
                         queue_family_index_count: queue_families.len() as u32,
                         p_queue_family_indices: queue_families.as_ptr(),
@@ -531,14 +537,14 @@ impl Layout {
                         p_next: std::ptr::null(),
                         flags: vk::ImageCreateFlags::empty(),
                         image_type: vk::ImageType::TYPE_2D,
-                        format: format,
-                        extent: extent,
+                        format,
+                        extent,
                         mip_levels: 1,
                         array_layers: 1,
                         samples: sample_count,
-                        tiling: tiling,
-                        usage: usage,
-                        sharing_mode: sharing_mode,
+                        tiling,
+                        usage,
+                        sharing_mode,
                         queue_family_index_count: queue_families.len() as u32,
                         p_queue_family_indices: queue_families.as_ptr(),
                         initial_layout: layout,

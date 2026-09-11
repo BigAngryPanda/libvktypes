@@ -573,7 +573,8 @@ impl Buffer {
 
     /// Enable resource usage for the `pipeline`
     ///
-    /// Each element of `offsets` must be multiple of [`hw::ubo_offset`](crate::hw::HWDevice::ubo_offset)
+    /// Each element of `offsets` must be multiple of alignment requirements
+    /// (e.g. [`hw::ubo_offset`](crate::hw::HWDevice::ubo_offset) for uniform buffers)
     ///
     /// See [more](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCmdBindDescriptorSets.html)
     ///
